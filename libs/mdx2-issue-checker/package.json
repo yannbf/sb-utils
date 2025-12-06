@@ -7,7 +7,7 @@
     "index.js",
     "README.md"
   ],
-  "homepage": "https://github.com/yannbf/the-packages/tree/main/libs/mdx2-issue-checker",
+  "homepage": "https://github.com/yannbf/sb-utils/tree/main/libs/mdx2-issue-checker",
   "type": "module",
   "dependencies": {
     "remark": "^14.0.2",

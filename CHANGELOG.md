@@ -55,7 +55,7 @@
 
 ### Release Notes
 
-#### add mts as default extension ([#5](https://github.com/yannbf/the-packages/pull/5))
+#### add mts as default extension ([#5](https://github.com/yannbf/sb-utils/pull/5))
 
 #### Features
 Add .mts as default extension
@@ -65,9 +65,9 @@ Add .mts as default extension
 #### 🐛 Bug Fix
 
 - `@hipster/second-package@0.0.4`
-  - update package json [#6](https://github.com/yannbf/the-packages/pull/6) ([@yannbf](https://github.com/yannbf))
+  - update package json [#6](https://github.com/yannbf/sb-utils/pull/6) ([@yannbf](https://github.com/yannbf))
 - `@hipster/first-package@0.0.5`
-  - add mts as default extension [#5](https://github.com/yannbf/the-packages/pull/5) ([@yannbf](https://github.com/yannbf))
+  - add mts as default extension [#5](https://github.com/yannbf/sb-utils/pull/5) ([@yannbf](https://github.com/yannbf))
 
 #### Authors: 1
 
@@ -79,7 +79,7 @@ Add .mts as default extension
 
 ### Release Notes
 
-#### add mts as default extension ([#5](https://github.com/yannbf/the-packages/pull/5))
+#### add mts as default extension ([#5](https://github.com/yannbf/sb-utils/pull/5))
 
 #### Features
 Add .mts as default extension
@@ -89,7 +89,7 @@ Add .mts as default extension
 #### 🐛 Bug Fix
 
 - `@hipster/first-package@0.0.4`
-  - add mts as default extension [#5](https://github.com/yannbf/the-packages/pull/5) ([@yannbf](https://github.com/yannbf))
+  - add mts as default extension [#5](https://github.com/yannbf/sb-utils/pull/5) ([@yannbf](https://github.com/yannbf))
 
 #### Authors: 1
 
@@ -102,7 +102,7 @@ Add .mts as default extension
 #### 🐛 Bug Fix
 
 - `@hipster/second-package@0.0.3`
-  - Change second package [#4](https://github.com/yannbf/the-packages/pull/4) ([@yannbf](https://github.com/yannbf))
+  - Change second package [#4](https://github.com/yannbf/sb-utils/pull/4) ([@yannbf](https://github.com/yannbf))
 
 #### Authors: 1
 
@@ -115,7 +115,7 @@ Add .mts as default extension
 #### 🐛 Bug Fix
 
 - `@hipster/first-package@0.0.3`
-  - add functionality to first package [#3](https://github.com/yannbf/the-packages/pull/3) ([@yannbf](https://github.com/yannbf))
+  - add functionality to first package [#3](https://github.com/yannbf/sb-utils/pull/3) ([@yannbf](https://github.com/yannbf))
 
 #### Authors: 1
 

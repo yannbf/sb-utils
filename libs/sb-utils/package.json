@@ -1,21 +1,50 @@
 {
   "name": "@hipster/sb-utils",
   "version": "0.0.5",
-  "description": "Misc Storybook utilities",
+  "description": "Different, sometimes useful Storybook utilities",
+  "type": "module",
   "license": "MIT",
+  "homepage": "https://github.com/yannbf/sb-utils/tree/main/libs/sb-utils",
+  "bugs": {
+    "url": "https://github.com/yannbf/sb-utils/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yannbf/sb-utils.git"
+  },
+  "author": "Yann Braga <yannbf@gmail.com>",
   "files": [
-    "index.js",
-    "README.md"
+    "dist"
   ],
-  "main": "index.js",
-  "homepage": "https://github.com/yannbf/the-packages/tree/main/libs/sb-utils",
-  "type": "commonjs",
-  "bin": "index.js",
-  "publishConfig": {
-    "access": "public"
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "test": "vitest",
+    "run": "jiti src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
     "@antfu/ni": "^24.3.0",
-    "@clack/prompts": "^0.7.0"
+    "@clack/prompts": "^0.11.0",
+    "commander": "^14.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "bumpp": "^10.3.1",
+    "jiti": "^2.6.1",
+    "tsdown": "^0.16.4",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.9"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
