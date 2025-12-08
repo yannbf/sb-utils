@@ -22,7 +22,10 @@
   "bin": "./dist/bin.mjs",
   "exports": {
     "./bin": "./dist/bin.mjs",
-    "./commands/uninstall": "./dist/commands/uninstall.mjs",
+    "./uninstall": {
+      "types": "./dist/commands/uninstall.d.mts",
+      "default": "./dist/commands/uninstall.mjs"
+    },
     "./package.json": "./package.json"
   },
   "scripts": {
