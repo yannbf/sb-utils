@@ -1,6 +1,6 @@
 import { Command } from 'commander'
 import { uninstall } from './commands/uninstall'
-import { analyzeComponent } from './commands/component-analyzer'
+import { runAnalyzeComponent } from './commands/component-analyzer'
 import { version } from '../package.json'
 
 const program = new Command()
@@ -23,7 +23,7 @@ program
   .command('component-analyzer <file>')
   .description('Analyze component complexity')
   .action(async (filePath) => {
-    await analyzeComponent({ filePath }).catch(console.error)
+    await runAnalyzeComponent({ filePath }).catch(console.error)
   })
 
 program.parse()

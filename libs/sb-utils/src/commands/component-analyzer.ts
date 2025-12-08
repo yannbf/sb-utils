@@ -1,7 +1,10 @@
 import { getComponentComplexity } from '../utils/component-complexity.js'
-export { getComponentComplexity } from '../utils/component-complexity.js'
+export {
+  getComponentComplexity,
+  type ComponentComplexity,
+} from '../utils/component-complexity.js'
 
-export async function analyzeComponent({
+export async function runAnalyzeComponent({
   filePath,
 }: {
   filePath: string
@@ -97,5 +100,5 @@ export async function analyzeComponent({
 
 // Allow running directly as a script
 if (import.meta.url === `file://${process.argv[1]}`) {
-  analyzeComponent({ filePath: process.argv[2] })
+  runAnalyzeComponent({ filePath: process.argv[2] })
 }
