@@ -3,18 +3,18 @@
   "private": true,
   "devDependencies": {
     "auto": "^11.3.0",
-    "lerna": "^8.2.2"
+    "lerna": "^9.0.3"
   },
   "scripts": {
     "release": "auto shipit",
-    "build-packages": "lerna run build --parallel"
+    "build-packages": "lerna run build --parallel --verbose"
   },
-  "repository": "yannbf/the-packages",
+  "repository": "yannbf/sb-utils",
   "author": "Yann Braga <yannbf@gmail.com>",
   "auto": {
     "plugins": [
       "npm"
     ]
   },
-  "packageManager": "pnpm@8.15.4"
+  "packageManager": "pnpm@10.24.0"
 }
