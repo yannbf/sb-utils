@@ -304,3 +304,8 @@ export async function uninstall(options: UninstallOptions): Promise<void> {
 
   outro('✨ Storybook uninstallation complete!')
 }
+
+// Allow running directly as a script
+if (import.meta.url === `file://${process.argv[1]}`) {
+  uninstall({ yes: false, keepStories: false })
+}
