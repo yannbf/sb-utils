@@ -1,69 +1,89 @@
-import { readFile } from 'node:fs/promises'
-import { basename, dirname } from 'node:path'
+import { readFile, writeFile, mkdir } from 'node:fs/promises'
+import { basename, dirname, join } from 'node:path'
 
-export type ComplexityPattern =
-  | 'auth'
-  | 'data-fetching'
-  | 'router'
-  | 'async-operations'
-  | 'error-handling'
-  | 'state-management'
-  | 'context-usage'
-  | 'css-in-js'
+// -----------------------------
+// Versioning & Config
+// -----------------------------
+export const MODEL_VERSION = '1.0.0'
 
-export interface ComponentComplexity {
-  filePath: string
-  fileName: string
-  directory: string
+export type ModelConfig = {
+  // scaling constants
+  LOC_DIVISOR: number
+  LOC_MAX_SCORE: number
 
-  // Basic metrics
-  linesOfCode: number
-  nonEmptyLines: number
+  // coupling / imports
+  IMPORT_DIVISOR: number
+  IMPORT_MAX_SCORE: number
 
-  // Code patterns
-  hooks: {
-    count: number
-    names: string[]
-    hasCustomHooks: boolean
+  // hooks / logic
+  HOOK_MULTIPLIER: number
+  HOOKS_MAX_SCORE: number
+  CUSTOM_HOOK_BONUS: number
+
+  // integration pattern weights (raw)
+  PATTERN_WEIGHTS: Record<string, number>
+  PATTERN_MAX_SCORE: number
+
+  // classification base scores
+  CLASSIFICATION_BASE: {
+    DEFAULT: number
+    DESIGN_SYSTEM: number
+    PAGE: number
+    FEATURE: number
+    UTILITY: number
   }
 
-  // Dependencies and imports
-  dependencies: {
-    total: number
-    external: number
-    internal: number
-    reactImports: string[]
-    thirdPartyImports: string[]
+  // final thresholds for levels
+  LEVELS: {
+    SIMPLE: number // <=
+    MEDIUM: number // <=
+    HIGH: number // <=
+    // very-high is > HIGH
   }
-
-  // Patterns indicating complexity
-  patterns: ComplexityPattern[]
-
-  // Component classification
-  isDesignSystem: boolean
-  isPage: boolean
-  isFeature: boolean
-  componentType: 'design-system' | 'page' | 'feature' | 'utility' | 'unknown'
-
-  // Complexity score (0-100)
-  complexityScore: number
-
-  // Complexity level
-  complexityType: 'simple' | 'medium' | 'high' | 'ultra'
-
-  // Detailed breakdown for score calculation
-  scoreBreakdown: {
-    locScore: number
-    hooksScore: number
-    dependenciesScore: number
-    patternsScore: number
-    classificationScore: number
-  }
-
-  // Top complexity factors
-  complexityFactors: string[]
 }
 
+export const DEFAULT_MODEL_CONFIG: ModelConfig = {
+  LOC_DIVISOR: 10, // non-empty lines per tick
+  LOC_MAX_SCORE: 20, // maps to breakdown locScore (0-20)
+
+  IMPORT_DIVISOR: 1,
+  IMPORT_MAX_SCORE: 15,
+
+  HOOK_MULTIPLIER: 1.5,
+  HOOKS_MAX_SCORE: 15,
+  CUSTOM_HOOK_BONUS: 2,
+
+  PATTERN_WEIGHTS: {
+    AUTH: 5,
+    DATA_FETCHING: 5,
+    ROUTER: 3,
+    ASYNC: 3,
+    ERROR_HANDLING: 2,
+    STATE_MANAGEMENT: 4,
+    CONTEXT: 3,
+    CSS_IN_JS: 4,
+    HOOKS: 1, // fallback
+  },
+  PATTERN_MAX_SCORE: 30,
+
+  CLASSIFICATION_BASE: {
+    DEFAULT: 8,
+    DESIGN_SYSTEM: 5,
+    PAGE: 15,
+    FEATURE: 12,
+    UTILITY: 6,
+  },
+
+  LEVELS: {
+    SIMPLE: 25,
+    MEDIUM: 50,
+    HIGH: 75,
+  },
+}
+
+// -----------------------------
+// PATTERNS & Constants (unchanged, but exposed)
+// -----------------------------
 const DESIGN_SYSTEM_NAMES = [
   'button',
   'input',
@@ -123,298 +143,315 @@ const PAGE_NAMES = [
 
 const FEATURE_INDICATORS = ['feature', 'features', 'module', 'domain']
 
-const HOOK_PATTERNS = [
-  /\buse[A-Z]\w*(?:\s*<[^>]*>)?\s*\(/g, // Standard React hooks (useState, useEffect, etc.) with optional generics
-  /\bReact\.use[A-Z]\w*(?:\s*<[^>]*>)?\s*\(/g, // React.useState, React.useEffect, etc. with optional generics
-  /\buse\w+\s*=\s*use[A-Z]\w*(?:\s*<[^>]*>)?\s*\(/g, // Destructured hooks with optional generics
-]
+const PATTERNS = {
+  HOOKS: [
+    /\buse[A-Z]\w*(?:\s*<[^>]*>)?\s*\(/g,
+    /\bReact\.use[A-Z]\w*(?:\s*<[^>]*>)?\s*\(/g,
+    /\buse\w+\s*=\s*use[A-Z]\w*(?:\s*<[^>]*>)?\s*\(/g,
+  ],
+  AUTH: [
+    /\bauth\b/i,
+    /\blogin\b/i,
+    /\blogout\b/i,
+    /\bsignin\b/i,
+    /\bsignout\b/i,
+    /\bauthentication\b/i,
+    /\bauthorization\b/i,
+    /\btoken\b/i,
+    /\bsession\b/i,
+    /\buser\b\s*\.\s*\w+/i,
+    /\bpermission\b/i,
+    /\brole\b/i,
+    /\buseAuth\b/i,
+    /\bAuthProvider\b/i,
+  ],
+  DATA_FETCHING: [
+    /\bfetch\s*\(/,
+    /\baxios\s*\./,
+    /\bapi\s*\//,
+    /\bhttp\s*\//,
+    /\bgraphql/i,
+    /\bquery\s*\(/,
+    /\bmutation\s*\(/,
+    /\buseQuery\s*\(/,
+    /\buseMutation\s*\(/,
+    /\bswr\s*\(/,
+    /\breact-query/i,
+    /\bapollo/i,
+  ],
+  ROUTER: [
+    /\buseRouter\b/,
+    /\buseNavigate\b/,
+    /\buseParams\b/,
+    /\buseLocation\b/,
+    /\bLink\s+from\s+['"]react-router/i,
+    /\bNavLink\s+from\s+['"]react-router/i,
+    /\bBrowserRouter\b/,
+    /\bRoutes\b/,
+    /\bRoute\b/,
+    /\bnext\/router/i,
+    /\bnext\/navigation/i,
+  ],
+  ASYNC: [
+    /\basync\s+/,
+    /\bawait\s+/,
+    /\bPromise\s*\./,
+    /\bthen\s*\(/,
+    /\bcatch\s*\(/,
+    /\buseAsync\b/i,
+  ],
+  ERROR_HANDLING: [
+    /\btry\s*\{/,
+    /\bcatch\s*\(/,
+    /\bError\s*\(/,
+    /\bthrow\s+/,
+    /\buseError\b/i,
+    /\berror\s*boundary/i,
+  ],
+  STATE_MANAGEMENT: [
+    /\buseReducer\b/,
+    /\buseContext\b/,
+    /\buseStore\b/i,
+    /\buseSelector\b/i,
+    /\buseDispatch\b/i,
+    /\bredux/i,
+    /\bzustand/i,
+    /\bjotai/i,
+    /\brecoil/i,
+  ],
+  CONTEXT: [
+    /\bcreateContext\b/,
+    /\buseContext\b/,
+    /\bContext\.Provider\b/,
+    /\bContext\.Consumer\b/,
+  ],
+  CSS_IN_JS: [
+    /\bimport.*styled.*from.*styled-components\b/,
+    /\bstyled\.\w+\s*</,
+    /\bstyled\.\w+\s*`/,
+    /\bcss\s*`/,
+    /\bkeyframes\s*\(/,
+    /@emotion/,
+    /styled-jsx/,
+    /linaria/,
+    /react-jss/,
+    /vanilla-extract/,
+  ],
+} as const
 
-const AUTH_PATTERNS = [
-  /\bauth\b/i,
-  /\blogin\b/i,
-  /\blogout\b/i,
-  /\bsignin\b/i,
-  /\bsignout\b/i,
-  /\bauthentication\b/i,
-  /\bauthorization\b/i,
-  /\btoken\b/i,
-  /\bsession\b/i,
-  /\buser\b\s*\.\s*\w+/i, // user.id, user.name, etc.
-  /\bpermission\b/i,
-  /\brole\b/i,
-  /\buseAuth\b/i,
-  /\bAuthProvider\b/i,
-]
+export type FeatureCategory = keyof typeof PATTERNS
+export type ComplexityPattern =
+  | 'auth'
+  | 'data-fetching'
+  | 'router'
+  | 'async-operations'
+  | 'error-handling'
+  | 'state-management'
+  | 'context-usage'
+  | 'css-in-js'
 
-const DATA_FETCHING_PATTERNS = [
-  /\bfetch\s*\(/,
-  /\baxios\s*\./,
-  /\bapi\s*\//,
-  /\bhttp\s*\//,
-  /\bgraphql/i,
-  /\bquery\s*\(/,
-  /\bmutation\s*\(/,
-  /\buseQuery\s*\(/,
-  /\buseMutation\s*\(/,
-  /\bswr\s*\(/,
-  /\breact-query/i,
-  /\bapollo/i,
-]
+export type ComponentType =
+  | 'design-system'
+  | 'page'
+  | 'feature'
+  | 'utility'
+  | 'unknown'
 
-const ROUTER_PATTERNS = [
-  /\buseRouter\b/,
-  /\buseNavigate\b/,
-  /\buseParams\b/,
-  /\buseLocation\b/,
-  /\bLink\s+from\s+['"]react-router/i,
-  /\bNavLink\s+from\s+['"]react-router/i,
-  /\bBrowserRouter\b/,
-  /\bRoutes\b/,
-  /\bRoute\b/,
-  /\bnext\/router/i,
-  /\bnext\/navigation/i,
-]
+export type ComplexityLevel = 'simple' | 'medium' | 'high' | 'very-high'
 
-const ASYNC_PATTERNS = [
-  /\basync\s+/,
-  /\bawait\s+/,
-  /\bPromise\s*\./,
-  /\bthen\s*\(/,
-  /\bcatch\s*\(/,
-  /\buseAsync\b/i,
-]
+// -----------------------------
+// 2. Data Structures
+// -----------------------------
+export interface LowLevelFeatures {
+  meta: {
+    filePath: string
+    fileName: string
+    directory: string
+  }
+  metrics: {
+    totalLines: number
+    nonEmptyLines: number
+  }
+  imports: {
+    total: number
+    react: string[]
+    external: string[]
+    internal: string[]
+  }
+  hooks: {
+    count: number
+    names: string[]
+  }
+  // Counts of pattern matches per category
+  patternCounts: Record<FeatureCategory, number>
+}
 
-const ERROR_HANDLING_PATTERNS = [
-  /\btry\s*\{/,
-  /\bcatch\s*\(/,
-  /\bError\s*\(/,
-  /\bthrow\s+/,
-  /\buseError\b/i,
-  /\berror\s*boundary/i,
-]
+export interface HighLevelFeatures {
+  isDesignSystemCandidate: boolean
+  isPageCandidate: boolean
+  isFeatureCandidate: boolean
 
-const STATE_MANAGEMENT_PATTERNS = [
-  /\buseReducer\b/,
-  /\buseContext\b/,
-  /\buseStore\b/i,
-  /\buseSelector\b/i,
-  /\buseDispatch\b/i,
-  /\bredux/i,
-  /\bzustand/i,
-  /\bjotai/i,
-  /\brecoil/i,
-]
+  hasCustomHooks: boolean
+  hasComplexState: boolean
+  hasAuthIntegration: boolean
+  hasDataFetching: boolean
+  hasRouting: boolean
 
-const CONTEXT_PATTERNS = [
-  /\bcreateContext\b/,
-  /\buseContext\b/,
-  /\bContext\.Provider\b/,
-  /\bContext\.Consumer\b/,
-]
-
-const CSS_IN_JS_PATTERNS = [
-  // styled-components
-  /\bimport.*styled.*from.*styled-components\b/,
-  /\bimport.*\{.*styled.*\}.*from.*styled-components\b/,
-  /\bstyled\.\w+\s*<\s*\{[^}]*\}\s*>\s*\(\s*\)/,
-  /\bstyled\.\w+\s*`\s*.*?\s*`/,
-  /\bstyled\s*\([^)]*\)\s*`\s*.*?\s*`/,
-  /\bThemeProvider\b/,
-  /\buseTheme\b/,
-
-  // emotion
-  /\bimport.*styled.*from.*@emotion\/styled\b/,
-  /\bimport.*\{.*styled.*\}.*from.*@emotion\/styled\b/,
-  /\bimport.*css.*from.*@emotion\/css\b/,
-  /\bimport.*\{.*css.*\}.*from.*@emotion\/css\b/,
-  /\bimport.*\{.*keyframes.*\}.*from.*@emotion\/react\b/,
-  /\bimport.*\{.*Global.*\}.*from.*@emotion\/react\b/,
-  /\bimport.*\{.*ThemeProvider.*\}.*from.*@emotion\/react\b/,
-  /\bimport.*\{.*useTheme.*\}.*from.*@emotion\/react\b/,
-
-  // styled-jsx
-  /\bimport.*'styled-jsx\/css'\b/,
-  /\bimport.*\{.*css.*\}.*from.*styled-jsx\b/,
-  /\bimport.*\{.*global.*\}.*from.*styled-jsx\b/,
-
-  // linaria
-  /\bimport.*styled.*from.*@linaria\/core\b/,
-  /\bimport.*\{.*css.*\}.*from.*@linaria\/core\b/,
-  /\bimport.*\{.*keyframes.*\}.*from.*@linaria\/core\b/,
-
-  // jss
-  /\bimport.*\{.*createUseStyles.*\}.*from.*react-jss\b/,
-  /\bimport.*\{.*createUseStyles.*\}.*from.*jss\b/,
-  /\bimport.*\{.*withStyles.*\}.*from.*react-jss\b/,
-
-  // aphrodite
-  /\bimport.*\{.*StyleSheet.*\}.*from.*aphrodite\b/,
-  /\bimport.*\{.*css.*\}.*from.*aphrodite\b/,
-
-  // glamor
-  /\bimport.*\{.*css.*\}.*from.*glamor\b/,
-  /\bimport.*\{.*style.*\}.*from.*glamor\b/,
-
-  // styletron
-  /\bimport.*\{.*styled.*\}.*from.*styletron-react\b/,
-  /\bimport.*\{.*createStyled.*\}.*from.*styletron-react\b/,
-
-  // goober
-  /\bimport.*styled.*from.*goober\b/,
-  /\bimport.*\{.*styled.*\}.*from.*goober\b/,
-
-  // stitches
-  /\bimport.*\{.*styled.*\}.*from.*@stitches\/react\b/,
-  /\bimport.*\{.*createCss.*\}.*from.*@stitches\/core\b/,
-
-  // vanilla-extract
-  /\bimport.*\{.*style.*\}.*from.*@vanilla-extract\/css\b/,
-  /\bimport.*\{.*createTheme.*\}.*from.*@vanilla-extract\/css\b/,
-
-  // Common CSS-in-JS patterns
-  /\bcss\s*`\s*.*?\s*`/,
-  /\bstyled\s*\(/,
-  /\bkeyframes\s*\(/,
-]
-
-export async function getComponentComplexity(
-  filePath: string
-): Promise<ComponentComplexity> {
-  try {
-    const content = await readFile(filePath, 'utf-8')
-    const fileName = basename(filePath)
-    const directory = dirname(filePath)
-
-    // Basic metrics
-    const lines = content.split('\n')
-    const linesOfCode = lines.length
-    const nonEmptyLines = lines.filter((line) => line.trim().length > 0).length
-
-    // Analyze hooks
-    const hooks = analyzeHooks(content)
-
-    // Analyze dependencies
-    const dependencies = analyzeDependencies(content)
-
-    // Analyze patterns
-    const patterns: ComplexityPattern[] = []
-    if (AUTH_PATTERNS.some((pattern) => pattern.test(content))) {
-      patterns.push('auth')
-    }
-    if (DATA_FETCHING_PATTERNS.some((pattern) => pattern.test(content))) {
-      patterns.push('data-fetching')
-    }
-    if (ROUTER_PATTERNS.some((pattern) => pattern.test(content))) {
-      patterns.push('router')
-    }
-    if (ASYNC_PATTERNS.some((pattern) => pattern.test(content))) {
-      patterns.push('async-operations')
-    }
-    if (ERROR_HANDLING_PATTERNS.some((pattern) => pattern.test(content))) {
-      patterns.push('error-handling')
-    }
-    if (STATE_MANAGEMENT_PATTERNS.some((pattern) => pattern.test(content))) {
-      patterns.push('state-management')
-    }
-    if (CONTEXT_PATTERNS.some((pattern) => pattern.test(content))) {
-      patterns.push('context-usage')
-    }
-    if (CSS_IN_JS_PATTERNS.some((pattern) => pattern.test(content))) {
-      patterns.push('css-in-js')
-    }
-
-    // Classify component
-    const classification = classifyComponent(filePath, fileName)
-    const { isDesignSystem, isPage, isFeature, componentType } = classification
-
-    // Calculate complexity score
-    const scoreBreakdown = calculateScoreBreakdown({
-      linesOfCode,
-      nonEmptyLines,
-      hooks,
-      dependencies,
-      patterns,
-      isDesignSystem,
-      isPage,
-      isFeature,
-    })
-
-    const complexityScore = Math.min(
-      100,
-      Math.round(
-        scoreBreakdown.locScore +
-          scoreBreakdown.hooksScore +
-          scoreBreakdown.dependenciesScore +
-          scoreBreakdown.patternsScore +
-          scoreBreakdown.classificationScore
-      )
-    )
-
-    // Determine complexity type based on score
-    let complexityType: ComponentComplexity['complexityType']
-    if (complexityScore <= 25) {
-      complexityType = 'simple'
-    } else if (complexityScore <= 50) {
-      complexityType = 'medium'
-    } else if (complexityScore <= 75) {
-      complexityType = 'high'
-    } else {
-      complexityType = 'ultra'
-    }
-
-    // Calculate top complexity factors
-    const complexityFactors = getTopComplexityFactors({
-      scoreBreakdown,
-      patterns,
-      linesOfCode,
-      hooksCount: hooks.count,
-      dependenciesTotal: dependencies.total,
-    })
-
-    return {
-      filePath,
-      fileName,
-      directory,
-      linesOfCode,
-      nonEmptyLines,
-      hooks,
-      dependencies,
-      patterns,
-      isDesignSystem,
-      isPage,
-      isFeature,
-      componentType,
-      complexityScore,
-      complexityType,
-      scoreBreakdown,
-      complexityFactors,
-    }
-  } catch (error) {
-    throw new Error(
-      `Failed to analyze component complexity for ${filePath}: ${error}`
-    )
+  dimensions: {
+    size: number
+    coupling: number
+    logic: number
+    integration: number
   }
 }
 
-function analyzeHooks(content: string) {
-  const hookNames = new Set<string>()
+export interface ComplexityClassification {
+  modelVersion: string
+  modelConfig: ModelConfig
+  score: number // 0-100
+  level: ComplexityLevel
+  type: ComponentType
+  factors: string[]
+  breakdown: {
+    locScore: number
+    hooksScore: number
+    dependenciesScore: number
+    patternsScore: number
+    classificationScore: number
+  }
+}
 
-  for (const pattern of HOOK_PATTERNS) {
-    const matches = content.match(pattern)
-    if (matches) {
-      matches.forEach((match) => {
-        // Extract hook name from patterns like useState(, useEffect(, etc.
-        const hookName = match.replace(/[(\s=]/g, '')
-        if (hookName.startsWith('use')) {
-          hookNames.add(hookName)
-        }
-      })
+export interface ComponentComplexity extends ComplexityClassification {
+  features: {
+    low: LowLevelFeatures
+    high: HighLevelFeatures
+  }
+  timestamp: string
+}
+
+// Snapshot format (persisted)
+export interface ComponentSnapshot {
+  modelVersion: string
+  modelConfig: ModelConfig
+  result: ComponentComplexity
+}
+
+// -----------------------------
+// 3. Extraction (ETL)
+// -----------------------------
+export async function extractLowLevelFeatures(
+  filePath: string,
+  content?: string
+): Promise<LowLevelFeatures> {
+  const fileContent = content ?? (await readFile(filePath, 'utf-8'))
+  const lines = fileContent.split('\n')
+  const nonEmptyLines = lines.filter((line) => line.trim().length > 0).length
+
+  // Import Analysis
+  const importLines = lines.filter((line) => line.trim().startsWith('import'))
+  const reactImports: string[] = []
+  const externalImports: string[] = []
+  const internalImports: string[] = []
+
+  for (const line of importLines) {
+    const fromMatch = line.match(/from\s+['"]([^'"]+)['"]/)
+    const pathMatch = line.match(/import\s+['"]([^'"]+)['"]/)
+    const importPath = fromMatch?.[1] ?? pathMatch?.[1]
+
+    if (importPath) {
+      if (
+        importPath === 'react' ||
+        importPath.startsWith('react/') ||
+        importPath.startsWith('@types/react')
+      ) {
+        reactImports.push(importPath)
+      } else if (importPath.startsWith('.') || importPath.startsWith('/')) {
+        internalImports.push(importPath)
+      } else {
+        externalImports.push(importPath)
+      }
     }
   }
 
-  const names = Array.from(hookNames)
-  const count = names.length
-  const hasCustomHooks = names.some(
+  // Hook Analysis - collect raw matches and canonicalize names
+  const hookNames = new Set<string>()
+  for (const pattern of PATTERNS.HOOKS) {
+    const matches = fileContent.match(pattern)
+    if (matches) {
+      for (const match of matches) {
+        // Extract candidate like "useSomething("
+        const nameMatch = match.match(/\b(use[A-Z]\w*)/)
+        if (nameMatch) {
+          hookNames.add(nameMatch[1])
+        }
+      }
+    }
+  }
+
+  // Pattern Counts
+  const patternCounts = {} as Record<FeatureCategory, number>
+  for (const key of Object.keys(PATTERNS) as FeatureCategory[]) {
+    let count = 0
+    for (const pattern of PATTERNS[key]) {
+      const matches = fileContent.match(pattern)
+      if (matches) count += matches.length
+    }
+    patternCounts[key] = count
+  }
+
+  return {
+    meta: {
+      filePath,
+      fileName: basename(filePath),
+      directory: dirname(filePath),
+    },
+    metrics: {
+      totalLines: lines.length,
+      nonEmptyLines,
+    },
+    imports: {
+      total:
+        reactImports.length + externalImports.length + internalImports.length,
+      react: reactImports,
+      external: externalImports,
+      internal: internalImports,
+    },
+    hooks: {
+      count: hookNames.size,
+      names: Array.from(hookNames),
+    },
+    patternCounts,
+  }
+}
+
+// -----------------------------
+// 4. Feature Engineering
+// -----------------------------
+export function synthesizeHighLevelFeatures(
+  low: LowLevelFeatures
+): HighLevelFeatures {
+  const { fileName, directory } = low.meta
+  const fileNameLower = fileName.toLowerCase()
+  const pathLower = (directory + '/' + fileName).toLowerCase()
+
+  // Classification Candidates
+  const isDesignSystemCandidate = DESIGN_SYSTEM_NAMES.some(
+    (name) =>
+      fileNameLower.includes(name) &&
+      !fileNameLower.includes('page') &&
+      !fileNameLower.includes('screen')
+  )
+
+  const isPageCandidate = PAGE_NAMES.some((name) =>
+    fileNameLower.includes(name)
+  )
+
+  const isFeatureCandidate = FEATURE_INDICATORS.some((indicator) =>
+    pathLower.includes(indicator)
+  )
+
+  // Complexity Heuristics
+  const hasCustomHooks = low.hooks.names.some(
     (name) =>
       !name.startsWith('useState') &&
       !name.startsWith('useEffect') &&
@@ -423,256 +460,271 @@ function analyzeHooks(content: string) {
       !name.startsWith('useRef')
   )
 
-  return { count, names, hasCustomHooks }
-}
+  // Dimension Scoring (normalized-ish)
+  const size = Math.round(Math.min(10, low.metrics.nonEmptyLines / 20)) // 0-10
+  const coupling = Math.round(Math.min(10, low.imports.total / 1)) // 0-10
+  const logic = Math.round(
+    Math.min(10, low.hooks.count * 1.5 + (hasCustomHooks ? 1 : 0))
+  ) // 0-10
 
-function analyzeDependencies(content: string) {
-  const lines = content.split('\n')
-  const importLines = lines.filter((line) => line.trim().startsWith('import'))
-
-  const reactImports: string[] = []
-  const thirdPartyImports: string[] = []
-  let internalImports = 0
-
-  for (const line of importLines) {
-    // Handle different import patterns
-    let importPath: string | null = null
-
-    // ES6 import with from
-    const fromMatch = line.match(/from\s+['"]([^'"]+)['"]/)
-    if (fromMatch) {
-      importPath = fromMatch[1]
-    } else {
-      // CSS imports or other import patterns
-      const pathMatch = line.match(/import\s+['"]([^'"]+)['"]/)
-      if (pathMatch) {
-        importPath = pathMatch[1]
-      }
-    }
-
-    if (importPath) {
-      if (
-        importPath.startsWith('react') ||
-        importPath.startsWith('@types/react')
-      ) {
-        reactImports.push(importPath)
-      } else if (importPath.startsWith('.') || importPath.startsWith('/')) {
-        internalImports++
-      } else {
-        thirdPartyImports.push(importPath)
-      }
-    }
-  }
+  // Integration: presence of key patterns
+  let integrationRaw = 0
+  if (low.patternCounts.AUTH > 0) integrationRaw += 3
+  if (low.patternCounts.DATA_FETCHING > 0) integrationRaw += 3
+  if (low.patternCounts.ROUTER > 0) integrationRaw += 2
+  if (low.patternCounts.STATE_MANAGEMENT > 0) integrationRaw += 2
+  const integration = Math.min(10, integrationRaw)
 
   return {
-    total: reactImports.length + thirdPartyImports.length + internalImports,
-    external: thirdPartyImports.length,
-    internal: internalImports,
-    reactImports,
-    thirdPartyImports,
+    isDesignSystemCandidate,
+    isPageCandidate,
+    isFeatureCandidate,
+    hasCustomHooks,
+    hasComplexState: low.patternCounts.STATE_MANAGEMENT > 0,
+    hasAuthIntegration: low.patternCounts.AUTH > 0,
+    hasDataFetching: low.patternCounts.DATA_FETCHING > 0,
+    hasRouting: low.patternCounts.ROUTER > 0,
+    dimensions: {
+      size,
+      coupling,
+      logic,
+      integration,
+    },
   }
 }
 
-function classifyComponent(filePath: string, fileName: string) {
-  const fileNameLower = fileName.toLowerCase()
-  const pathLower = filePath.toLowerCase()
+// -----------------------------
+// 5. Classification (The Model)
+// -----------------------------
+export function classifyComplexityWithConfig(
+  low: LowLevelFeatures,
+  high: HighLevelFeatures,
+  config: ModelConfig
+): ComplexityClassification {
+  // 1. Determine Component Type
+  let type: ComponentType = 'unknown'
+  if (high.isDesignSystemCandidate) type = 'design-system'
+  else if (high.isPageCandidate) type = 'page'
+  else if (high.isFeatureCandidate) type = 'feature'
+  else if (low.meta.fileName.toLowerCase().includes('util')) type = 'utility'
 
-  const isDesignSystem = DESIGN_SYSTEM_NAMES.some(
-    (name) =>
-      fileNameLower.includes(name) &&
-      !fileNameLower.includes('page') &&
-      !fileNameLower.includes('screen')
-  )
+  // 2. Calculate Sub-Scores (mapping to breakdown scales)
+  // locScore: scale nonEmptyLines -> [0 .. config.LOC_MAX_SCORE]
+  const locRaw = Math.floor(low.metrics.nonEmptyLines / config.LOC_DIVISOR)
+  const locScore = Math.min(config.LOC_MAX_SCORE, locRaw)
 
-  const isPage = PAGE_NAMES.some((name) => fileNameLower.includes(name))
-
-  const isFeature = FEATURE_INDICATORS.some((indicator) =>
-    pathLower.includes(indicator)
-  )
-
-  let componentType: ComponentComplexity['componentType'] = 'unknown'
-  if (isDesignSystem) {
-    componentType = 'design-system'
-  } else if (isPage) {
-    componentType = 'page'
-  } else if (isFeature) {
-    componentType = 'feature'
-  } else if (
-    fileNameLower.includes('util') ||
-    fileNameLower.includes('helper')
-  ) {
-    componentType = 'utility'
-  }
-
-  return { isDesignSystem, isPage, isFeature, componentType }
-}
-
-function calculateScoreBreakdown(factors: {
-  linesOfCode: number
-  nonEmptyLines: number
-  hooks: { count: number; hasCustomHooks: boolean }
-  dependencies: { total: number; external: number }
-  patterns: ComplexityPattern[]
-  isDesignSystem: boolean
-  isPage: boolean
-  isFeature: boolean
-}) {
-  // LOC score (0-20): More lines = higher complexity
-  const locScore = Math.min(20, Math.floor(factors.nonEmptyLines / 10))
-
-  // Hooks score (0-15): More hooks = higher complexity, custom hooks add more
+  // hooksScore: from high.dimensions.logic but scaled to HOOKS_MAX_SCORE
   const hooksScore = Math.min(
-    15,
-    factors.hooks.count * 2 + (factors.hooks.hasCustomHooks ? 3 : 0)
+    config.HOOKS_MAX_SCORE,
+    Math.floor(high.dimensions.logic * config.HOOK_MULTIPLIER) +
+      (high.hasCustomHooks ? config.CUSTOM_HOOK_BONUS : 0)
   )
 
-  // Dependencies score (0-15): More dependencies = higher complexity
-  const dependenciesScore = Math.min(15, factors.dependencies.total * 1.5)
+  // dependenciesScore (imports)
+  const dependenciesScore = Math.min(
+    config.IMPORT_MAX_SCORE,
+    Math.floor(low.imports.total / config.IMPORT_DIVISOR)
+  )
 
-  // Patterns score (0-30): Various complexity indicators
+  // Pattern Score: weighted by PATTERN_WEIGHTS
   let patternsScore = 0
-  for (const pattern of factors.patterns) {
-    switch (pattern) {
-      case 'auth':
-        patternsScore += 5
-        break
-      case 'data-fetching':
-        patternsScore += 5
-        break
-      case 'router':
-        patternsScore += 3
-        break
-      case 'async-operations':
-        patternsScore += 3
-        break
-      case 'error-handling':
-        patternsScore += 2
-        break
-      case 'state-management':
-        patternsScore += 4
-        break
-      case 'context-usage':
-        patternsScore += 3
-        break
-      case 'css-in-js':
-        patternsScore += 4 // CSS-in-JS solutions add complexity due to theming and runtime styling
-        break
+  for (const [patternKey, weight] of Object.entries(config.PATTERN_WEIGHTS)) {
+    // map from config key to our PATTERNS keys - use case-insensitive matching
+    const upperKey = patternKey.toUpperCase()
+    // If pattern exists in PATTERNS, use counts; otherwise treat as zero
+    if ((PATTERNS as any)[upperKey]) {
+      const count = (low.patternCounts as any)[upperKey] ?? 0
+      if (count > 0) patternsScore += weight
+    } else {
+      // fallback: attempt direct mapping (e.g. "ERROR_HANDLING")
+      const count = (low.patternCounts as any)[upperKey] ?? 0
+      if (count > 0) patternsScore += weight
     }
   }
+  patternsScore = Math.min(config.PATTERN_MAX_SCORE, patternsScore)
 
-  // Classification score (0-20): Pages and features are generally more complex than design system components
-  let classificationScore = 0
-  if (factors.isDesignSystem) {
-    classificationScore = 5 // Simpler components
-  } else if (factors.isPage) {
-    classificationScore = 15 // More complex
-  } else if (factors.isFeature) {
-    classificationScore = 12 // Moderately complex
-  } else {
-    classificationScore = 8
-  } // Unknown/utility components
+  // Classification Score (contextual base)
+  let classificationScore = config.CLASSIFICATION_BASE.DEFAULT
+  if (type === 'design-system')
+    classificationScore = config.CLASSIFICATION_BASE.DESIGN_SYSTEM
+  else if (type === 'page')
+    classificationScore = config.CLASSIFICATION_BASE.PAGE
+  else if (type === 'feature')
+    classificationScore = config.CLASSIFICATION_BASE.FEATURE
+  else if (type === 'utility')
+    classificationScore = config.CLASSIFICATION_BASE.UTILITY
+
+  // Total Score
+  const rawScore =
+    locScore +
+    hooksScore +
+    dependenciesScore +
+    patternsScore +
+    classificationScore
+  const complexityScore = Math.min(100, Math.round(rawScore))
+
+  // Complexity Level
+  let level: ComplexityLevel
+  if (complexityScore <= config.LEVELS.SIMPLE) level = 'simple'
+  else if (complexityScore <= config.LEVELS.MEDIUM) level = 'medium'
+  else if (complexityScore <= config.LEVELS.HIGH) level = 'high'
+  else level = 'very-high'
+
+  // Factors (top reasons) - deterministic selection order
+  const factors: string[] = []
+  if (low.metrics.nonEmptyLines > config.LOC_DIVISOR * 5)
+    factors.push('Large component size')
+  if (low.hooks.count > 3) factors.push('Multiple hooks usage')
+  if (low.imports.total > 5) factors.push('High dependency count')
+  if (high.hasAuthIntegration) factors.push('Authentication logic')
+  if (high.hasDataFetching) factors.push('Data fetching operations')
+  if (low.patternCounts.STATE_MANAGEMENT > 0) factors.push('State management')
+  if (low.patternCounts.CSS_IN_JS > 0) factors.push('CSS-in-JS styling')
+  if (high.hasRouting) factors.push('Router integration')
+  if (low.patternCounts.ASYNC > 0) factors.push('Async operations')
+  if (low.patternCounts.CONTEXT > 0) factors.push('Context usage')
+  if (low.patternCounts.ERROR_HANDLING > 0) factors.push('Error handling')
+
+  if (type === 'page') factors.push('Page component')
+  else if (type === 'feature') factors.push('Feature component')
+  else if (type === 'design-system') factors.push('Design system component')
 
   return {
-    locScore,
-    hooksScore,
-    dependenciesScore,
-    patternsScore,
-    classificationScore,
+    modelVersion: MODEL_VERSION,
+    modelConfig: config,
+    score: complexityScore,
+    level,
+    type,
+    factors: factors.slice(0, 6), // keep to a reasonable number
+    breakdown: {
+      locScore,
+      hooksScore,
+      dependenciesScore,
+      patternsScore,
+      classificationScore,
+    },
   }
 }
 
-function getTopComplexityFactors(factors: {
-  scoreBreakdown: {
-    locScore: number
-    hooksScore: number
-    dependenciesScore: number
-    patternsScore: number
-    classificationScore: number
-  }
-  patterns: ComplexityPattern[]
-  linesOfCode: number
-  hooksCount: number
-  dependenciesTotal: number
-}): string[] {
-  const factorScores: Array<{ factor: string; score: number }> = []
-
-  // Lines of code factor
-  if (factors.linesOfCode > 50) {
-    factorScores.push({
-      factor: 'Large component size',
-      score: factors.scoreBreakdown.locScore,
-    })
-  }
-
-  // Hooks factor
-  if (factors.hooksCount > 3) {
-    factorScores.push({
-      factor: 'Multiple hooks usage',
-      score: factors.scoreBreakdown.hooksScore,
-    })
-  }
-
-  // Dependencies factor
-  if (factors.dependenciesTotal > 5) {
-    factorScores.push({
-      factor: 'High dependency count',
-      score: factors.scoreBreakdown.dependenciesScore,
-    })
-  }
-
-  // Individual pattern factors
-  for (const pattern of factors.patterns) {
-    switch (pattern) {
-      case 'auth':
-        factorScores.push({ factor: 'Authentication logic', score: 5 })
-        break
-      case 'data-fetching':
-        factorScores.push({ factor: 'Data fetching operations', score: 5 })
-        break
-      case 'state-management':
-        factorScores.push({ factor: 'State management', score: 4 })
-        break
-      case 'css-in-js':
-        factorScores.push({ factor: 'CSS-in-JS styling', score: 4 })
-        break
-      case 'router':
-        factorScores.push({ factor: 'Router integration', score: 3 })
-        break
-      case 'async-operations':
-        factorScores.push({ factor: 'Async operations', score: 3 })
-        break
-      case 'context-usage':
-        factorScores.push({ factor: 'Context usage', score: 3 })
-        break
-      case 'error-handling':
-        factorScores.push({ factor: 'Error handling', score: 2 })
-        break
-    }
-  }
-
-  // Component classification factor
-  if (factors.scoreBreakdown.classificationScore > 10) {
-    const classificationFactors = {
-      15: 'Page component',
-      12: 'Feature component',
-      8: 'Utility component',
-      5: 'Design system component',
-    }
-    const factor = Object.entries(classificationFactors).find(
-      ([score]) =>
-        parseInt(score) === factors.scoreBreakdown.classificationScore
+// -----------------------------
+// 6. Public API (Pipeline Execution)
+// -----------------------------
+export async function getComponentComplexity(
+  filePath: string,
+  config: ModelConfig = DEFAULT_MODEL_CONFIG
+): Promise<ComponentComplexity> {
+  try {
+    const lowLevel = await extractLowLevelFeatures(filePath)
+    const highLevel = synthesizeHighLevelFeatures(lowLevel)
+    const classification = classifyComplexityWithConfig(
+      lowLevel,
+      highLevel,
+      config
     )
-    if (factor) {
-      factorScores.push({
-        factor: factor[1],
-        score: factors.scoreBreakdown.classificationScore,
-      })
-    }
-  }
 
-  // Sort by score descending and return top factors (max 5)
-  return factorScores
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 5)
-    .map((item) => item.factor)
+    const result: ComponentComplexity = {
+      ...classification,
+      features: {
+        low: lowLevel,
+        high: highLevel,
+      },
+      timestamp: new Date().toISOString(),
+    }
+
+    return result
+  } catch (error) {
+    throw new Error(
+      `Failed to analyze component complexity for ${filePath}: ${String(error)}`
+    )
+  }
+}
+
+// -----------------------------
+// 7. Persistence Utilities (Snapshots)
+// -----------------------------
+export async function saveSnapshot(
+  componentComplexity: ComponentComplexity,
+  outPath: string
+): Promise<void> {
+  const dir = dirname(outPath)
+  try {
+    // Ensure directory exists (simple attempt)
+    await mkdir(dir, { recursive: true })
+  } catch {
+    // ignore
+  }
+  const snapshot: ComponentSnapshot = {
+    modelVersion: componentComplexity.modelVersion,
+    modelConfig: componentComplexity.modelConfig,
+    result: componentComplexity,
+  }
+  await writeFile(outPath, JSON.stringify(snapshot, null, 2), 'utf-8')
+}
+
+export async function loadSnapshot(path: string): Promise<ComponentSnapshot> {
+  const content = await readFile(path, 'utf-8')
+  const parsed = JSON.parse(content) as ComponentSnapshot
+  return parsed
+}
+
+// -----------------------------
+// 8. Reclassification Helpers
+//    (Re-run classification deterministically on raw low-level features)
+// -----------------------------
+export function reclassifyWithConfig(
+  low: LowLevelFeatures,
+  config: ModelConfig = DEFAULT_MODEL_CONFIG
+): ComplexityClassification {
+  const high = synthesizeHighLevelFeatures(low)
+  return classifyComplexityWithConfig(low, high, config)
+}
+
+// -----------------------------
+// 9. CLI convenience (minimal)
+// -----------------------------
+export async function runAndMaybeSave(
+  filePath: string,
+  options?: { saveSnapshot?: boolean; outDir?: string; config?: ModelConfig }
+): Promise<ComponentComplexity> {
+  const config = options?.config ?? DEFAULT_MODEL_CONFIG
+  const result = await getComponentComplexity(filePath, config)
+  if (options?.saveSnapshot) {
+    const name = `${basename(filePath).replace(/\.[^.]+$/, '')}.complexity.json`
+    const outDir = options.outDir ?? './component-complexity-snapshots'
+    const outPath = join(outDir, name)
+    await saveSnapshot(result, outPath)
+  }
+  return result
+}
+
+// -----------------------------
+// 10. Small utilities for debugging
+// -----------------------------
+export function prettyPrint(result: ComponentComplexity): string {
+  return [
+    `Component: ${result.features.low.meta.filePath}`,
+    `Model version: ${result.modelVersion}`,
+    `Score: ${result.score} (${result.level})`,
+    `Type: ${result.type}`,
+    `Factors: ${result.factors.join(', ')}`,
+    `Breakdown: ${JSON.stringify(result.breakdown)}`,
+    `Dimensions: ${JSON.stringify(result.features.high.dimensions)}`,
+  ].join('\n')
+}
+
+// -----------------------------
+// 11. Exports (default and named)
+// -----------------------------
+export default {
+  MODEL_VERSION,
+  DEFAULT_MODEL_CONFIG,
+  extractLowLevelFeatures,
+  synthesizeHighLevelFeatures,
+  classifyComplexityWithConfig,
+  getComponentComplexity,
+  saveSnapshot,
+  loadSnapshot,
+  reclassifyWithConfig,
+  runAndMaybeSave,
+  prettyPrint,
 }

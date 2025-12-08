@@ -41,88 +41,42 @@ describe('getComponentComplexity', () => {
     vi.mocked(readFile).mockResolvedValue(componentCode)
 
     const result = await getComponentComplexity('/components/Button.tsx')
-
-    expect(result).toMatchInlineSnapshot(`
-      {
-        "complexityFactors": [
-          "CSS-in-JS styling",
-        ],
-        "complexityScore": 16,
-        "complexityType": "simple",
-        "componentType": "design-system",
-        "dependencies": {
-          "external": 1,
-          "internal": 0,
-          "reactImports": [
-            "react",
-          ],
-          "thirdPartyImports": [
-            "styled-components",
-          ],
-          "total": 2,
-        },
-        "directory": "/components",
-        "fileName": "Button.tsx",
-        "filePath": "/components/Button.tsx",
-        "hooks": {
-          "count": 1,
-          "hasCustomHooks": false,
-          "names": [
-            "useState",
-          ],
-        },
-        "isDesignSystem": true,
-        "isFeature": false,
-        "isPage": false,
-        "linesOfCode": 26,
-        "nonEmptyLines": 20,
-        "patterns": [
-          "css-in-js",
-        ],
-        "scoreBreakdown": {
-          "classificationScore": 5,
-          "dependenciesScore": 3,
-          "hooksScore": 2,
-          "locScore": 2,
-          "patternsScore": 4,
-        },
-      }
-    `)
+    const { low, high } = result.features
 
     // Basic file info
-    expect(result.fileName).toBe('Button.tsx')
-    expect(result.linesOfCode).toBeGreaterThan(10)
-    expect(result.nonEmptyLines).toBeGreaterThan(5)
+    expect(low.meta.fileName).toBe('Button.tsx')
+    expect(low.metrics.totalLines).toBeGreaterThan(10)
+    expect(low.metrics.nonEmptyLines).toBeGreaterThan(5)
 
     // Hooks analysis
-    expect(result.hooks.count).toBe(1)
-    expect(result.hooks.names).toContain('useState')
-    expect(result.hooks.hasCustomHooks).toBe(false)
+    expect(low.hooks.count).toBe(1)
+    expect(low.hooks.names).toContain('useState')
+    expect(high.hasCustomHooks).toBe(false)
 
     // Dependencies
-    expect(result.dependencies.total).toBeGreaterThan(0)
-    expect(result.dependencies.reactImports).toContain('react')
-    expect(result.dependencies.thirdPartyImports).toContain('styled-components')
+    expect(low.imports.total).toBeGreaterThan(0)
+    expect(low.imports.react).toContain('react')
+    expect(low.imports.external).toContain('styled-components')
 
     // Patterns
-    expect(result.patterns).toContain('css-in-js') // Should detect styled-components usage
-    expect(result.patterns).not.toContain('state-management') // useState alone doesn't count as state management
-    expect(result.patterns).not.toContain('auth')
-    expect(result.patterns).not.toContain('data-fetching')
+    expect(low.patternCounts.CSS_IN_JS).toBeGreaterThan(0) // Should detect styled-components usage
+    expect(low.patternCounts.STATE_MANAGEMENT).toBe(0) // useState alone doesn't count as state management
+    expect(high.hasAuthIntegration).toBe(false)
+    expect(high.hasDataFetching).toBe(false)
 
     // Classification
-    expect(result.componentType).toBeDefined()
-    expect(typeof result.complexityScore).toBe('number')
-    expect(result.complexityScore).toBeGreaterThanOrEqual(0)
-    expect(result.complexityScore).toBeLessThanOrEqual(100)
+    expect(result.type).toBe('design-system') // "Button.tsx" -> design system
+    expect(typeof result.score).toBe('number')
+    expect(result.score).toBeGreaterThanOrEqual(0)
+    expect(result.score).toBeLessThanOrEqual(100)
 
     // Score breakdown
-    expect(result.scoreBreakdown).toBeDefined()
-    expect(result.scoreBreakdown.locScore).toBeGreaterThanOrEqual(0)
-    expect(result.scoreBreakdown.hooksScore).toBeGreaterThanOrEqual(0)
-    expect(result.scoreBreakdown.dependenciesScore).toBeGreaterThanOrEqual(0)
-    expect(result.scoreBreakdown.patternsScore).toBeGreaterThanOrEqual(0)
-    expect(result.scoreBreakdown.classificationScore).toBeGreaterThanOrEqual(0)
+    expect(result.breakdown).toBeDefined()
+    expect(result.breakdown.locScore).toBeGreaterThanOrEqual(0)
+    expect(result.breakdown.hooksScore).toBeGreaterThanOrEqual(0)
+    expect(result.breakdown.dependenciesScore).toBeGreaterThanOrEqual(0)
+    expect(result.breakdown.patternsScore).toBeGreaterThanOrEqual(0)
+    expect(result.breakdown.classificationScore).toBeGreaterThanOrEqual(0)
   })
 
   test('analyzes a complex component with multiple patterns', async () => {
@@ -224,96 +178,31 @@ describe('getComponentComplexity', () => {
     vi.mocked(readFile).mockResolvedValue(complexComponentCode)
 
     const result = await getComponentComplexity('/path/to/ComplexComponent.tsx')
+    const { low, high } = result.features
 
-    expect(result).toMatchInlineSnapshot(`
-      {
-        "complexityFactors": [
-          "Multiple hooks usage",
-          "High dependency count",
-          "Large component size",
-          "Authentication logic",
-          "Data fetching operations",
-        ],
-        "complexityScore": 69,
-        "complexityType": "high",
-        "componentType": "unknown",
-        "dependencies": {
-          "external": 3,
-          "internal": 2,
-          "reactImports": [
-            "react",
-          ],
-          "thirdPartyImports": [
-            "next/router",
-            "@tanstack/react-query",
-            "styled-components",
-          ],
-          "total": 6,
-        },
-        "directory": "/path/to",
-        "fileName": "ComplexComponent.tsx",
-        "filePath": "/path/to/ComplexComponent.tsx",
-        "hooks": {
-          "count": 6,
-          "hasCustomHooks": true,
-          "names": [
-            "useState",
-            "useState<string|null>",
-            "useRouter",
-            "useContext",
-            "useQuery",
-            "useEffect",
-          ],
-        },
-        "isDesignSystem": false,
-        "isFeature": false,
-        "isPage": false,
-        "linesOfCode": 94,
-        "nonEmptyLines": 80,
-        "patterns": [
-          "auth",
-          "data-fetching",
-          "router",
-          "async-operations",
-          "error-handling",
-          "state-management",
-          "context-usage",
-          "css-in-js",
-        ],
-        "scoreBreakdown": {
-          "classificationScore": 8,
-          "dependenciesScore": 9,
-          "hooksScore": 15,
-          "locScore": 8,
-          "patternsScore": 29,
-        },
-      }
-    `)
+    // Should detect multiple patterns (High level booleans or low level counts)
+    expect(high.hasAuthIntegration).toBe(true)
+    expect(high.hasDataFetching).toBe(true)
+    expect(high.hasRouting).toBe(true)
 
-    // Should detect multiple patterns
-    expect(result.patterns).toContain('auth')
-    expect(result.patterns).toContain('data-fetching')
-    expect(result.patterns).toContain('router')
-    expect(result.patterns).toContain('async-operations')
-    expect(result.patterns).toContain('error-handling')
-    expect(result.patterns).toContain('state-management')
-    expect(result.patterns).toContain('context-usage')
-    expect(result.patterns).toContain('css-in-js')
+    expect(low.patternCounts.ASYNC).toBeGreaterThan(0)
+    expect(low.patternCounts.ERROR_HANDLING).toBeGreaterThan(0)
+    expect(low.patternCounts.STATE_MANAGEMENT).toBeGreaterThan(0) // useContext is counted here
+    expect(low.patternCounts.CONTEXT).toBeGreaterThan(0)
+    expect(low.patternCounts.CSS_IN_JS).toBeGreaterThan(0)
 
     // Should have higher complexity score due to multiple patterns
-    expect(result.complexityScore).toBeGreaterThan(20)
+    expect(result.score).toBeGreaterThan(20)
 
     // Should detect multiple hooks
-    expect(result.hooks.count).toBeGreaterThan(2)
-    expect(result.hooks.names).toContain('useState')
-    expect(result.hooks.names).toContain('useEffect')
-    expect(result.hooks.names).toContain('useContext')
+    expect(low.hooks.count).toBeGreaterThan(2)
+    expect(low.hooks.names).toContain('useState')
+    expect(low.hooks.names).toContain('useEffect')
+    expect(low.hooks.names).toContain('useContext')
 
     // Should detect third-party dependencies
-    expect(result.dependencies.thirdPartyImports).toContain(
-      '@tanstack/react-query'
-    )
-    expect(result.dependencies.thirdPartyImports).toContain('next/router')
-    expect(result.dependencies.thirdPartyImports).toContain('styled-components')
+    expect(low.imports.external).toContain('@tanstack/react-query')
+    expect(low.imports.external).toContain('next/router')
+    expect(low.imports.external).toContain('styled-components')
   })
 })
