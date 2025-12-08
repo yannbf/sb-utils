@@ -16,12 +16,13 @@
   "files": [
     "dist"
   ],
-  "main": "./dist/index.mjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.mts",
-  "bin": "./dist/index.mjs",
+  "main": "./dist/bin.mjs",
+  "module": "./dist/bin.mjs",
+  "types": "./dist/bin.d.mts",
+  "bin": "./dist/bin.mjs",
   "exports": {
-    ".": "./dist/index.mjs",
+    "./bin": "./dist/bin.mjs",
+    "./commands/uninstall": "./dist/commands/uninstall.mjs",
     "./package.json": "./package.json"
   },
   "scripts": {
