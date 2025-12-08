@@ -1,3 +1,16 @@
+# (Mon Dec 08 2025)
+
+#### 🐛 Bug Fix
+
+- `@hipster/mdx2-issue-checker@0.0.9`, `@hipster/sb-utils@0.0.6`
+  - Revamp CLI package [#12](https://github.com/yannbf/sb-utils/pull/12) ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
 # (Mon Apr 28 2025)
 
 #### ⚠️ Pushed to `main`
