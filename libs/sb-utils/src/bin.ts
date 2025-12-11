@@ -15,6 +15,10 @@ program
   .description('Remove Storybook from your project')
   .option('-y, --yes', "Don't ask for prompts")
   .option('-k, --keep-stories', 'Keep .stories and MDX files when uninstalling')
+  .option(
+    '-d, --keep-storybook-dir',
+    'Rename .storybook directories to .storybook-original instead of deleting'
+  )
   .action(async (options) => {
     await uninstall(options).catch(console.error)
   })

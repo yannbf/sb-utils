@@ -36,6 +36,7 @@ const summary: Summary = {
 type UninstallOptions = {
   yes: boolean
   keepStories: boolean
+  keepStorybookDir: boolean
 }
 
 export async function uninstall(options: UninstallOptions): Promise<void> {
@@ -100,12 +101,14 @@ export async function uninstall(options: UninstallOptions): Promise<void> {
     return
   }
 
-  // Select Storybook directories to remove
+  // Select Storybook directories to process
   const selectedDirs: string[] = options.yes
     ? storybookDirs
     : storybookDirs.length > 1
     ? ((await multiselect({
-        message: 'Select .storybook directories to remove:',
+        message: options.keepStorybookDir
+          ? 'Select .storybook directories to rename:'
+          : 'Select .storybook directories to remove:',
         options: storybookDirs.map((dir) => ({
           value: dir,
           label: getRelativePath(dir),
@@ -143,17 +146,20 @@ export async function uninstall(options: UninstallOptions): Promise<void> {
   }
 
   const shouldRemoveStories = !options.keepStories
-  const confirmMessage = shouldRemoveStories
-    ? `This command will remove the storybook directories, dependencies, ${
-        storyFiles.length
-      } story ${storyFiles.length === 1 ? 'file' : 'files'} and ${
-        mdxFiles.length
-      } MDX docs. Proceed with uninstallation?`
-    : `This command will remove the storybook directories and dependencies but keep the ${
-        storyFiles.length
-      } story ${storyFiles.length === 1 ? 'file' : 'files'} and ${
-        mdxFiles.length
-      } MDX docs. Proceed with uninstallation?`
+  const confirmMessage = (() => {
+    const dirAction = options.keepStorybookDir ? 'rename' : 'remove'
+    const baseMessage = `This command will ${dirAction} the storybook directories and dependencies`
+
+    if (shouldRemoveStories) {
+      return `${baseMessage}, ${storyFiles.length} story ${
+        storyFiles.length === 1 ? 'file' : 'files'
+      } and ${mdxFiles.length} MDX docs. Proceed with uninstallation?`
+    } else {
+      return `${baseMessage} but keep the ${storyFiles.length} story ${
+        storyFiles.length === 1 ? 'file' : 'files'
+      } and ${mdxFiles.length} MDX docs. Proceed with uninstallation?`
+    }
+  })()
 
   const shouldProceed = options.yes
     ? true
@@ -168,15 +174,22 @@ export async function uninstall(options: UninstallOptions): Promise<void> {
     return
   }
 
+  const dirAction = options.keepStorybookDir ? 'Renaming' : 'Removing'
   log.success(
-    `Removing ${selectedDirs.length} .storybook ${
+    `${dirAction} ${selectedDirs.length} .storybook ${
       selectedDirs.length === 1 ? 'directory' : 'directories'
     }...`
   )
-  // Delete .storybook directories
+  // Process .storybook directories
   for (const dir of selectedDirs) {
-    deleteDir(dir)
-    summary.storybookDirs.push(dir)
+    if (options.keepStorybookDir) {
+      const originalDir = dir.replace(/\.storybook$/, '.storybook-original')
+      fs.renameSync(dir, originalDir)
+      summary.storybookDirs.push(`${dir} → ${originalDir}`)
+    } else {
+      deleteDir(dir)
+      summary.storybookDirs.push(dir)
+    }
   }
 
   // Count total Storybook dependencies
@@ -276,10 +289,20 @@ export async function uninstall(options: UninstallOptions): Promise<void> {
   }
 
   if (summary.storybookDirs.length > 0) {
-    note('.storybook directories removed:')
-    summary.storybookDirs.forEach((dir) =>
-      console.log(`${grey('│')}  • ${blue(getRelativePath(dir))}`)
-    )
+    const dirAction = options.keepStorybookDir ? 'renamed' : 'removed'
+    note(`.storybook directories ${dirAction}:`)
+    summary.storybookDirs.forEach((dir) => {
+      if (options.keepStorybookDir && dir.includes(' → ')) {
+        const [original, renamed] = dir.split(' → ')
+        console.log(
+          `${grey('│')}  • ${blue(getRelativePath(original))} → ${blue(
+            getRelativePath(renamed)
+          )}`
+        )
+      } else {
+        console.log(`${grey('│')}  • ${blue(getRelativePath(dir))}`)
+      }
+    })
   }
 
   if (shouldRemoveStories) {
@@ -307,5 +330,5 @@ export async function uninstall(options: UninstallOptions): Promise<void> {
 
 // Allow running directly as a script
 if (import.meta.url === `file://${process.argv[1]}`) {
-  uninstall({ yes: false, keepStories: false })
+  uninstall({ yes: false, keepStories: false, keepStorybookDir: false })
 }
