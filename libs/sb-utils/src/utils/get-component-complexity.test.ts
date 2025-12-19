@@ -81,6 +81,116 @@ describe('getComponentComplexity', () => {
     expect(result.breakdown.dependenciesScore).toBeGreaterThanOrEqual(0)
     expect(result.breakdown.patternsScore).toBeGreaterThanOrEqual(0)
     expect(result.breakdown.classificationScore).toBeGreaterThanOrEqual(0)
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "breakdown": {
+          "classificationScore": 5,
+          "dependenciesScore": 2,
+          "hooksScore": 3,
+          "locScore": 0,
+          "patternsScore": 5,
+        },
+        "factors": [
+          "CSS-in-JS styling",
+          "Design system component",
+        ],
+        "features": {
+          "high": {
+            "dimensions": {
+              "coupling": 2,
+              "integration": 0,
+              "logic": 2,
+              "size": 1,
+            },
+            "hasAuthIntegration": false,
+            "hasComplexState": false,
+            "hasCustomHooks": false,
+            "hasDataFetching": false,
+            "hasRouting": false,
+            "isDesignSystemCandidate": true,
+            "isFeatureCandidate": false,
+            "isPageCandidate": false,
+          },
+          "low": {
+            "hooks": {
+              "count": 1,
+              "names": [
+                "useState",
+              ],
+            },
+            "imports": {
+              "external": [
+                "styled-components",
+              ],
+              "internal": [],
+              "react": [
+                "react",
+              ],
+              "total": 2,
+            },
+            "meta": {
+              "directory": "/components",
+              "fileName": "Button.tsx",
+              "filePath": "/components/Button.tsx",
+            },
+            "metrics": {
+              "nonEmptyLines": 20,
+              "nonEmptyRuntimeLines": 16,
+              "totalLines": 26,
+            },
+            "patternCounts": {
+              "ASYNC": 0,
+              "AUTH": 0,
+              "CONTEXT": 0,
+              "CSS_IN_JS": 2,
+              "DATA_FETCHING": 0,
+              "ERROR_HANDLING": 0,
+              "HOOKS": 1,
+              "ROUTER": 0,
+              "STATE_MANAGEMENT": 0,
+            },
+          },
+        },
+        "level": "simple",
+        "modelConfig": {
+          "CLASSIFICATION_BASE": {
+            "DEFAULT": 8,
+            "DESIGN_SYSTEM": 5,
+            "FEATURE": 12,
+            "PAGE": 15,
+            "UTILITY": 6,
+          },
+          "CUSTOM_HOOK_BONUS": 2,
+          "HOOKS_MAX_SCORE": 15,
+          "HOOK_MULTIPLIER": 1.5,
+          "IMPORT_DIVISOR": 1,
+          "IMPORT_MAX_SCORE": 15,
+          "LEVELS": {
+            "HIGH": 75,
+            "MEDIUM": 50,
+            "SIMPLE": 25,
+          },
+          "LOC_DIVISOR": 60,
+          "LOC_MAX_SCORE": 20,
+          "PATTERN_MAX_SCORE": 30,
+          "PATTERN_WEIGHTS": {
+            "ASYNC": 3,
+            "AUTH": 5,
+            "CONTEXT": 3,
+            "CSS_IN_JS": 4,
+            "DATA_FETCHING": 5,
+            "ERROR_HANDLING": 2,
+            "HOOKS": 1,
+            "ROUTER": 3,
+            "STATE_MANAGEMENT": 4,
+          },
+        },
+        "modelVersion": "1.0.0",
+        "score": 15,
+        "type": "design-system",
+      }
+    `)
   })
 
   test('does not treat type-heavy files as large components (runtime LOC excludes type/interface blocks)', async () => {

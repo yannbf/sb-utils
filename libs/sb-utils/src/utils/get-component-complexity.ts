@@ -336,7 +336,6 @@ export interface ComponentComplexity extends ComplexityClassification {
     low: LowLevelFeatures
     high: HighLevelFeatures
   }
-  timestamp: string
 }
 
 // Snapshot format (persisted)
@@ -715,7 +714,6 @@ export async function getComponentComplexity(
         low: lowLevel,
         high: highLevel,
       },
-      timestamp: new Date().toISOString(),
     }
 
     return result
