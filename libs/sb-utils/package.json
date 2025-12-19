@@ -1,7 +1,7 @@
 {
   "name": "@hipster/sb-utils",
   "version": "0.0.7",
-  "description": "Different, sometimes useful Storybook utilities",
+  "description": "A set of different utilities for Storybook",
   "type": "module",
   "license": "MIT",
   "homepage": "https://github.com/yannbf/sb-utils/tree/main/libs/sb-utils",
@@ -25,6 +25,10 @@
     "./uninstall": {
       "types": "./dist/commands/uninstall.d.mts",
       "default": "./dist/commands/uninstall.mjs"
+    },
+    "./component-analyzer": {
+      "types": "./dist/commands/component-analyzer.d.mts",
+      "default": "./dist/commands/component-analyzer.mjs"
     },
     "./package.json": "./package.json"
   },
