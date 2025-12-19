@@ -1,3 +1,17 @@
+# (Fri Dec 19 2025)
+
+#### 🐛 Bug Fix
+
+- `@hipster/sb-utils@0.0.7`
+  - Refactor project structure and use tsdown [#14](https://github.com/yannbf/sb-utils/pull/14) ([@yannbf](https://github.com/yannbf))
+  - add --keep-storybook-dir flag [#13](https://github.com/yannbf/sb-utils/pull/13) ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
 # (Mon Dec 08 2025)
 
 #### 🐛 Bug Fix
