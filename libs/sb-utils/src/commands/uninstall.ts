@@ -8,14 +8,18 @@ import {
   multiselect,
   isCancel,
 } from '@clack/prompts'
-import { execSync, spawnSync } from 'child_process'
-import fs from 'fs'
-import path from 'path'
-import { Command } from 'commander'
-
-// Formatters with explicit parameter typing
-const blue = (message: string): string => `\u001b[34m${message}\u001b[39m`
-const grey = (message: string): string => `\u001b[90m${message}\u001b[39m`
+import { spawnSync } from 'child_process'
+import fs from 'node:fs'
+import path from 'node:path'
+import {
+  getProjectRoot,
+  walk,
+  getRelativePath,
+  deleteDir,
+  cleanPackageJson,
+  deleteFile,
+} from '../utils/file'
+import { blue, grey } from '../utils/colors'
 
 type Summary = {
   storybookDirs: string[]
@@ -29,93 +33,13 @@ const summary: Summary = {
   packageChanges: {},
 }
 
-function walk(
-  dir: string,
-  ignoredDirs: string[] = ['node_modules', 'storybook-static', 'dist', 'build']
-): string[] {
-  let results: string[] = []
-
-  try {
-    const files = fs.readdirSync(dir)
-    for (const file of files) {
-      const fullPath = path.join(dir, file)
-
-      if (fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory()) {
-        if (ignoredDirs.includes(path.basename(fullPath))) continue
-        results = results.concat(walk(fullPath, ignoredDirs))
-      } else {
-        try {
-          if (fs.existsSync(fullPath)) {
-            results.push(fullPath)
-          }
-        } catch {
-          // broken symlink or inaccessible
-        }
-      }
-    }
-  } catch {
-    // unreadable dir
-  }
-
-  return results
+type UninstallOptions = {
+  yes: boolean
+  keepStories: boolean
+  keepStorybookDir: boolean
 }
 
-function getProjectRoot(): string {
-  try {
-    return execSync('git rev-parse --show-toplevel', {
-      encoding: 'utf-8',
-    }).trim()
-  } catch {
-    console.warn(
-      '⚠️  Not inside a Git repository. Falling back to current working directory.'
-    )
-    return process.cwd()
-  }
-}
-
-function getRelativePath(absolutePath: string): string {
-  const root = getProjectRoot()
-  return path.relative(root, absolutePath)
-}
-
-function deleteDir(targetPath: string): void {
-  if (fs.existsSync(targetPath)) {
-    fs.rmSync(targetPath, { recursive: true, force: true })
-    summary.storybookDirs.push(targetPath)
-  }
-}
-
-function deleteFile(filePath: string): void {
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath)
-    summary.storyFiles.push(filePath)
-  }
-}
-
-function cleanPackageJson(pkgPath: string): void {
-  const content = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'))
-  let changed = false
-  const removed: string[] = []
-
-  ;(['dependencies', 'devDependencies'] as const).forEach((section) => {
-    if (content[section]) {
-      for (const key of Object.keys(content[section])) {
-        if (key.includes('storybook')) {
-          delete content[section][key]
-          removed.push(key)
-          changed = true
-        }
-      }
-    }
-  })
-
-  if (changed) {
-    fs.writeFileSync(pkgPath, JSON.stringify(content, null, 2))
-    summary.packageChanges[pkgPath] = removed
-  }
-}
-
-async function uninstall(options: UninstallOptions): Promise<void> {
+export async function uninstall(options: UninstallOptions): Promise<void> {
   intro('🧹 Storybook Uninstaller')
 
   const root = getProjectRoot()
@@ -132,7 +56,9 @@ async function uninstall(options: UninstallOptions): Promise<void> {
       fs.statSync(dir).isDirectory()
   )
 
-  const storyFiles = allPaths.filter((file) => /\.stories\.[^.]+$/.test(file))
+  const storyFiles = allPaths.filter((file) =>
+    /(\.stories|\.story)\.[^.]+$/.test(file)
+  )
   const mdxFiles = allPaths.filter((file) => {
     if (file.endsWith('.mdx')) {
       try {
@@ -175,12 +101,14 @@ async function uninstall(options: UninstallOptions): Promise<void> {
     return
   }
 
-  // Select Storybook directories to remove
+  // Select Storybook directories to process
   const selectedDirs: string[] = options.yes
     ? storybookDirs
     : storybookDirs.length > 1
     ? ((await multiselect({
-        message: 'Select .storybook directories to remove:',
+        message: options.keepStorybookDir
+          ? 'Select .storybook directories to rename:'
+          : 'Select .storybook directories to remove:',
         options: storybookDirs.map((dir) => ({
           value: dir,
           label: getRelativePath(dir),
@@ -217,18 +145,35 @@ async function uninstall(options: UninstallOptions): Promise<void> {
     return
   }
 
-  const shouldRemoveStories = !options.keepStories
-  const confirmMessage = shouldRemoveStories
-    ? `This command will remove the storybook directories, dependencies, ${
-        storyFiles.length
-      } story ${storyFiles.length === 1 ? 'file' : 'files'} and ${
-        mdxFiles.length
-      } MDX docs. Proceed with uninstallation?`
-    : `This command will remove the storybook directories and dependencies but keep the ${
-        storyFiles.length
-      } story ${storyFiles.length === 1 ? 'file' : 'files'} and ${
-        mdxFiles.length
-      } MDX docs. Proceed with uninstallation?`
+  const shouldRemoveStories = options.keepStories
+    ? false
+    : await confirm({
+        message: `Do you want to remove the ${storyFiles.length} story ${
+          storyFiles.length === 1 ? 'file' : 'files'
+        } and ${mdxFiles.length} MDX docs?`,
+        initialValue: true,
+      })
+
+  if (isCancel(shouldRemoveStories)) {
+    note('Uninstallation cancelled.', 'Cancelled')
+    outro('✨ Done')
+    return
+  }
+
+  const confirmMessage = (() => {
+    const dirAction = options.keepStorybookDir ? 'rename' : 'remove'
+    const baseMessage = `This command will ${dirAction} the storybook directories and dependencies`
+
+    if (shouldRemoveStories) {
+      return `${baseMessage}, ${storyFiles.length} story ${
+        storyFiles.length === 1 ? 'file' : 'files'
+      } and ${mdxFiles.length} MDX docs. Proceed with uninstallation?`
+    } else {
+      return `${baseMessage} but keep the ${storyFiles.length} story ${
+        storyFiles.length === 1 ? 'file' : 'files'
+      } and ${mdxFiles.length} MDX docs. Proceed with uninstallation?`
+    }
+  })()
 
   const shouldProceed = options.yes
     ? true
@@ -243,14 +188,22 @@ async function uninstall(options: UninstallOptions): Promise<void> {
     return
   }
 
+  const dirAction = options.keepStorybookDir ? 'Renaming' : 'Removing'
   log.success(
-    `Removing ${selectedDirs.length} .storybook ${
+    `${dirAction} ${selectedDirs.length} .storybook ${
       selectedDirs.length === 1 ? 'directory' : 'directories'
     }...`
   )
-  // Delete .storybook directories
+  // Process .storybook directories
   for (const dir of selectedDirs) {
-    deleteDir(dir)
+    if (options.keepStorybookDir) {
+      const originalDir = dir.replace(/\.storybook$/, '.storybook-original')
+      fs.renameSync(dir, originalDir)
+      summary.storybookDirs.push(`${dir} → ${originalDir}`)
+    } else {
+      deleteDir(dir)
+      summary.storybookDirs.push(dir)
+    }
   }
 
   // Count total Storybook dependencies
@@ -275,7 +228,10 @@ async function uninstall(options: UninstallOptions): Promise<void> {
   )
   // Clean package.json files
   for (const pkg of selectedPackages) {
-    cleanPackageJson(pkg)
+    const removed = cleanPackageJson(pkg)
+    if (removed.length > 0) {
+      summary.packageChanges[pkg] = removed
+    }
   }
 
   if (shouldRemoveStories) {
@@ -287,6 +243,7 @@ async function uninstall(options: UninstallOptions): Promise<void> {
     // Delete story files
     for (const file of storyFiles) {
       deleteFile(file)
+      summary.storyFiles.push(file)
     }
 
     log.success(
@@ -297,6 +254,7 @@ async function uninstall(options: UninstallOptions): Promise<void> {
     // Delete MDX files
     for (const file of mdxFiles) {
       deleteFile(file)
+      summary.storyFiles.push(file)
     }
   }
 
@@ -335,7 +293,6 @@ async function uninstall(options: UninstallOptions): Promise<void> {
   if (hasPackageChanges) {
     note('Package.json changes:')
     for (const [file, deps] of Object.entries(summary.packageChanges)) {
-      // deps is string[]
       console.log(`${grey('│')} • ${blue(getRelativePath(file))}`)
       console.log(
         `${grey('│')}   ◦ ${(deps as string[]).length} deps removed: ${(
@@ -346,10 +303,20 @@ async function uninstall(options: UninstallOptions): Promise<void> {
   }
 
   if (summary.storybookDirs.length > 0) {
-    note('.storybook directories removed:')
-    summary.storybookDirs.forEach((dir) =>
-      console.log(`${grey('│')}  • ${blue(getRelativePath(dir))}`)
-    )
+    const dirAction = options.keepStorybookDir ? 'renamed' : 'removed'
+    note(`.storybook directories ${dirAction}:`)
+    summary.storybookDirs.forEach((dir) => {
+      if (options.keepStorybookDir && dir.includes(' → ')) {
+        const [original, renamed] = dir.split(' → ')
+        console.log(
+          `${grey('│')}  • ${blue(getRelativePath(original))} → ${blue(
+            getRelativePath(renamed)
+          )}`
+        )
+      } else {
+        console.log(`${grey('│')}  • ${blue(getRelativePath(dir))}`)
+      }
+    })
   }
 
   if (shouldRemoveStories) {
@@ -375,26 +342,7 @@ async function uninstall(options: UninstallOptions): Promise<void> {
   outro('✨ Storybook uninstallation complete!')
 }
 
-type UninstallOptions = {
-  yes: boolean
-  keepStories: boolean
+// Allow running directly as a script
+if (import.meta.url === `file://${process.argv[1]}`) {
+  uninstall({ yes: false, keepStories: false, keepStorybookDir: false })
 }
-
-// CLI setup with commander
-const program = new Command()
-
-program
-  .name('sb-utils')
-  .description('Different, sometimes useful Storybook utilities')
-  .version('0.0.5')
-
-program
-  .command('uninstall')
-  .description('Remove Storybook from your project')
-  .option('-y, --yes', "Don't ask for prompts")
-  .option('-k, --keep-stories', 'Keep .stories and MDX files when uninstalling')
-  .action(async (options) => {
-    await uninstall(options).catch(console.error)
-  })
-
-program.parse()
