@@ -4,7 +4,15 @@ import path from 'node:path'
 
 export function walk(
   dir: string,
-  ignoredDirs: string[] = ['node_modules', 'storybook-static', 'dist', 'build']
+  ignoredDirs: string[] = [
+    'node_modules',
+    'storybook-static',
+    'dist',
+    'build',
+    '.git',
+    '.gitignore',
+    '.yarn',
+  ]
 ): string[] {
   let results: string[] = []
 

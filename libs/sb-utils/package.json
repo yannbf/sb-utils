@@ -26,10 +26,6 @@
       "types": "./dist/commands/uninstall.d.mts",
       "default": "./dist/commands/uninstall.mjs"
     },
-    "./component-analyzer": {
-      "types": "./dist/commands/component-analyzer.d.mts",
-      "default": "./dist/commands/component-analyzer.mjs"
-    },
     "./package.json": "./package.json"
   },
   "scripts": {

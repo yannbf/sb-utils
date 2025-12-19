@@ -145,7 +145,21 @@ export async function uninstall(options: UninstallOptions): Promise<void> {
     return
   }
 
-  const shouldRemoveStories = !options.keepStories
+  const shouldRemoveStories = options.keepStories
+    ? false
+    : await confirm({
+        message: `Do you want to remove the ${storyFiles.length} story ${
+          storyFiles.length === 1 ? 'file' : 'files'
+        } and ${mdxFiles.length} MDX docs?`,
+        initialValue: true,
+      })
+
+  if (isCancel(shouldRemoveStories)) {
+    note('Uninstallation cancelled.', 'Cancelled')
+    outro('✨ Done')
+    return
+  }
+
   const confirmMessage = (() => {
     const dirAction = options.keepStorybookDir ? 'rename' : 'remove'
     const baseMessage = `This command will ${dirAction} the storybook directories and dependencies`
