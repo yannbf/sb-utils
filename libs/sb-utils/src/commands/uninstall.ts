@@ -145,14 +145,15 @@ export async function uninstall(options: UninstallOptions): Promise<void> {
     return
   }
 
-  const shouldRemoveStories = options.keepStories
-    ? false
-    : await confirm({
-        message: `Do you want to remove the ${storyFiles.length} story ${
-          storyFiles.length === 1 ? 'file' : 'files'
-        } and ${mdxFiles.length} MDX docs?`,
-        initialValue: true,
-      })
+  const shouldRemoveStories =
+    options.keepStories || (options.yes && !options.keepStories)
+      ? false
+      : await confirm({
+          message: `Do you want to remove the ${storyFiles.length} story ${
+            storyFiles.length === 1 ? 'file' : 'files'
+          } and ${mdxFiles.length} MDX docs?`,
+          initialValue: true,
+        })
 
   if (isCancel(shouldRemoveStories)) {
     note('Uninstallation cancelled.', 'Cancelled')
