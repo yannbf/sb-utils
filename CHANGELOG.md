@@ -1,3 +1,16 @@
+# (Fri Mar 27 2026)
+
+#### 🐛 Bug Fix
+
+- `@hipster/sb-utils@0.0.8`
+  - Feat: Add vitest uninstall command [#16](https://github.com/yannbf/sb-utils/pull/16) ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
 # (Fri Dec 19 2025)
 
 #### 🐛 Bug Fix
