@@ -16,7 +16,15 @@ program
   .option('-k, --keep-stories', 'Keep .stories and MDX files when uninstalling')
   .option(
     '-d, --keep-storybook-dir',
-    'Rename .storybook directories to .storybook-original instead of deleting it'
+    'Rename .storybook directories to .storybook-original instead of deleting it',
+  )
+  .option(
+    '--vitest-only',
+    'Only remove the Storybook vitest plugin from config files',
+  )
+  .option(
+    '--stories-only',
+    'Only remove story and MDX files',
   )
   .action(async (options) => {
     await uninstall(options).catch(console.error)

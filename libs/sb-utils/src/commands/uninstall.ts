@@ -4,7 +4,6 @@ import {
   note,
   log,
   spinner,
-  confirm,
   multiselect,
   isCancel,
 } from '@clack/prompts'
@@ -19,24 +18,32 @@ import {
   cleanPackageJson,
   deleteFile,
 } from '../utils/file'
+import {
+  findVitestConfigsWithStorybook,
+  removeStorybookVitestPlugin,
+} from '../utils/vitest'
 import { blue, grey } from '../utils/colors'
 
 type Summary = {
   storybookDirs: string[]
   storyFiles: string[]
   packageChanges: Record<string, string[]>
+  vitestConfigs: string[]
 }
 
 const summary: Summary = {
   storybookDirs: [],
   storyFiles: [],
   packageChanges: {},
+  vitestConfigs: [],
 }
 
 type UninstallOptions = {
   yes: boolean
   keepStories: boolean
   keepStorybookDir: boolean
+  vitestOnly: boolean
+  storiesOnly: boolean
 }
 
 export async function uninstall(options: UninstallOptions): Promise<void> {
@@ -53,11 +60,11 @@ export async function uninstall(options: UninstallOptions): Promise<void> {
     (dir) =>
       path.basename(dir) === '.storybook' &&
       fs.existsSync(dir) &&
-      fs.statSync(dir).isDirectory()
+      fs.statSync(dir).isDirectory(),
   )
 
   const storyFiles = allPaths.filter((file) =>
-    /(\.stories|\.story)\.[^.]+$/.test(file)
+    /(\.stories|\.story)\.[^.]+$/.test(file),
   )
   const mdxFiles = allPaths.filter((file) => {
     if (file.endsWith('.mdx')) {
@@ -80,167 +87,246 @@ export async function uninstall(options: UninstallOptions): Promise<void> {
       return ['dependencies', 'devDependencies'].some(
         (section) =>
           content[section] &&
-          Object.keys(content[section]).some((key) => key.includes('storybook'))
+          Object.keys(content[section]).some((key) =>
+            key.includes('storybook'),
+          ),
       )
     } catch {
       return false
     }
   })
 
-  if (
-    storybookDirs.length === 0 &&
-    storyFiles.length === 0 &&
-    mdxFiles.length === 0 &&
-    packageJsonsWithStorybook.length === 0
-  ) {
+  // Find vitest/vite config files containing the Storybook vitest addon plugin
+  const vitestConfigsWithStorybook = findVitestConfigsWithStorybook(allPaths)
+
+  const doVitest = !options.storiesOnly
+  const doStories = !options.vitestOnly && !options.keepStories
+  const doFull = !options.vitestOnly && !options.storiesOnly
+
+  // Build the list of available categories based on what was detected
+  type Category = 'dirs' | 'deps' | 'stories' | 'vitest'
+  const availableCategories: { value: Category; label: string; hint: string }[] = []
+
+  if (doFull && storybookDirs.length > 0) {
+    const dirAction = options.keepStorybookDir ? 'Rename' : 'Remove'
+    availableCategories.push({
+      value: 'dirs',
+      label: `${dirAction} .storybook directories`,
+      hint: `${storybookDirs.length} found`,
+    })
+  }
+  if (doFull && packageJsonsWithStorybook.length > 0) {
+    availableCategories.push({
+      value: 'deps',
+      label: 'Remove Storybook dependencies',
+      hint: `${packageJsonsWithStorybook.length} package.json`,
+    })
+  }
+  if (doStories && (storyFiles.length > 0 || mdxFiles.length > 0)) {
+    availableCategories.push({
+      value: 'stories',
+      label: 'Remove story & MDX files',
+      hint: `${storyFiles.length} stories, ${mdxFiles.length} MDX`,
+    })
+  }
+  if (doVitest && vitestConfigsWithStorybook.length > 0) {
+    availableCategories.push({
+      value: 'vitest',
+      label: 'Remove Storybook vitest plugin',
+      hint: `${vitestConfigsWithStorybook.length} config ${vitestConfigsWithStorybook.length === 1 ? 'file' : 'files'}`,
+    })
+  }
+
+  if (availableCategories.length === 0) {
     note(
       'This project does not use Storybook, there is nothing to uninstall!',
-      'No Action Needed'
+      'No Action Needed',
     )
     outro('✨ Done')
     return
   }
 
-  // Select Storybook directories to process
-  const selectedDirs: string[] = options.yes
-    ? storybookDirs
-    : storybookDirs.length > 1
-    ? ((await multiselect({
+  // --- Step 1: Select categories ---
+
+  let selectedCategories: Category[]
+
+  if (options.yes) {
+    selectedCategories = availableCategories.map((c) => c.value)
+  } else {
+    const result = await multiselect({
+      message: 'Select what to uninstall:',
+      options: availableCategories,
+      initialValues: availableCategories.map((c) => c.value),
+    })
+
+    if (isCancel(result)) {
+      note('Uninstallation cancelled.', 'Cancelled')
+      outro('✨ Done')
+      return
+    }
+    selectedCategories = result as Category[]
+  }
+
+  if (selectedCategories.length === 0) {
+    note('Nothing selected.', 'No Action Needed')
+    outro('✨ Done')
+    return
+  }
+
+  // --- Step 2: Drill down for categories with multiple items ---
+
+  let selectedDirs: string[] = []
+  let selectedPackages: string[] = []
+  let shouldRemoveStories = false
+  let selectedVitestConfigs: string[] = []
+
+  if (selectedCategories.includes('dirs')) {
+    if (options.yes || storybookDirs.length === 1) {
+      selectedDirs = storybookDirs
+    } else {
+      const result = await multiselect({
         message: options.keepStorybookDir
           ? 'Select .storybook directories to rename:'
           : 'Select .storybook directories to remove:',
         options: storybookDirs.map((dir) => ({
           value: dir,
           label: getRelativePath(dir),
-          hint: 'Directory',
         })),
         initialValues: storybookDirs,
-      })) as string[])
-    : storybookDirs
+      })
 
-  if (!selectedDirs || isCancel(selectedDirs)) {
-    note('Uninstallation cancelled.', 'Cancelled')
-    outro('✨ Done')
-    return
+      if (isCancel(result)) {
+        note('Uninstallation cancelled.', 'Cancelled')
+        outro('✨ Done')
+        return
+      }
+      selectedDirs = result as string[]
+    }
   }
 
-  // Select package.json files to clean
-  const selectedPackages: string[] = options.yes
-    ? packageJsonsWithStorybook
-    : packageJsonsWithStorybook.length > 1
-    ? ((await multiselect({
+  if (selectedCategories.includes('deps')) {
+    if (options.yes || packageJsonsWithStorybook.length === 1) {
+      selectedPackages = packageJsonsWithStorybook
+    } else {
+      const result = await multiselect({
         message: 'Select package.json files to clean:',
         options: packageJsonsWithStorybook.map((pkg) => ({
           value: pkg,
           label: getRelativePath(pkg),
-          hint: 'Package.json',
         })),
         initialValues: packageJsonsWithStorybook,
-      })) as string[])
-    : packageJsonsWithStorybook
-
-  if (!selectedPackages || isCancel(selectedPackages)) {
-    note('Uninstallation cancelled.', 'Cancelled')
-    outro('✨ Done')
-    return
-  }
-
-  const shouldRemoveStories = options.keepStories
-    ? false
-    : await confirm({
-        message: `Do you want to remove the ${storyFiles.length} story ${
-          storyFiles.length === 1 ? 'file' : 'files'
-        } and ${mdxFiles.length} MDX docs?`,
-        initialValue: true,
       })
 
-  if (isCancel(shouldRemoveStories)) {
-    note('Uninstallation cancelled.', 'Cancelled')
-    outro('✨ Done')
-    return
-  }
-
-  const confirmMessage = (() => {
-    const dirAction = options.keepStorybookDir ? 'rename' : 'remove'
-    const baseMessage = `This command will ${dirAction} the storybook directories and dependencies`
-
-    if (shouldRemoveStories) {
-      return `${baseMessage}, ${storyFiles.length} story ${
-        storyFiles.length === 1 ? 'file' : 'files'
-      } and ${mdxFiles.length} MDX docs. Proceed with uninstallation?`
-    } else {
-      return `${baseMessage} but keep the ${storyFiles.length} story ${
-        storyFiles.length === 1 ? 'file' : 'files'
-      } and ${mdxFiles.length} MDX docs. Proceed with uninstallation?`
-    }
-  })()
-
-  const shouldProceed = options.yes
-    ? true
-    : await confirm({
-        message: confirmMessage,
-        initialValue: true,
-      })
-
-  if (!shouldProceed || isCancel(shouldProceed)) {
-    note('Uninstallation cancelled.', 'Cancelled')
-    outro('✨ Done')
-    return
-  }
-
-  const dirAction = options.keepStorybookDir ? 'Renaming' : 'Removing'
-  log.success(
-    `${dirAction} ${selectedDirs.length} .storybook ${
-      selectedDirs.length === 1 ? 'directory' : 'directories'
-    }...`
-  )
-  // Process .storybook directories
-  for (const dir of selectedDirs) {
-    if (options.keepStorybookDir) {
-      const originalDir = dir.replace(/\.storybook$/, '.storybook-original')
-      fs.renameSync(dir, originalDir)
-      summary.storybookDirs.push(`${dir} → ${originalDir}`)
-    } else {
-      deleteDir(dir)
-      summary.storybookDirs.push(dir)
-    }
-  }
-
-  // Count total Storybook dependencies
-  let totalDeps = 0
-  for (const pkg of selectedPackages) {
-    const content = JSON.parse(fs.readFileSync(pkg, 'utf-8'))
-    ;['dependencies', 'devDependencies'].forEach((section) => {
-      if (content[section]) {
-        totalDeps += Object.keys(content[section]).filter((key: string) =>
-          key.includes('storybook')
-        ).length
+      if (isCancel(result)) {
+        note('Uninstallation cancelled.', 'Cancelled')
+        outro('✨ Done')
+        return
       }
-    })
-  }
-
-  log.success(
-    `Removing ${totalDeps} Storybook ${
-      totalDeps === 1 ? 'dependency' : 'dependencies'
-    } from ${selectedPackages.length} package.json ${
-      selectedPackages.length === 1 ? 'file' : 'files'
-    }...`
-  )
-  // Clean package.json files
-  for (const pkg of selectedPackages) {
-    const removed = cleanPackageJson(pkg)
-    if (removed.length > 0) {
-      summary.packageChanges[pkg] = removed
+      selectedPackages = result as string[]
     }
   }
 
+  if (selectedCategories.includes('stories')) {
+    shouldRemoveStories = true
+  }
+
+  if (selectedCategories.includes('vitest')) {
+    if (options.yes || vitestConfigsWithStorybook.length === 1) {
+      selectedVitestConfigs = vitestConfigsWithStorybook
+    } else {
+      const result = await multiselect({
+        message: 'Select vitest/vite config files to clean:',
+        options: vitestConfigsWithStorybook.map((file) => ({
+          value: file,
+          label: getRelativePath(file),
+        })),
+        initialValues: vitestConfigsWithStorybook,
+      })
+
+      if (isCancel(result)) {
+        note('Uninstallation cancelled.', 'Cancelled')
+        outro('✨ Done')
+        return
+      }
+      selectedVitestConfigs = result as string[]
+    }
+  }
+
+  // --- Execute actions ---
+
+  // Process .storybook directories
+  if (selectedDirs.length > 0) {
+    const dirAction = options.keepStorybookDir ? 'Renaming' : 'Removing'
+    log.success(
+      `${dirAction} ${selectedDirs.length} .storybook ${
+        selectedDirs.length === 1 ? 'directory' : 'directories'
+      }...`,
+    )
+    for (const dir of selectedDirs) {
+      if (options.keepStorybookDir) {
+        const originalDir = dir.replace(/\.storybook$/, '.storybook-original')
+        fs.renameSync(dir, originalDir)
+        summary.storybookDirs.push(`${dir} → ${originalDir}`)
+      } else {
+        deleteDir(dir)
+        summary.storybookDirs.push(dir)
+      }
+    }
+  }
+
+  // Clean package.json files
+  if (selectedPackages.length > 0) {
+    let totalDeps = 0
+    for (const pkg of selectedPackages) {
+      const content = JSON.parse(fs.readFileSync(pkg, 'utf-8'))
+      ;['dependencies', 'devDependencies'].forEach((section) => {
+        if (content[section]) {
+          totalDeps += Object.keys(content[section]).filter((key: string) =>
+            key.includes('storybook'),
+          ).length
+        }
+      })
+    }
+
+    log.success(
+      `Removing ${totalDeps} Storybook ${
+        totalDeps === 1 ? 'dependency' : 'dependencies'
+      } from ${selectedPackages.length} package.json ${
+        selectedPackages.length === 1 ? 'file' : 'files'
+      }...`,
+    )
+    for (const pkg of selectedPackages) {
+      const removed = cleanPackageJson(pkg)
+      if (removed.length > 0) {
+        summary.packageChanges[pkg] = removed
+      }
+    }
+  }
+
+  // Clean vitest config files
+  if (selectedVitestConfigs.length > 0) {
+    log.success(
+      `Removing Storybook vitest plugin from ${selectedVitestConfigs.length} config ${
+        selectedVitestConfigs.length === 1 ? 'file' : 'files'
+      }...`,
+    )
+    for (const configFile of selectedVitestConfigs) {
+      const original = fs.readFileSync(configFile, 'utf-8')
+      const cleaned = removeStorybookVitestPlugin(original)
+      if (cleaned !== original) {
+        fs.writeFileSync(configFile, cleaned)
+        summary.vitestConfigs.push(configFile)
+      }
+    }
+  }
+
+  // Remove story/MDX files
   if (shouldRemoveStories) {
     log.success(
       `Removing ${storyFiles.length} story ${
         storyFiles.length === 1 ? 'file' : 'files'
-      }...`
+      }...`,
     )
-    // Delete story files
     for (const file of storyFiles) {
       deleteFile(file)
       summary.storyFiles.push(file)
@@ -249,47 +335,40 @@ export async function uninstall(options: UninstallOptions): Promise<void> {
     log.success(
       `Removing ${mdxFiles.length} MDX ${
         mdxFiles.length === 1 ? 'doc' : 'docs'
-      }...`
+      }...`,
     )
-    // Delete MDX files
     for (const file of mdxFiles) {
       deleteFile(file)
       summary.storyFiles.push(file)
     }
   }
 
+  // Run package install if dependencies were removed
   const hasPackageChanges = Object.keys(summary.packageChanges).length > 0
 
   if (hasPackageChanges) {
-    const shouldInstall = true
-    // await confirm({
-    //   message: 'Storybook dependencies were removed from package.json. Run package manager install?',
-    //   initialValue: true,
-    // });
-
-    if (shouldInstall) {
-      const s = spinner()
-      s.start('Running install command...')
-      const result = spawnSync('ni', [], {
-        stdio: 'ignore',
-        cwd: root,
-        shell: true,
-      })
-      if ((result as { error?: Error }).error) {
-        log.error(
-          'Error running package manager install: ' +
-            (result as { error: Error }).error.message
-        )
-        process.exit(1)
-      } else {
-        s.stop('Install command completed')
-      }
+    const s = spinner()
+    s.start('Running install command...')
+    const result = spawnSync('ni', [], {
+      stdio: 'ignore',
+      cwd: root,
+      shell: true,
+    })
+    if ((result as { error?: Error }).error) {
+      log.error(
+        'Error running package manager install: ' +
+          (result as { error: Error }).error.message,
+      )
+      process.exit(1)
+    } else {
+      s.stop('Install command completed')
     }
   }
 
+  // --- Summary ---
+
   log.info(`All done! Here's the summary of changes:`)
 
-  // Show summary
   if (hasPackageChanges) {
     note('Package.json changes:')
     for (const [file, deps] of Object.entries(summary.packageChanges)) {
@@ -297,7 +376,7 @@ export async function uninstall(options: UninstallOptions): Promise<void> {
       console.log(
         `${grey('│')}   ◦ ${(deps as string[]).length} deps removed: ${(
           deps as string[]
-        ).join(', ')}`
+        ).join(', ')}`,
       )
     }
   }
@@ -310,12 +389,21 @@ export async function uninstall(options: UninstallOptions): Promise<void> {
         const [original, renamed] = dir.split(' → ')
         console.log(
           `${grey('│')}  • ${blue(getRelativePath(original))} → ${blue(
-            getRelativePath(renamed)
-          )}`
+            getRelativePath(renamed),
+          )}`,
         )
       } else {
         console.log(`${grey('│')}  • ${blue(getRelativePath(dir))}`)
       }
+    })
+  }
+
+  if (summary.vitestConfigs.length > 0) {
+    note('Vitest config files cleaned:')
+    summary.vitestConfigs.forEach((file) => {
+      console.log(
+        `${grey('│')}  • ${blue(getRelativePath(file))} — removed Storybook vitest plugin`,
+      )
     })
   }
 
@@ -325,7 +413,7 @@ export async function uninstall(options: UninstallOptions): Promise<void> {
         `${summary.storyFiles.length} ${
           summary.storyFiles.length === 1 ? 'file' : 'files'
         } removed`,
-        `Stories:`
+        `Stories:`,
       )
     }
 
@@ -334,7 +422,7 @@ export async function uninstall(options: UninstallOptions): Promise<void> {
         `${mdxFiles.length} ${
           mdxFiles.length === 1 ? 'file' : 'files'
         } removed`,
-        `MDX docs:`
+        `MDX docs:`,
       )
     }
   }
@@ -344,5 +432,5 @@ export async function uninstall(options: UninstallOptions): Promise<void> {
 
 // Allow running directly as a script
 if (import.meta.url === `file://${process.argv[1]}`) {
-  uninstall({ yes: false, keepStories: false, keepStorybookDir: false })
+  uninstall({ yes: false, keepStories: false, keepStorybookDir: false, vitestOnly: false, storiesOnly: false })
 }
