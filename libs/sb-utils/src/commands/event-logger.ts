@@ -35,6 +35,7 @@ export type EventLoggerOptions = {
   json: boolean
   quiet: boolean
   maxEvents: number
+  importPath?: string
 }
 
 export async function eventLogger(options: EventLoggerOptions): Promise<void> {
@@ -52,6 +53,68 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
   const events: StoredEvent[] = []
   const sseClients = new Set<SSEClient>()
   let eventCounter = 0
+
+  type ImportBatch = { id: string; name: string; importedAt: number }
+  let importCounter = 0
+
+  function makeBatch(name: string): ImportBatch {
+    const id = `import-${Date.now().toString(36)}-${(importCounter++).toString(36)}`
+    return { id, name, importedAt: Date.now() }
+  }
+
+  function ingestEvents(
+    raw: unknown,
+    source: string,
+    batch?: ImportBatch,
+  ): { added: number; error?: string } {
+    if (!Array.isArray(raw)) {
+      return { added: 0, error: `${source}: expected a JSON array of events` }
+    }
+    let added = 0
+    for (const item of raw) {
+      if (!item || typeof item !== 'object') continue
+      const ev = item as TelemetryEvent
+      if (typeof ev.eventType !== 'string') continue
+      const index = eventCounter++
+      const receivedAt =
+        typeof (ev as { _receivedAt?: unknown })._receivedAt === 'number'
+          ? (ev as any as { _receivedAt: number })._receivedAt
+          : Date.now()
+      const stored: StoredEvent = {
+        ...ev,
+        _index: index,
+        _receivedAt: receivedAt,
+      }
+      if (batch) {
+        ;(stored as StoredEvent & { _import: ImportBatch })._import = batch
+      }
+      if (maxEvents > 0 && events.length >= maxEvents) events.shift()
+      events.push(stored)
+      added++
+    }
+    return { added }
+  }
+
+  if (options.importPath) {
+    try {
+      const resolved = path.resolve(process.cwd(), options.importPath)
+      const content = fs.readFileSync(resolved, 'utf-8')
+      const parsed = JSON.parse(content)
+      const batch = makeBatch(path.basename(resolved))
+      const { added, error } = ingestEvents(parsed, resolved, batch)
+      if (error) {
+        log.error(error)
+        process.exit(1)
+      }
+      if (!quiet && !jsonMode) {
+        log.info(`Imported ${added} events from ${resolved}`)
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      log.error(`Failed to import ${options.importPath}: ${message}`)
+      process.exit(1)
+    }
+  }
 
   function broadcastEvent(event: StoredEvent) {
     const data = JSON.stringify(event)
@@ -192,6 +255,27 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
     const previousCount = events.length
     events.length = 0
     return c.json({ cleared: true, previousCount })
+  })
+
+  // JSON API: import a batch of events (used by dashboard drag-and-drop)
+  app.post('/event-log/import', async (c) => {
+    let body: unknown
+    try {
+      body = await c.req.json()
+    } catch {
+      return c.json({ error: 'Invalid JSON body' }, 400)
+    }
+    const rawName = c.req.query('name')
+    const name =
+      rawName && rawName.trim()
+        ? rawName.trim()
+        : `import-${new Date().toISOString()}.json`
+    const batch = makeBatch(name)
+    const { added, error } = ingestEvents(body, 'import', batch)
+    if (error) return c.json({ error }, 400)
+    // Broadcast each newly-stored event so any connected dashboard updates live.
+    for (const stored of events.slice(-added)) broadcastEvent(stored)
+    return c.json({ imported: added, total: events.length, batch })
   })
 
   let server: ServerType

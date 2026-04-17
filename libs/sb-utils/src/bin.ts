@@ -39,6 +39,7 @@ program
   .option('--json', 'Output events as NDJSON to stdout (auto-enabled when an AI agent is detected)')
   .option('-q, --quiet', 'Suppress all terminal output except errors')
   .option('--max-events <count>', 'Maximum events to keep in memory (0 = unlimited)', '0')
+  .option('--import <path>', 'Preload events from a JSON file exported from the dashboard')
   .action(async (options) => {
     await eventLogger({
       port: Number(options.port),
@@ -46,6 +47,7 @@ program
       json: !!options.json,
       quiet: !!options.quiet,
       maxEvents: Number(options.maxEvents),
+      importPath: options.import,
     }).catch(console.error)
   })
 
