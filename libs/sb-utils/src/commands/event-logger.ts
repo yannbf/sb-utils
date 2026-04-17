@@ -75,9 +75,7 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
     log.error('Could not find event-log-dashboard.html')
     process.exit(1)
   }
-  const cachedHtml = fs
-    .readFileSync(htmlPath, 'utf-8')
-    .replaceAll('{{PORT}}', String(port))
+  const cachedHtml = fs.readFileSync(htmlPath, 'utf-8')
 
   const app = new Hono()
 
