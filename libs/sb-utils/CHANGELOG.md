@@ -1,3 +1,16 @@
+# v0.0.10 (Fri Apr 17 2026)
+
+#### 🐛 Bug Fix
+
+- add json import feature [#18](https://github.com/yannbf/sb-utils/pull/18) ([@yannbf](https://github.com/yannbf))
+- add json import feature ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
 # v0.0.9 (Fri Apr 17 2026)
 
 #### 🐛 Bug Fix
