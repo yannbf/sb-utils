@@ -8,7 +8,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { isAgent, agent } from 'std-env'
-import { blue, grey } from '../utils/colors'
+import { blue, bright, grey } from '../utils/colors'
 
 type TelemetryEvent = {
   eventType: string
@@ -75,7 +75,9 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
     log.error('Could not find event-log-dashboard.html')
     process.exit(1)
   }
-  const cachedHtml = fs.readFileSync(htmlPath, 'utf-8').replaceAll('{{PORT}}', String(port))
+  const cachedHtml = fs
+    .readFileSync(htmlPath, 'utf-8')
+    .replaceAll('{{PORT}}', String(port))
 
   const app = new Hono()
 
@@ -128,7 +130,11 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
     }
 
     const index = eventCounter++
-    const storedEvent: StoredEvent = { ...body, _index: index, _receivedAt: Date.now() }
+    const storedEvent: StoredEvent = {
+      ...body,
+      _index: index,
+      _receivedAt: Date.now(),
+    }
 
     // Enforce max events limit
     if (maxEvents > 0 && events.length >= maxEvents) {
@@ -224,9 +230,11 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
             `${blue('SSE stream')}   ${url}/sse`,
             '',
             `Point Storybook at this collector:`,
-            grey(`STORYBOOK_TELEMETRY_URL=${url}/event-log`),
-          ].join('\n'),
-          'Server running',
+            `STORYBOOK_TELEMETRY_URL=${url}/event-log`,
+          ]
+            .map(bright)
+            .join('\n'),
+          bright('Server running'),
         )
 
         log.info('Waiting for events...')
@@ -247,7 +255,9 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
   } catch (err: unknown) {
     const error = err as NodeJS.ErrnoException
     if (error.code === 'EADDRINUSE') {
-      log.error(`Port ${port} is already in use. Try a different port with --port <port>`)
+      log.error(
+        `Port ${port} is already in use. Try a different port with --port <port>`,
+      )
     } else {
       log.error(`Failed to start server: ${error.message}`)
     }
@@ -256,7 +266,8 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
 
   // Graceful shutdown
   const shutdown = () => {
-    const sessionCount = new Set(events.map((e) => e.sessionId).filter(Boolean)).size
+    const sessionCount = new Set(events.map((e) => e.sessionId).filter(Boolean))
+      .size
 
     // Close all SSE clients
     sseClients.clear()
@@ -265,7 +276,11 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
 
     if (jsonMode) {
       process.stderr.write(
-        JSON.stringify({ status: 'shutdown', eventsReceived: events.length, sessions: sessionCount }) + '\n',
+        JSON.stringify({
+          status: 'shutdown',
+          eventsReceived: events.length,
+          sessions: sessionCount,
+        }) + '\n',
       )
     } else if (!quiet) {
       outro(`Captured ${events.length} events across ${sessionCount} sessions`)
