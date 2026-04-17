@@ -304,7 +304,28 @@
     letter-spacing: 0.8px;
     color: var(--text-dim);
     padding: 0 6px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
   }
+  .sidebar-section-hint {
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.4px;
+    text-transform: none;
+    color: var(--text-dim);
+    opacity: 0.7;
+  }
+  .import-meta {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 2px;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  .filter-item .label-row.col { flex-direction: column; align-items: flex-start; gap: 2px; }
 
   .filter-item {
     display: flex;
@@ -772,6 +793,37 @@
   @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes toastOut { from { opacity: 1; } to { opacity: 0; } }
 
+  /* ── Import drop overlay ────────────────────────── */
+  .drop-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 12, 22, 0.78);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 10000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .drop-overlay.active { display: flex; }
+  .drop-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 40px 56px;
+    border: 2px dashed var(--accent);
+    border-radius: 16px;
+    background: rgba(108, 158, 248, 0.08);
+    color: var(--text);
+    font-family: var(--font-sans);
+    text-align: center;
+  }
+  .drop-card svg { color: var(--accent); }
+  .drop-card h3 { margin: 0; font-size: 16px; font-weight: 500; letter-spacing: 0.2px; }
+  .drop-card p { margin: 0; font-size: 12px; color: var(--text-dim); }
+
   /* ── Session separator ──────────────────────────── */
   .session-separator {
     display: flex;
@@ -1161,6 +1213,15 @@
 </head>
 <body>
 
+<!-- ── Import drop overlay ───────────────────────────── -->
+<div class="drop-overlay" id="dropOverlay">
+  <div class="drop-card">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    <h3>Drop a JSON file to import events</h3>
+    <p>Accepts arrays exported from this dashboard</p>
+  </div>
+</div>
+
 <!-- ── Header ────────────────────────────────────────── -->
 <div class="header">
   <div class="header-title">
@@ -1246,6 +1307,13 @@
       <div id="sessionList">
         <div class="sessions-empty" id="sessionsEmpty">No sessions yet</div>
       </div>
+    </div>
+    <div class="sidebar-section" id="importsSection" style="display:none">
+      <div class="sidebar-section-title">
+        <span>Imports</span>
+        <span class="sidebar-section-hint" id="importsHint">Drop a .json file anywhere</span>
+      </div>
+      <div id="importList"></div>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-section-title">Shortcuts</div>
@@ -1340,13 +1408,16 @@ const state = {
   autoScroll: true,
   activeFilter: 'all',
   activeSession: null,
+  activeImport: null,
   searchQuery: '',
   expandAll: false,
   typeCounts: {},
   sessionMap: {},
+  importMap: {},
   expandedCards: new Set(),
   hiddenTypes: new Set(),
   hiddenSessions: new Set(),
+  hiddenImports: new Set(),
   view: 'dashboard',
 };
 
@@ -1425,6 +1496,8 @@ const container = document.getElementById('eventContainer');
 const emptyState = document.getElementById('emptyState');
 const filterList = document.getElementById('filterList');
 const sessionList = document.getElementById('sessionList');
+const importList = document.getElementById('importList');
+const importsSection = document.getElementById('importsSection');
 const sessionsEmpty = document.getElementById('sessionsEmpty');
 const searchInput = document.getElementById('searchInput');
 const pauseBtn = document.getElementById('pauseBtn');
@@ -1452,6 +1525,7 @@ const emptyIcon = document.getElementById('emptyIcon');
 // ── Batched sidebar rendering ────────────────────────
 let filterRafPending = false;
 let sessionRafPending = false;
+let importRafPending = false;
 
 function scheduleFilterRender() {
   if (filterRafPending) return;
@@ -1463,6 +1537,12 @@ function scheduleSessionRender() {
   if (sessionRafPending) return;
   sessionRafPending = true;
   requestAnimationFrame(() => { sessionRafPending = false; renderSessionsNow(); });
+}
+
+function scheduleImportRender() {
+  if (importRafPending) return;
+  importRafPending = true;
+  requestAnimationFrame(() => { importRafPending = false; renderImportsNow(); });
 }
 
 // ── SSE connection with reconnection recovery ────────
@@ -1477,6 +1557,7 @@ function connect() {
     state.events.push(event);
     updateTypeCounts(event);
     updateSessionMap(event);
+    updateImportMap(event);
 
     if (state.paused) {
       state.pausedWhileCount++;
@@ -1508,6 +1589,7 @@ async function recoverMissedEvents() {
         state.events.push(event);
         updateTypeCounts(event);
         updateSessionMap(event);
+        updateImportMap(event);
         recovered++;
       }
     }
@@ -1533,6 +1615,24 @@ function updateSessionMap(event) {
   }
   state.sessionMap[sid].count++;
   scheduleSessionRender();
+}
+
+function updateImportMap(event) {
+  const imp = event._import;
+  if (!imp || !imp.id) return;
+  if (!state.importMap[imp.id]) {
+    state.importMap[imp.id] = {
+      id: imp.id,
+      name: imp.name || imp.id,
+      importedAt: imp.importedAt || Date.now(),
+      count: 0,
+      sessions: new Set(),
+    };
+  }
+  const entry = state.importMap[imp.id];
+  entry.count++;
+  if (event.sessionId) entry.sessions.add(event.sessionId);
+  scheduleImportRender();
 }
 
 // ── JSON syntax highlighting with collapsing ─────────
@@ -1777,6 +1877,9 @@ function applyFiltersInPlace() {
 function matchesFilters(event) {
   if (state.hiddenTypes.has(event.eventType)) return false;
   if (event.sessionId && state.hiddenSessions.has(event.sessionId)) return false;
+  const importId = event._import && event._import.id;
+  if (importId && state.hiddenImports.has(importId)) return false;
+  if (state.activeImport && importId !== state.activeImport) return false;
   if (state.activeFilter !== 'all' && event.eventType !== state.activeFilter) return false;
   if (state.activeSession && event.sessionId !== state.activeSession) return false;
   if (state.searchQuery) {
@@ -1883,6 +1986,59 @@ function renderSessionsNow() {
   }
 }
 
+function renderImportsNow() {
+  const entries = Object.values(state.importMap).sort((a, b) => b.importedAt - a.importedAt);
+  importsSection.style.display = entries.length === 0 ? 'none' : '';
+  if (entries.length === 0) return;
+
+  const existingEls = new Map();
+  importList.querySelectorAll('.filter-item').forEach(el => existingEls.set(el.dataset.importId, el));
+
+  for (const info of entries) {
+    let el = existingEls.get(info.id);
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'filter-item';
+      el.dataset.importId = info.id;
+      el.innerHTML =
+        '<div class="label-row col">' +
+          '<span>' + escapeHtml(info.name) + '</span>' +
+          '<span class="import-meta"></span>' +
+        '</div>' +
+        '<div class="item-actions">' +
+          '<button class="item-action danger trash-btn" title="Remove this imported batch">' + SVG_TRASH + '</button>' +
+          '<button class="item-action eye-btn" title="Hide this import">' + SVG_EYE + '</button>' +
+        '</div>' +
+        '<span class="count">0</span>';
+      el.querySelector('.label-row').addEventListener('click', () => {
+        state.activeImport = state.activeImport === info.id ? null : info.id;
+        renderImportsNow();
+        applyFiltersInPlace();
+      });
+      el.querySelector('.eye-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleHiddenImport(info.id);
+      });
+      el.querySelector('.trash-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteEventsByImport(info.id);
+      });
+      importList.appendChild(el);
+    }
+    el.querySelector('.count').textContent = info.count;
+    const sessCount = info.sessions.size;
+    const metaEl = el.querySelector('.import-meta');
+    if (metaEl) metaEl.textContent = sessCount + ' session' + (sessCount === 1 ? '' : 's');
+    el.classList.toggle('active', state.activeImport === info.id);
+    el.classList.toggle('hidden-item', state.hiddenImports.has(info.id));
+    const eyeBtn = el.querySelector('.eye-btn');
+    if (eyeBtn) {
+      eyeBtn.innerHTML = state.hiddenImports.has(info.id) ? SVG_EYE_OFF : SVG_EYE;
+      eyeBtn.title = state.hiddenImports.has(info.id) ? 'Show this import' : 'Hide this import';
+    }
+  }
+}
+
 function toggleHiddenType(type) {
   if (state.hiddenTypes.has(type)) {
     state.hiddenTypes.delete(type);
@@ -1962,6 +2118,53 @@ function rebuildSessionMap() {
   sessionList.querySelectorAll('.filter-item').forEach(el => {
     if (!state.sessionMap[el.dataset.sessionId]) el.remove();
   });
+}
+
+function rebuildImportMap() {
+  state.importMap = {};
+  for (const e of state.events) {
+    const imp = e._import;
+    if (!imp || !imp.id) continue;
+    if (!state.importMap[imp.id]) {
+      state.importMap[imp.id] = {
+        id: imp.id,
+        name: imp.name || imp.id,
+        importedAt: imp.importedAt || Date.now(),
+        count: 0,
+        sessions: new Set(),
+      };
+    }
+    const entry = state.importMap[imp.id];
+    entry.count++;
+    if (e.sessionId) entry.sessions.add(e.sessionId);
+  }
+  importList.querySelectorAll('.filter-item').forEach(el => {
+    if (!state.importMap[el.dataset.importId]) el.remove();
+  });
+}
+
+function toggleHiddenImport(importId) {
+  if (state.hiddenImports.has(importId)) state.hiddenImports.delete(importId);
+  else state.hiddenImports.add(importId);
+  renderImportsNow();
+  applyFiltersInPlace();
+}
+
+function deleteEventsByImport(importId) {
+  state.events = state.events.filter(e => !(e._import && e._import.id === importId));
+  delete state.importMap[importId];
+  state.hiddenImports.delete(importId);
+  if (state.activeImport === importId) state.activeImport = null;
+  rebuildTypeCounts();
+  rebuildSessionMap();
+  const el = importList.querySelector('[data-import-id="' + importId + '"]');
+  if (el) el.remove();
+  renderFiltersNow();
+  renderSessionsNow();
+  renderImportsNow();
+  rerenderAll();
+  updateCounters();
+  if (typeof Timeline !== 'undefined') Timeline.invalidate();
 }
 
 function setFilter(type) {
@@ -2116,10 +2319,10 @@ exportBtn.addEventListener('click', exportEvents);
 
 clearBtn.addEventListener('click', async () => {
   await fetch('/clear', { method: 'POST' });
-  state.events = []; state.typeCounts = {}; state.sessionMap = {};
+  state.events = []; state.typeCounts = {}; state.sessionMap = {}; state.importMap = {};
   state.expandedCards.clear(); state.pausedWhileCount = 0;
-  state.hiddenTypes.clear(); state.hiddenSessions.clear();
-  state.activeFilter = 'all'; state.activeSession = null;
+  state.hiddenTypes.clear(); state.hiddenSessions.clear(); state.hiddenImports.clear();
+  state.activeFilter = 'all'; state.activeSession = null; state.activeImport = null;
   pausedCountEl.textContent = '0'; lastSessionId = null;
   // Remove stale filter items (keep "All")
   filterList.querySelectorAll('[data-filter]:not([data-filter="all"])').forEach(el => el.remove());
@@ -2128,6 +2331,9 @@ clearBtn.addEventListener('click', async () => {
   // Remove stale session items
   sessionList.querySelectorAll('.filter-item').forEach(el => el.remove());
   sessionsEmpty.style.display = '';
+  // Remove stale import items
+  importList.querySelectorAll('.filter-item').forEach(el => el.remove());
+  importsSection.style.display = 'none';
   // Clear event cards
   const children = Array.from(container.children);
   children.forEach(c => { if (c !== emptyState) c.remove(); });
@@ -3338,6 +3544,7 @@ async function loadExisting() {
       state.events.push(event);
       updateTypeCounts(event);
       updateSessionMap(event);
+      updateImportMap(event);
     }
     if (state.events.length > 0) rerenderAll();
     Timeline.invalidate();
@@ -3348,6 +3555,69 @@ async function loadExisting() {
 }
 
 loadExisting().then(() => connect());
+
+// ── Drag-and-drop JSON import ─────────────────────────
+(function setupDropImport() {
+  const overlay = document.getElementById('dropOverlay');
+  if (!overlay) return;
+  let depth = 0;
+  function isFileDrag(e) {
+    return e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
+  }
+  window.addEventListener('dragenter', (e) => {
+    if (!isFileDrag(e)) return;
+    depth++;
+    overlay.classList.add('active');
+  });
+  window.addEventListener('dragover', (e) => {
+    if (!isFileDrag(e)) return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+  });
+  window.addEventListener('dragleave', (e) => {
+    if (!isFileDrag(e)) return;
+    depth = Math.max(0, depth - 1);
+    if (depth === 0) overlay.classList.remove('active');
+  });
+  window.addEventListener('drop', async (e) => {
+    if (!isFileDrag(e)) return;
+    e.preventDefault();
+    depth = 0;
+    overlay.classList.remove('active');
+    const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!file) return;
+    if (!/\.json$/i.test(file.name) && file.type !== 'application/json') {
+      showToast('Only .json files are supported');
+      return;
+    }
+    let parsed;
+    try {
+      parsed = JSON.parse(await file.text());
+    } catch (err) {
+      showToast('Invalid JSON: ' + (err && err.message ? err.message : 'parse error'));
+      return;
+    }
+    if (!Array.isArray(parsed)) {
+      showToast('Expected a JSON array of events');
+      return;
+    }
+    try {
+      const res = await fetch('/event-log/import?name=' + encodeURIComponent(file.name), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(parsed),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast('Import failed: ' + (data.error || res.statusText));
+        return;
+      }
+      showToast('Imported ' + data.imported + ' events from ' + file.name);
+    } catch (err) {
+      showToast('Import failed: ' + (err && err.message ? err.message : 'network error'));
+    }
+  });
+})();
 </script>
 </body>
 </html>
