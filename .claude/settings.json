@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(find /Users/yannbraga/open-source/sb-utils -maxdepth 2 -name vitest.config.* -o -name vite.config.*)",
+      "Bash(find . -name *.test.ts -o -name *.spec.ts)",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/storybookjs/storybook/next/code/addons/vitest/src/updateVitestFile.config.4.test.ts\")",
+      "Bash(npx tsc:*)"
+    ]
+  }
+}

@@ -1,5 +1,6 @@
 import { Command } from 'commander'
 import { uninstall } from './commands/uninstall'
+import { eventLogger } from './commands/event-logger'
 import { version } from '../package.json'
 
 const program = new Command()
@@ -28,6 +29,24 @@ program
   )
   .action(async (options) => {
     await uninstall(options).catch(console.error)
+  })
+
+program
+  .command('event-logger')
+  .description('Start a telemetry event debugger with a real-time dashboard UI')
+  .option('-p, --port <port>', 'Port to listen on', '6007')
+  .option('--open', 'Auto-open the dashboard in your browser')
+  .option('--json', 'Output events as NDJSON to stdout (auto-enabled when an AI agent is detected)')
+  .option('-q, --quiet', 'Suppress all terminal output except errors')
+  .option('--max-events <count>', 'Maximum events to keep in memory (0 = unlimited)', '0')
+  .action(async (options) => {
+    await eventLogger({
+      port: Number(options.port),
+      open: !!options.open,
+      json: !!options.json,
+      quiet: !!options.quiet,
+      maxEvents: Number(options.maxEvents),
+    }).catch(console.error)
   })
 
 program.parse()
