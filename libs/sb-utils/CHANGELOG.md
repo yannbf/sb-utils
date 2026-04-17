@@ -1,3 +1,15 @@
+# v0.0.11 (Fri Apr 17 2026)
+
+#### ⚠️ Pushed to `main`
+
+- export button improvements ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
 # v0.0.10 (Fri Apr 17 2026)
 
 #### 🐛 Bug Fix
