@@ -1,3 +1,18 @@
+# v0.0.9 (Fri Apr 17 2026)
+
+#### 🐛 Bug Fix
+
+- Add event logger [#17](https://github.com/yannbf/sb-utils/pull/17) ([@yannbf](https://github.com/yannbf))
+- add timeline feature ([@yannbf](https://github.com/yannbf))
+- update clack and fix colors ([@yannbf](https://github.com/yannbf))
+- add event logger ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
 # v0.0.8 (Fri Mar 27 2026)
 
 #### 🐛 Bug Fix

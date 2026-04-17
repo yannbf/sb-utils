@@ -1,3 +1,16 @@
+# (Fri Apr 17 2026)
+
+#### 🐛 Bug Fix
+
+- `@hipster/sb-utils@0.0.9`
+  - Add event logger [#17](https://github.com/yannbf/sb-utils/pull/17) ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
 # (Fri Mar 27 2026)
 
 #### 🐛 Bug Fix
