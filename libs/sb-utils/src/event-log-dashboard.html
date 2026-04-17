@@ -222,6 +222,44 @@
     background: var(--red-muted);
   }
 
+  .export-wrap { position: relative; display: inline-flex; }
+  .export-wrap .chevron { opacity: 0.7; margin-left: 2px; transition: transform var(--transition); }
+  .export-wrap.open .chevron { transform: rotate(180deg); }
+  .export-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 240px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    padding: 4px;
+    display: none;
+    flex-direction: column;
+    z-index: 100;
+  }
+  .export-wrap.open .export-menu { display: flex; }
+  .export-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 8px 10px;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    text-align: left;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background var(--transition);
+  }
+  .export-item:hover { background: var(--bg-card-hover); }
+  .export-item-title { font-weight: 500; }
+  .export-item-sub { font-size: 11px; color: var(--text-dim); }
+
   .event-counter {
     font-size: 12px;
     color: var(--text-dim);
@@ -1269,10 +1307,23 @@
 
     <div class="separator"></div>
 
-    <button class="btn" id="exportBtn" title="Export events as JSON">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      <span>Export JSON</span>
-    </button>
+    <div class="export-wrap" id="exportWrap">
+      <button class="btn" id="exportBtn" title="Export events" aria-haspopup="menu" aria-expanded="false">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span>Export</span>
+        <svg class="chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="export-menu" id="exportMenu" role="menu">
+        <button type="button" class="export-item" data-export="json" role="menuitem">
+          <span class="export-item-title">Export as JSON</span>
+          <span class="export-item-sub">Raw event data for tooling</span>
+        </button>
+        <button type="button" class="export-item" data-export="html" role="menuitem">
+          <span class="export-item-title">Export as HTML snapshot</span>
+          <span class="export-item-sub">Standalone dashboard snapshot</span>
+        </button>
+      </div>
+    </div>
 
     <button class="btn danger" id="clearBtn" title="Clear all events from server and dashboard">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
@@ -1354,7 +1405,6 @@
           Collapse gaps
         </button>
         <button type="button" class="btn tl-btn" id="tlFitBtn" title="Fit all events (double-click canvas)">Fit all</button>
-        <button type="button" class="btn tl-btn" id="tlExportHtmlBtn" title="Export a standalone HTML snapshot of this session">Export HTML</button>
       </div>
     </div>
 
@@ -2248,14 +2298,26 @@ function copyEventCurl(idx) {
   showToast('Copied cURL command');
 }
 
+function promptFilename(defaultName, ext) {
+  const suggestion = defaultName.endsWith('.' + ext) ? defaultName : defaultName + '.' + ext;
+  const input = window.prompt('Save as', suggestion);
+  if (input === null) return null;
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  return trimmed.endsWith('.' + ext) ? trimmed : trimmed + '.' + ext;
+}
+
 function exportEvents() {
   const filtered = state.events.filter(matchesFilters).map(e => {
     const clean = { ...e }; delete clean._index; delete clean._receivedAt; return clean;
   });
+  const defaultName = 'telemetry-' + new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19) + '.json';
+  const filename = promptFilename(defaultName, 'json');
+  if (!filename) return;
   const blob = new Blob([JSON.stringify(filtered, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href = url;
-  a.download = 'telemetry-' + new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19) + '.json';
+  a.download = filename;
   a.click(); URL.revokeObjectURL(url);
   showToast('Exported ' + filtered.length + ' events');
 }
@@ -2315,7 +2377,35 @@ expandAllBtn.addEventListener('click', () => {
   });
 });
 
-exportBtn.addEventListener('click', exportEvents);
+const exportWrap = document.getElementById('exportWrap');
+const exportMenu = document.getElementById('exportMenu');
+function closeExportMenu() {
+  exportWrap.classList.remove('open');
+  exportBtn.setAttribute('aria-expanded', 'false');
+}
+function openExportMenu() {
+  exportWrap.classList.add('open');
+  exportBtn.setAttribute('aria-expanded', 'true');
+}
+exportBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (exportWrap.classList.contains('open')) closeExportMenu();
+  else openExportMenu();
+});
+document.addEventListener('click', (e) => {
+  if (!exportWrap.contains(e.target)) closeExportMenu();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && exportWrap.classList.contains('open')) closeExportMenu();
+});
+exportMenu.addEventListener('click', (e) => {
+  const item = e.target.closest('.export-item');
+  if (!item) return;
+  closeExportMenu();
+  const kind = item.dataset.export;
+  if (kind === 'json') exportEvents();
+  else if (kind === 'html') Timeline.exportHtmlSnapshot();
+});
 
 clearBtn.addEventListener('click', async () => {
   await fetch('/clear', { method: 'POST' });
@@ -2407,7 +2497,7 @@ const Timeline = (function () {
 
   let wrapEl, axisCanvas, contentCanvas, minimapCanvas, minimapSelectEl, mainEl, tooltipEl, jumpBtn;
   let drawerEl, drawerTitle, drawerBody, drawerClose, drawerPrev, drawerNext, drawerPos;
-  let zoomInfo, rangeInfo, liveInfo, emptyEl, fitBtn, exportHtmlBtn, collapseBtn;
+  let zoomInfo, rangeInfo, liveInfo, emptyEl, fitBtn, collapseBtn;
   let axisCtx, contentCtx, minimapCtx;
   let dpr = 1;
   let rafPending = false;
@@ -2436,7 +2526,6 @@ const Timeline = (function () {
     liveInfo = document.getElementById('tlLive');
     emptyEl = document.getElementById('tlEmpty');
     fitBtn = document.getElementById('tlFitBtn');
-    exportHtmlBtn = document.getElementById('tlExportHtmlBtn');
     collapseBtn = document.getElementById('tlCollapseBtn');
 
     axisCtx = axisCanvas.getContext('2d');
@@ -2472,7 +2561,6 @@ const Timeline = (function () {
 
     fitBtn.addEventListener('click', fitAll);
     jumpBtn.addEventListener('click', () => { st.followTail = true; fitAll(); });
-    exportHtmlBtn.addEventListener('click', exportHtmlSnapshot);
     drawerClose.addEventListener('click', closeDrawer);
     drawerPrev.addEventListener('click', () => navigateDrawer(-1));
     drawerNext.addEventListener('click', () => navigateDrawer(1));
@@ -3487,12 +3575,15 @@ const Timeline = (function () {
     if (firstBodyScript) body.insertBefore(bootstrap, firstBodyScript);
     else body.appendChild(bootstrap);
 
+    const defaultName = 'storybook-telemetry-snapshot-' + snapAt.toISOString().replace(/[:.]/g, '-').slice(0, 19) + '.html';
+    const filename = promptFilename(defaultName, 'html');
+    if (!filename) return;
     const html = '<!DOCTYPE html>\n' + clone.outerHTML;
     const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'storybook-telemetry-snapshot-' + snapAt.toISOString().replace(/[:.]/g, '-').slice(0, 19) + '.html';
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
     showToast('Exported HTML snapshot');
@@ -3505,6 +3596,7 @@ const Timeline = (function () {
     closeDrawer,
     navigate: navigateDrawer,
     isDrawerOpen: () => drawerEl && drawerEl.classList.contains('open'),
+    exportHtmlSnapshot,
   };
 })();
 
