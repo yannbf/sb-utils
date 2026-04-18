@@ -831,6 +831,168 @@
   @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes toastOut { from { opacity: 1; } to { opacity: 0; } }
 
+  /* ── Modal ──────────────────────────────────────── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 12, 22, 0.68);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 10001;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal-card {
+    width: 100%;
+    max-width: 480px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+    font-family: var(--font-sans);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 48px);
+    overflow: hidden;
+    animation: modalIn 0.18s ease-out;
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: translateY(6px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+  }
+  .modal-close {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 4px 6px;
+    border-radius: 6px;
+  }
+  .modal-close:hover { color: var(--text); background: var(--bg-surface); }
+  .modal-body {
+    padding: 16px 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    font-size: 13px;
+  }
+  .modal-body p { margin: 0; color: var(--text-dim); font-size: 12px; line-height: 1.5; }
+  .modal-field { display: flex; flex-direction: column; gap: 6px; }
+  .modal-field label {
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+  }
+  .modal-field .hint { font-size: 11px; color: var(--text-dim); font-weight: 400; text-transform: none; letter-spacing: 0; }
+  .modal-input-wrap {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-surface);
+    overflow: hidden;
+  }
+  .modal-input-wrap:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(108, 158, 248, 0.18); }
+  .modal-input-wrap input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 9px 12px;
+    min-width: 0;
+  }
+  .modal-input-suffix {
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-left: 1px solid var(--border);
+  }
+  .modal-textarea {
+    width: 100%;
+    min-height: 96px;
+    max-height: 220px;
+    resize: vertical;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 1.5;
+    padding: 10px 12px;
+    outline: none;
+  }
+  .modal-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(108, 158, 248, 0.18); }
+  .modal-explanation-view {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.015);
+  }
+  .modal-btn {
+    padding: 7px 14px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    color: var(--text);
+    font-size: 12px;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    transition: background 0.12s ease, border-color 0.12s ease;
+  }
+  .modal-btn:hover { background: var(--bg-card-hover); border-color: var(--border-hover); }
+  .modal-btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0b0d12;
+    font-weight: 600;
+  }
+  .modal-btn.primary:hover { background: #7fb3ff; border-color: #7fb3ff; }
+  .modal-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
   /* ── Import drop overlay ────────────────────────── */
   .drop-overlay {
     position: fixed;
@@ -1257,6 +1419,18 @@
     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
     <h3>Drop a JSON file to import events</h3>
     <p>Accepts arrays exported from this dashboard</p>
+  </div>
+</div>
+
+<!-- ── Modal ─────────────────────────────────────────── -->
+<div class="modal-overlay" id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modalTitle"></h3>
+      <button type="button" class="modal-close" id="modalCloseBtn" aria-label="Close">&times;</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer" id="modalFooter"></div>
   </div>
 </div>
 
@@ -2298,26 +2472,125 @@ function copyEventCurl(idx) {
   showToast('Copied cURL command');
 }
 
-function promptFilename(defaultName, ext) {
-  const suggestion = defaultName.endsWith('.' + ext) ? defaultName : defaultName + '.' + ext;
-  const input = window.prompt('Save as', suggestion);
-  if (input === null) return null;
-  const trimmed = input.trim();
-  if (!trimmed) return null;
-  return trimmed.endsWith('.' + ext) ? trimmed : trimmed + '.' + ext;
+// ── Modal infrastructure ────────────────────────────
+const modalOverlay = document.getElementById('modalOverlay');
+const modalTitleEl = document.getElementById('modalTitle');
+const modalBodyEl = document.getElementById('modalBody');
+const modalFooterEl = document.getElementById('modalFooter');
+const modalCloseBtn = document.getElementById('modalCloseBtn');
+let modalResolve = null;
+let modalKeyHandler = null;
+
+function closeModal(result) {
+  if (!modalOverlay.classList.contains('active')) return;
+  modalOverlay.classList.remove('active');
+  if (modalKeyHandler) {
+    document.removeEventListener('keydown', modalKeyHandler);
+    modalKeyHandler = null;
+  }
+  const resolve = modalResolve;
+  modalResolve = null;
+  modalBodyEl.innerHTML = '';
+  modalFooterEl.innerHTML = '';
+  if (resolve) resolve(result == null ? null : result);
 }
 
-function exportEvents() {
+modalCloseBtn.addEventListener('click', () => closeModal(null));
+modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(null); });
+
+function stripExt(name, ext) {
+  const suffix = '.' + ext;
+  return name.endsWith(suffix) ? name.slice(0, -suffix.length) : name;
+}
+function appendExt(name, ext) {
+  const trimmed = (name || '').trim();
+  if (!trimmed) return null;
+  const suffix = '.' + ext;
+  return trimmed.endsWith(suffix) ? trimmed : trimmed + suffix;
+}
+
+function openSaveModal(opts) {
+  // opts: { kind: 'json' | 'html', defaultName, extension, withExplanation: bool }
+  return new Promise((resolve) => {
+    const { kind, defaultName, extension } = opts;
+    const withExplanation = !!opts.withExplanation;
+    modalTitleEl.textContent = kind === 'html' ? 'Export HTML snapshot' : 'Export JSON';
+    const baseName = stripExt(defaultName, extension);
+    const parts = [];
+    parts.push('<div class="modal-field">');
+    parts.push('<label for="modalFilenameInput">File name</label>');
+    parts.push('<div class="modal-input-wrap">');
+    parts.push('<input type="text" id="modalFilenameInput" spellcheck="false" autocomplete="off" />');
+    parts.push('</div>');
+    parts.push('</div>');
+    if (withExplanation) {
+      parts.push('<div class="modal-field">');
+      parts.push('<label for="modalExplanationInput">Explanation <span class="hint">(optional — describe what this telemetry run was about)</span></label>');
+      parts.push('<textarea id="modalExplanationInput" class="modal-textarea" placeholder="e.g. Reproduced the duplicate boot-event regression after running `storybook dev` twice."></textarea>');
+      parts.push('</div>');
+    }
+    modalBodyEl.innerHTML = parts.join('');
+    modalFooterEl.innerHTML =
+      '<button type="button" class="modal-btn" id="modalCancelBtn">Cancel</button>' +
+      '<button type="button" class="modal-btn primary" id="modalSubmitBtn">Save</button>';
+
+    const nameInput = document.getElementById('modalFilenameInput');
+    const explanationInput = withExplanation ? document.getElementById('modalExplanationInput') : null;
+    const submitBtn = document.getElementById('modalSubmitBtn');
+    const cancelBtn = document.getElementById('modalCancelBtn');
+    nameInput.value = baseName;
+
+    function submit() {
+      const filename = appendExt(nameInput.value, extension);
+      if (!filename) { nameInput.focus(); return; }
+      const explanation = explanationInput ? explanationInput.value.trim() : '';
+      closeModal({ filename: filename, explanation: explanation });
+    }
+
+    submitBtn.addEventListener('click', submit);
+    cancelBtn.addEventListener('click', () => closeModal(null));
+    nameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
+    });
+
+    modalKeyHandler = (e) => { if (e.key === 'Escape') closeModal(null); };
+    document.addEventListener('keydown', modalKeyHandler);
+    modalResolve = resolve;
+    modalOverlay.classList.add('active');
+    // Select just the base name so the user can start typing immediately.
+    setTimeout(() => {
+      nameInput.focus();
+      nameInput.select();
+    }, 0);
+  });
+}
+
+function openExplanationModal(title, text) {
+  return new Promise((resolve) => {
+    modalTitleEl.textContent = title || 'Snapshot explanation';
+    modalBodyEl.innerHTML =
+      '<div class="modal-explanation-view">' + escapeHtml(text || '') + '</div>';
+    modalFooterEl.innerHTML =
+      '<button type="button" class="modal-btn primary" id="modalCloseActionBtn">Close</button>';
+    document.getElementById('modalCloseActionBtn').addEventListener('click', () => closeModal(null));
+    modalKeyHandler = (e) => { if (e.key === 'Escape') closeModal(null); };
+    document.addEventListener('keydown', modalKeyHandler);
+    modalResolve = resolve;
+    modalOverlay.classList.add('active');
+  });
+}
+
+async function exportEvents() {
   const filtered = state.events.filter(matchesFilters).map(e => {
     const clean = { ...e }; delete clean._index; delete clean._receivedAt; return clean;
   });
   const defaultName = 'telemetry-' + new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19) + '.json';
-  const filename = promptFilename(defaultName, 'json');
-  if (!filename) return;
+  const result = await openSaveModal({ kind: 'json', defaultName: defaultName, extension: 'json' });
+  if (!result) return;
   const blob = new Blob([JSON.stringify(filtered, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href = url;
-  a.download = filename;
+  a.download = result.filename;
   a.click(); URL.revokeObjectURL(url);
   showToast('Exported ' + filtered.length + ' events');
 }
@@ -2443,6 +2716,13 @@ searchInput.addEventListener('input', () => {
 });
 
 // ── Keyboard shortcuts ───────────────────────────────
+function isTypingTarget(el) {
+  if (!el) return false;
+  if (el.isContentEditable) return true;
+  const tag = el.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+  return false;
+}
 document.addEventListener('keydown', (e) => {
   if (e.target === searchInput) {
     if (e.key === 'Escape') {
@@ -2451,6 +2731,11 @@ document.addEventListener('keydown', (e) => {
     }
     return;
   }
+  // Don't hijack typing inside any other input/textarea (e.g. the save/explanation modal).
+  if (isTypingTarget(e.target)) return;
+  // Don't fire shortcuts while a modal dialog is open — except Escape, which is handled
+  // by the modal itself via its own listener.
+  if (modalOverlay.classList.contains('active')) return;
   if (e.key === 'Escape') {
     if (typeof Timeline !== 'undefined' && Timeline.isDrawerOpen && Timeline.isDrawerOpen()) {
       Timeline.closeDrawer();
@@ -3495,77 +3780,144 @@ const Timeline = (function () {
     invalidate();
   }
 
-  function exportHtmlSnapshot() {
+  async function exportHtmlSnapshot() {
+    const snapAt = new Date();
+    const defaultName = 'storybook-telemetry-snapshot-' + snapAt.toISOString().replace(/[:.]/g, '-').slice(0, 19) + '.html';
+    const result = await openSaveModal({
+      kind: 'html',
+      defaultName: defaultName,
+      extension: 'html',
+      withExplanation: true,
+    });
+    if (!result) return;
+    const filename = result.filename;
+    const explanation = result.explanation || '';
+    // Snapshot name: the file name without extension. Keeps it stable across renames.
+    const snapshotName = filename.replace(/\.html$/i, '');
+
     // Clone the live document so the snapshot retains every style + script.
     const clone = document.documentElement.cloneNode(true);
-    const snapAt = new Date();
     const events = state.events.slice();
     const [first, last] = dataRange();
     const durationMs = events.length > 1 ? last - first : 0;
     const sessionCount = new Set(events.map((e) => e.sessionId).filter(Boolean)).size;
 
-    // Snapshot-specific styles: banner + hide controls that can't function statically.
+    // Snapshot-specific styles: banner, hide controls that can't function statically,
+    // kill the LIVE/green connection indicator so viewers don't think it's still listening.
     const snapshotStyle = document.createElement('style');
     snapshotStyle.textContent = [
       '.snapshot-banner {',
       '  position: sticky; top: 0; z-index: 9999;',
-      '  display: flex; align-items: center; gap: 10px; justify-content: center;',
+      '  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;',
       '  padding: 8px 16px; font-family: var(--font-sans); font-size: 12px;',
       '  background: linear-gradient(90deg, rgba(251,191,36,0.18), rgba(251,191,36,0.05));',
       '  border-bottom: 1px solid rgba(251,191,36,0.4);',
       '  color: #fbbf24; letter-spacing: 0.4px;',
       '}',
+      '.snapshot-banner .center { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1; justify-content: center; }',
       '.snapshot-banner b { color: #fef3c7; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }',
+      '.snapshot-banner .name { color: #fef3c7; font-weight: 500; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0; }',
       '.snapshot-banner .dot { width:8px; height:8px; border-radius:50%; background:#fbbf24; box-shadow:0 0 8px rgba(251,191,36,0.6); }',
       '.snapshot-banner .meta { color: rgba(255,255,255,0.6); }',
+      '.snapshot-banner .explain-btn {',
+      '  margin-left: auto; flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;',
+      '  padding: 4px 10px; font-family: var(--font-sans); font-size: 11px;',
+      '  color: #fef3c7; background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.45);',
+      '  border-radius: 6px; cursor: pointer; letter-spacing: 0.3px;',
+      '}',
+      '.snapshot-banner .explain-btn:hover { background: rgba(251,191,36,0.22); border-color: rgba(251,191,36,0.7); }',
+      // Neuter live-only controls
       '#pauseBtn, #scrollBtn, #clearBtn, #pausedResumeBtn { display: none !important; }',
-      '.header-status .dot { background: #fbbf24 !important; animation: none !important; }',
-      '.header-status::after { content: "SNAPSHOT"; margin-left: 6px; font-size: 9px; letter-spacing: 1px;',
-      '  color: #fbbf24; padding: 1px 5px; border: 1px solid rgba(251,191,36,0.4); border-radius: 3px; }',
+      // Kill the green "connected" status dot in the header — snapshot banner conveys mode.
+      '#statusDot { background: #fbbf24 !important; box-shadow: 0 0 8px rgba(251,191,36,0.5) !important; animation: none !important; }',
+      // Kill the timeline LIVE pill.
+      '.tl-toolbar .tl-live { display: none !important; }',
+      // Kill the drag-and-drop import affordance — import endpoint is stubbed anyway.
+      '#dropOverlay { display: none !important; }',
     ].join('\n');
     clone.querySelector('head').appendChild(snapshotStyle);
 
     // Update title so snapshot tabs are distinguishable.
     const titleEl = clone.querySelector('title');
-    if (titleEl) titleEl.textContent = 'Snapshot · ' + events.length + ' events · ' + snapAt.toLocaleString();
+    if (titleEl) titleEl.textContent = snapshotName + ' · Snapshot · ' + events.length + ' events';
 
-    // Inject the Snapshot banner at top of body.
+    // Inject the Snapshot banner (with the snapshot name) at top of body.
+    // The banner also hosts the "View explanation" button on the right (when present).
     const body = clone.querySelector('body');
     const banner = document.createElement('div');
     banner.className = 'snapshot-banner';
+    const explainBtnHtml = explanation
+      ? '<button type="button" class="explain-btn" id="snapshotExplainBtn">' +
+          '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>' +
+          'View explanation' +
+        '</button>'
+      : '';
     banner.innerHTML =
-      '<span class="dot"></span>' +
-      '<b>Snapshot</b>' +
-      '<span class="meta">captured ' + escapeHtml(snapAt.toLocaleString()) + '</span>' +
-      '<span class="meta">·</span>' +
-      '<span class="meta">' + events.length + ' event' + (events.length === 1 ? '' : 's') + ' · ' + sessionCount + ' session' + (sessionCount === 1 ? '' : 's') +
-      (durationMs > 0 ? ' · ' + formatGapDuration(durationMs) + ' span' : '') +
-      '</span>';
+      '<div class="center">' +
+        '<span class="dot"></span>' +
+        '<b>Snapshot</b>' +
+        '<span class="name">' + escapeHtml(snapshotName) + '</span>' +
+        '<span class="meta">·</span>' +
+        '<span class="meta">captured ' + escapeHtml(snapAt.toLocaleString()) + '</span>' +
+        '<span class="meta">·</span>' +
+        '<span class="meta">' + events.length + ' event' + (events.length === 1 ? '' : 's') + ' · ' + sessionCount + ' session' + (sessionCount === 1 ? '' : 's') +
+        (durationMs > 0 ? ' · ' + formatGapDuration(durationMs) + ' span' : '') +
+        '</span>' +
+      '</div>' +
+      explainBtnHtml;
     body.insertBefore(banner, body.firstChild);
 
-    // Drop the live canvases from the clone — the baked scripts will redraw them
-    // on load using the injected event payload. Without this, stale pixel data
-    // from the current session would be embedded as <canvas> DOM has width/height
-    // but no bitmap serialization (so it's fine either way — removal is cosmetic).
+    // Strip dynamic DOM that was rendered from the live state — in the snapshot, the
+    // baked script re-runs loadExisting() which will recreate these with the right
+    // event listeners (cloneNode doesn't copy listeners, so leaving them leaves the
+    // sidebar filtering/interactions dead).
+    const stripSelectors = [
+      '#filterList [data-filter]:not([data-filter="all"])',
+      '#sessionList .filter-item',
+      '#importList .filter-item',
+      '#eventContainer .event-card',
+      '#eventContainer .session-separator',
+    ];
+    stripSelectors.forEach((sel) => {
+      clone.querySelectorAll(sel).forEach((el) => el.remove());
+    });
+    // Reset the "All events" active state + count and the empty-state visibility so
+    // the snapshot app boots from a clean slate before it ingests the baked events.
+    const cloneAll = clone.querySelector('#filterList [data-filter="all"]');
+    if (cloneAll) { cloneAll.classList.add('active'); const c = cloneAll.querySelector('.count'); if (c) c.textContent = '0'; }
+    const cloneCountAll = clone.querySelector('#countAll');
+    if (cloneCountAll) cloneCountAll.textContent = '0';
+    const cloneSessionsEmpty = clone.querySelector('#sessionsEmpty');
+    if (cloneSessionsEmpty) cloneSessionsEmpty.style.display = '';
+    const cloneImportsSection = clone.querySelector('#importsSection');
+    if (cloneImportsSection) cloneImportsSection.style.display = 'none';
+    const cloneEmptyState = clone.querySelector('#emptyState');
+    if (cloneEmptyState) cloneEmptyState.style.display = '';
 
-    // Bake events + neutered networking BEFORE the app script runs.
-    const bootstrap = clone.createElement ? clone.createElement('script') : document.createElement('script');
+    // Bake events + snapshot metadata + neutered networking BEFORE the app script runs.
+    const bootstrap = document.createElement('script');
     bootstrap.textContent = [
       '(function() {',
       '  window.__SNAPSHOT__ = true;',
       '  window.__SNAPSHOT_EVENTS__ = ' + JSON.stringify(events) + ';',
+      '  window.__SNAPSHOT_META__ = ' + JSON.stringify({
+        name: snapshotName,
+        explanation: explanation,
+        capturedAt: snapAt.toISOString(),
+        eventsCount: events.length,
+        sessionsCount: sessionCount,
+      }) + ';',
       '  // Serve the baked events for the initial GET /event-log, no-op everything else.',
-      '  var origFetch = window.fetch;',
       '  window.fetch = function(input, init) {',
       '    var url = typeof input === "string" ? input : (input && input.url) || "";',
       '    if ((init == null || !init.method || init.method === "GET") && /\\/event-log(\\?|$)/.test(url)) {',
       '      return Promise.resolve(new Response(JSON.stringify(window.__SNAPSHOT_EVENTS__), { status: 200, headers: { "Content-Type": "application/json" } }));',
       '    }',
-      '    // Swallow POSTs (clear, new events) — snapshot is read-only.',
+      '    // Swallow POSTs (clear, new events, imports) — snapshot is read-only.',
       '    return Promise.resolve(new Response("", { status: 204 }));',
       '  };',
       '  // Disable SSE so there is no "LIVE" connection attempt.',
-      '  function NoopES() { this.readyState = 2; this.close = function(){}; this.addEventListener = function(){}; this.removeEventListener = function(){}; }',
+      '  function NoopES() { this.readyState = 2; this.close = function(){}; this.addEventListener = function(){}; this.removeEventListener = function(){}; this.onopen = null; this.onerror = null; this.onmessage = null; }',
       '  NoopES.CONNECTING = 0; NoopES.OPEN = 1; NoopES.CLOSED = 2;',
       '  window.EventSource = NoopES;',
       '})();',
@@ -3575,9 +3927,6 @@ const Timeline = (function () {
     if (firstBodyScript) body.insertBefore(bootstrap, firstBodyScript);
     else body.appendChild(bootstrap);
 
-    const defaultName = 'storybook-telemetry-snapshot-' + snapAt.toISOString().replace(/[:.]/g, '-').slice(0, 19) + '.html';
-    const filename = promptFilename(defaultName, 'html');
-    if (!filename) return;
     const html = '<!DOCTYPE html>\n' + clone.outerHTML;
     const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
@@ -3648,8 +3997,27 @@ async function loadExisting() {
 
 loadExisting().then(() => connect());
 
+// ── Snapshot-mode runtime ─────────────────────────────
+(function setupSnapshotMode() {
+  if (!window.__SNAPSHOT__) return;
+  const meta = window.__SNAPSHOT_META__ || {};
+  // Title (captured at snapshot build time — reassert in case something else overrode it).
+  if (meta.name) {
+    document.title = meta.name + ' · Snapshot · ' + (meta.eventsCount || 0) + ' events';
+  }
+  // Wire the "View explanation" button in the snapshot banner (only present when there's
+  // an explanation baked into the snapshot).
+  const explainBtn = document.getElementById('snapshotExplainBtn');
+  if (explainBtn && meta.explanation) {
+    explainBtn.addEventListener('click', () => {
+      openExplanationModal(meta.name ? 'Explanation · ' + meta.name : 'Snapshot explanation', meta.explanation);
+    });
+  }
+})();
+
 // ── Drag-and-drop JSON import ─────────────────────────
 (function setupDropImport() {
+  if (window.__SNAPSHOT__) return; // Snapshot is read-only — no import.
   const overlay = document.getElementById('dropOverlay');
   if (!overlay) return;
   let depth = 0;
