@@ -1,3 +1,16 @@
+# (Sat Apr 18 2026)
+
+#### ⚠️ Pushed to `main`
+
+- `@hipster/sb-utils@0.0.12`
+  - add snapshot explanation ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
 # (Fri Apr 17 2026)
 
 #### ⚠️ Pushed to `main`
