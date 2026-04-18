@@ -54,7 +54,12 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
   const sseClients = new Set<SSEClient>()
   let eventCounter = 0
 
-  type ImportBatch = { id: string; name: string; importedAt: number }
+  type ImportBatch = {
+    id: string
+    name: string
+    importedAt: number
+    explanation?: string
+  }
   let importCounter = 0
 
   function makeBatch(name: string): ImportBatch {
@@ -67,11 +72,29 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
     source: string,
     batch?: ImportBatch,
   ): { added: number; error?: string } {
-    if (!Array.isArray(raw)) {
-      return { added: 0, error: `${source}: expected a JSON array of events` }
+    // Expect the wrapped shape `{ events: [...], explanation?: string }`
+    // produced by the dashboard's JSON export.
+    if (
+      !raw ||
+      typeof raw !== 'object' ||
+      !Array.isArray((raw as { events?: unknown }).events)
+    ) {
+      return {
+        added: 0,
+        error: `${source}: expected a JSON object shaped like { events, explanation? }`,
+      }
+    }
+    const arr = (raw as { events: unknown[] }).events
+    const wrapped = raw as { explanation?: unknown }
+    if (
+      batch &&
+      typeof wrapped.explanation === 'string' &&
+      wrapped.explanation.trim()
+    ) {
+      batch.explanation = wrapped.explanation
     }
     let added = 0
-    for (const item of raw) {
+    for (const item of arr as unknown[]) {
       if (!item || typeof item !== 'object') continue
       const ev = item as TelemetryEvent
       if (typeof ev.eventType !== 'string') continue
