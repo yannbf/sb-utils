@@ -1,3 +1,17 @@
+# (Fri May 01 2026)
+
+#### ⚠️ Pushed to `main`
+
+- `@hipster/sb-utils@0.0.13`
+  - add json export endpoint ([@yannbf](https://github.com/yannbf))
+  - improve explanation feature ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
 # (Sat Apr 18 2026)
 
 #### ⚠️ Pushed to `main`

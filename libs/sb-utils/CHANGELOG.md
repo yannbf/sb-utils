@@ -1,3 +1,16 @@
+# v0.0.13 (Fri May 01 2026)
+
+#### ⚠️ Pushed to `main`
+
+- add json export endpoint ([@yannbf](https://github.com/yannbf))
+- improve explanation feature ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
 # v0.0.12 (Sat Apr 18 2026)
 
 #### ⚠️ Pushed to `main`
