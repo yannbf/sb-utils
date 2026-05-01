@@ -3873,3 +3873,15 @@ loadExisting().then(() => connect());
     }
   });
 })();
+
+// ── Expose handlers used by inline `onclick` attributes ──
+// The original inline <script> declared these as globals automatically.
+// As an ES module, top-level functions don't attach to window, so the
+// inline `onclick="toggleCard(...)"` etc. would throw ReferenceError.
+// These four are the only ones the legacy markup references inline.
+if (typeof window !== 'undefined') {
+  ;(window as any).toggleCard = toggleCard
+  ;(window as any).toggleJson = toggleJson
+  ;(window as any).copyEvent = copyEvent
+  ;(window as any).copyEventCurl = copyEventCurl
+}
