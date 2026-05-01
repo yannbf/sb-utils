@@ -23,9 +23,18 @@ type Actions = {
   deleteEventsByCacheKey: (key: string) => void
   deleteAllTelemetryEvents: () => void
   deleteAllCacheEvents: () => void
+  setPaused: (v: boolean) => void
+  setAutoScroll: (v: boolean) => void
+  setExpandAll: (v: boolean) => void
+  setSearchQuery: (q: string) => void
+  setView: (v: 'dashboard' | 'timeline' | 'cache') => void
+  exportEvents: () => Promise<void>
+  exportHtmlSnapshot: () => Promise<void>
+  clearAll: () => Promise<void>
 }
 
 const noop = () => {}
+const asyncNoop = async () => {}
 const stub: Actions = {
   setFilter: noop,
   setSession: noop,
@@ -43,6 +52,14 @@ const stub: Actions = {
   deleteEventsByCacheKey: noop,
   deleteAllTelemetryEvents: noop,
   deleteAllCacheEvents: noop,
+  setPaused: noop,
+  setAutoScroll: noop,
+  setExpandAll: noop,
+  setSearchQuery: noop,
+  setView: noop,
+  exportEvents: asyncNoop,
+  exportHtmlSnapshot: asyncNoop,
+  clearAll: asyncNoop,
 }
 
 export function actions(): Actions {

@@ -1787,111 +1787,21 @@ function showToast(msg) {
 // ── Pause / Resume ──────────────────────────────────
 function setPaused(paused) {
   state.paused = paused;
-  pauseSvg.innerHTML = paused
-    ? '<polygon points="5,3 19,12 5,21" fill="currentColor"/>'
-    : '<rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor"/><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor"/>';
-  pauseLabel.textContent = paused ? 'Resume' : 'Pause';
-  pauseBtn.classList.toggle('active', paused);
-  statusDot.classList.toggle('paused', paused);
-  pausedBanner.classList.toggle('visible', paused);
+  // Header / PausedBanner / status dot styling is owned by Preact now.
+  // The layout class toggle stays imperative because the .layout root is
+  // still a JSX-shell child whose className is not driven by signals.
   layoutEl.classList.toggle('has-banner', paused);
   if (!paused) {
     state.pausedWhileCount = 0;
-    pausedCountEl.textContent = '0';
     rerenderAll();
   }
+  scheduleMirror(state);
 }
 
-// ── Button handlers ──────────────────────────────────
-pauseBtn.addEventListener('click', () => setPaused(!state.paused));
-pausedResumeBtn.addEventListener('click', () => setPaused(false));
-
-scrollBtn.addEventListener('click', () => {
-  state.autoScroll = !state.autoScroll;
-  scrollBtn.classList.toggle('active', state.autoScroll);
-  if (state.autoScroll) container.scrollTop = container.scrollHeight;
-});
-
-expandAllBtn.addEventListener('click', () => {
-  state.expandAll = !state.expandAll;
-  expandLabel.textContent = state.expandAll ? 'Collapse' : 'Expand';
-  expandAllBtn.classList.toggle('active', state.expandAll);
-  // The header button is view-aware: in dashboard view it expands event
-  // cards, in cache view it expands cache entries — same affordance, the
-  // user expects it to "do the right thing" for whatever they're looking at.
-  if (state.view === 'cache' && typeof CacheView !== 'undefined') {
-    CacheView.setAllExpanded(state.expandAll);
-  } else {
-    container.querySelectorAll('.event-card').forEach(card => {
-      card.classList.toggle('expanded', state.expandAll);
-    });
-  }
-});
-
-const exportWrap = document.getElementById('exportWrap');
-const exportMenu = document.getElementById('exportMenu');
-function closeExportMenu() {
-  exportWrap.classList.remove('open');
-  exportBtn.setAttribute('aria-expanded', 'false');
-}
-function openExportMenu() {
-  exportWrap.classList.add('open');
-  exportBtn.setAttribute('aria-expanded', 'true');
-}
-exportBtn.addEventListener('click', (e) => {
-  e.stopPropagation();
-  if (exportWrap.classList.contains('open')) closeExportMenu();
-  else openExportMenu();
-});
-document.addEventListener('click', (e) => {
-  if (!exportWrap.contains(e.target)) closeExportMenu();
-});
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && exportWrap.classList.contains('open')) closeExportMenu();
-});
-exportMenu.addEventListener('click', (e) => {
-  const item = e.target.closest('.export-item');
-  if (!item) return;
-  closeExportMenu();
-  const kind = item.dataset.export;
-  if (kind === 'json') exportEvents();
-  else if (kind === 'html') Timeline.exportHtmlSnapshot();
-});
-
-clearBtn.addEventListener('click', async () => {
-  await fetch('/clear', { method: 'POST' });
-  state.events = []; state.typeCounts = {}; state.sessionMap = {}; state.importMap = {};
-  state.expandedCards.clear(); state.pausedWhileCount = 0;
-  state.hiddenTypes.clear(); state.hiddenSessions.clear(); state.hiddenImports.clear();
-  state.activeFilter = 'all'; state.activeSession = null; state.activeImport = null;
-  pausedCountEl.textContent = '0'; lastSessionId = null;
-  // Remove stale filter items (keep "All")
-  filterList.querySelectorAll('[data-filter]:not([data-filter="all"])').forEach(el => el.remove());
-  countAll.textContent = '0';
-  filterList.querySelector('[data-filter="all"]').classList.add('active');
-  // Remove stale session items
-  sessionList.querySelectorAll('.filter-item').forEach(el => el.remove());
-  sessionsEmpty.style.display = '';
-  // Remove stale import items
-  importList.querySelectorAll('.filter-item').forEach(el => el.remove());
-  importsSection.style.display = 'none';
-  // Clear event cards
-  const children = Array.from(container.children);
-  children.forEach(c => { if (c !== emptyState) c.remove(); });
-  emptyState.style.display = '';
-  updateCounters();
-  if (typeof Timeline !== 'undefined') Timeline.invalidate();
-});
-
-// ── Search ───────────────────────────────────────────
-let searchTimeout = null;
-searchInput.addEventListener('input', () => {
-  clearTimeout(searchTimeout);
-  searchTimeout = setTimeout(() => {
-    state.searchQuery = searchInput.value;
-    applyFiltersInPlace();
-  }, 150);
-});
+// Header buttons (Pause / Auto-scroll / Expand / Export menu / Clear / Search)
+// are owned by components/Header.tsx now. The legacy click + input bindings
+// have been deleted; the bridge in window.__sbDashActions still wraps the
+// underlying mutations.
 
 // ── Keyboard shortcuts ───────────────────────────────
 function isTypingTarget(el) {
@@ -3284,9 +3194,7 @@ function setView(view) {
 }
 
 
-document.querySelectorAll('#viewToggle button').forEach(b => {
-  b.addEventListener('click', () => setView(b.dataset.view));
-});
+// View toggle buttons handled by components/Header.tsx now.
 
 // ── Cache view ───────────────────────────────────────
 const CacheView = (() => {
@@ -3731,5 +3639,59 @@ if (typeof window !== 'undefined') {
     deleteEventsByCacheKey,
     deleteAllTelemetryEvents,
     deleteAllCacheEvents,
+    // Header
+    setPaused,
+    setAutoScroll: (v: boolean) => {
+      state.autoScroll = v
+      scrollBtn.classList.toggle('active', v)
+      if (v) container.scrollTop = container.scrollHeight
+      scheduleMirror(state)
+    },
+    setExpandAll: (v: boolean) => {
+      state.expandAll = v
+      expandAllBtn.classList.toggle('active', v)
+      if (state.view === 'cache' && typeof CacheView !== 'undefined') {
+        CacheView.setAllExpanded(v)
+      } else {
+        container.querySelectorAll('.event-card').forEach((card: any) => {
+          card.classList.toggle('expanded', v)
+        })
+      }
+      scheduleMirror(state)
+    },
+    setSearchQuery: (q: string) => {
+      state.searchQuery = q
+      applyFiltersInPlace()
+    },
+    setView,
+    exportEvents,
+    exportHtmlSnapshot: () => Timeline.exportHtmlSnapshot(),
+    clearAll: async () => {
+      await fetch('/clear', { method: 'POST' })
+      state.events = []
+      state.typeCounts = {}
+      state.sessionMap = {}
+      state.importMap = {}
+      state.cacheMap = {}
+      state.expandedCards.clear()
+      state.pausedWhileCount = 0
+      state.hiddenTypes.clear()
+      state.hiddenSessions.clear()
+      state.hiddenImports.clear()
+      state.hiddenCacheKeys.clear()
+      state.cacheAllHidden = false
+      state.telemetryAllHidden = false
+      state.activeFilter = 'all'
+      state.activeSession = null
+      state.activeImport = null
+      state.activeCacheKey = null
+      state.realTelemetryDetected = false
+      lastSessionId = null
+      rerenderAll()
+      applyFiltersInPlace()
+      if (typeof Timeline !== 'undefined') Timeline.invalidate()
+      if (typeof CacheView !== 'undefined') CacheView.refresh()
+      _pushToast('Cleared all events')
+    },
   }
 }
