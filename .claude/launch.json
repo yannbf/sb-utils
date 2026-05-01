@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "event-logger",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["libs/sb-utils/dist/bin.mjs", "event-logger", "--port", "6017"],
+      "port": 6017
+    }
+  ]
+}

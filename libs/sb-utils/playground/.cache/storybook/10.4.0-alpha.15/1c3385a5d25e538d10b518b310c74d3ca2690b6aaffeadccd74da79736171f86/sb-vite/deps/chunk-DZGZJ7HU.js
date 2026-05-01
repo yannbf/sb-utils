@@ -1,0 +1,55 @@
+import {
+  require_client
+} from "./chunk-BJQNVKVS.js";
+import {
+  require_react
+} from "./chunk-2BSE6OYG.js";
+import {
+  __toESM
+} from "./chunk-MTI3AIJG.js";
+
+// node_modules/@storybook/addon-docs/node_modules/@storybook/react-dom-shim/dist/react-18.js
+var React = __toESM(require_react());
+var ReactDOM = __toESM(require_client());
+var nodes = /* @__PURE__ */ new Map();
+function getIsReactActEnvironment() {
+  return globalThis.IS_REACT_ACT_ENVIRONMENT;
+}
+var WithCallback = ({
+  callback,
+  children
+}) => {
+  let once = React.useRef();
+  return React.useLayoutEffect(() => {
+    once.current !== callback && (once.current = callback, callback());
+  }, [callback]), children;
+};
+typeof Promise.withResolvers > "u" && (Promise.withResolvers = () => {
+  let resolve = null, reject = null;
+  return { promise: new Promise((res, rej) => {
+    resolve = res, reject = rej;
+  }), resolve, reject };
+});
+var renderElement = async (node, el, rootOptions) => {
+  let root = await getReactRoot(el, rootOptions);
+  if (getIsReactActEnvironment()) {
+    root.render(node);
+    return;
+  }
+  let { promise, resolve } = Promise.withResolvers();
+  return root.render(React.createElement(WithCallback, { callback: resolve }, node)), promise;
+};
+var unmountElement = (el, shouldUseNewRootApi) => {
+  let root = nodes.get(el);
+  root && (root.unmount(), nodes.delete(el));
+};
+var getReactRoot = async (el, rootOptions) => {
+  let root = nodes.get(el);
+  return root || (root = ReactDOM.createRoot(el, rootOptions), nodes.set(el, root)), root;
+};
+
+export {
+  renderElement,
+  unmountElement
+};
+//# sourceMappingURL=chunk-DZGZJ7HU.js.map

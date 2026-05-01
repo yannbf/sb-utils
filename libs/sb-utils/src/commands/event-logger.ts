@@ -225,10 +225,10 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
   }
   startCacheWatcher()
 
-  // Load and cache dashboard HTML + CSS at startup. The CSS lives in its own
-  // file so it's reviewable and editable independently — the running server
-  // serves it as a static file, and `exportHtmlSnapshot` inlines it on the
-  // fly so the generated HTML stays a single self-contained artifact.
+  // Load and cache the prebuilt dashboard HTML at startup. Vite + the
+  // singlefile plugin emit dist/event-log-dashboard.html with all CSS + JS
+  // inlined, so the server only needs one asset. Snapshots reuse the same
+  // file (the client fetches it back and injects baked state).
   const __dirname = path.dirname(fileURLToPath(import.meta.url))
   const findAsset = (filename: string): string | null => {
     const candidates = [
@@ -245,13 +245,6 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
   }
   const cachedHtml = fs.readFileSync(htmlPath, 'utf-8')
 
-  const cssPath = findAsset('event-log-dashboard.css')
-  if (!cssPath) {
-    log.error('Could not find event-log-dashboard.css')
-    process.exit(1)
-  }
-  const cachedCss = fs.readFileSync(cssPath, 'utf-8')
-
   const app = new Hono()
 
   // Global CORS — this is a debug tool, allow all origins
@@ -262,11 +255,12 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
     return c.html(cachedHtml)
   })
 
-  // External stylesheet — kept in its own file for reviewability.
-  app.get('/event-log-dashboard.css', (c) => {
-    c.header('Content-Type', 'text/css; charset=utf-8')
-    c.header('Cache-Control', 'no-cache')
-    return c.body(cachedCss)
+  // The HTML snapshot exporter fetches this same path back to clone the
+  // current shipped dashboard, then injects baked state. Serving via a named
+  // route keeps the snapshot client code simple and decoupled from the
+  // build's filename hashing decisions.
+  app.get('/event-log-dashboard.html', (c) => {
+    return c.html(cachedHtml)
   })
 
   // Cache inspection sub-app at /cache/*
