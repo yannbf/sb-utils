@@ -23,6 +23,7 @@ import {
 import { setupTimeline as _setupTimeline } from './timeline'
 import { setupCacheView as _setupCacheView } from './cache-view'
 import { setupReconstruction as _setupReconstruction } from './reconstruction'
+import { exportHtmlSnapshot as _exportHtmlSnapshot } from './snapshot-export'
 import { renderJsonHtml as _renderJson, toggleJsonHtml as _toggleJson, renderCacheDiffHtml as _renderCacheDiff } from '../lib/legacy-html'
 import { deepDiffLeaves as _deepDiffLeaves } from '../lib/cache-diff'
 import { getColor as _getColor } from '../lib/colors'
@@ -1032,7 +1033,7 @@ if (typeof window !== 'undefined') {
     },
     setView,
     exportEvents,
-    exportHtmlSnapshot: () => Timeline.exportHtmlSnapshot(),
+    exportHtmlSnapshot: () => _exportHtmlSnapshot(),
     clearAll: async () => {
       await fetch('/clear', { method: 'POST' })
       state.events = []
