@@ -1,13 +1,15 @@
-// @ts-nocheck
+// @ts-nocheck — imperative canvas engine. The body has ~50 implicit-any
+// `let` declarations for canvas/context/drawer DOM refs that don't
+// translate cleanly to types without rewriting the engine. Annotating
+// each one would be busywork that doesn't catch real bugs (the engine
+// is exercised by the E2E suite). The next step toward full typing is
+// rewriting the canvas drawing as a Preact component with `useEffect`
+// (tracked in IMPROVEMENTS.md).
 /**
- * Timeline view — canvas-based pan/zoom + drawer. The whole feature lives
- * in this module as a self-contained imperative IIFE wrapped in
- * `setupTimeline()`. Mounts onto the existing `#timelineView` IDs that
- * the JSX shell renders (TimelineView component). Public API is
- * { init, invalidate, fitAll, closeDrawer, navigate, isDrawerOpen,
- *   exportHtmlSnapshot }.
- *
- * Native Preact rewrite is tracked in IMPROVEMENTS.md.
+ * Timeline view — canvas-based pan/zoom + drawer. Mounted by the
+ * <Timeline /> Preact component (components/Timeline.tsx) on first
+ * render. Public API is { init, invalidate, fitAll, closeDrawer,
+ * navigate, isDrawerOpen }.
  */
 
 import { escapeHtml, formatGapDuration as _formatGapDurationLib } from '../lib/format'
