@@ -30,7 +30,6 @@ import {
   cacheAllHidden,
   telemetryAllHidden,
   realTelemetryDetected,
-  imports,
   pushToast,
   type View,
   type StoredEvent,
@@ -261,7 +260,7 @@ export async function clearAll(): Promise<void> {
   activeImport.value = null
   activeCacheKey.value = null
   realTelemetryDetected.value = false
-  imports.value = []
+  // imports is a computed signal derived from events — it'll empty on its own.
   bridges.invalidateTimeline()
   bridges.refreshCache()
   pushToast('Cleared all events')

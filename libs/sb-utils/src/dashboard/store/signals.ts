@@ -89,8 +89,38 @@ export type ImportBatch = {
   name: string
   importedAt: number
   explanation?: string
+  count?: number
 }
-export const imports = signal<ImportBatch[]>([])
+
+/**
+ * Derived from events.value. The `_import` metadata is set on each
+ * event when ingested via the import endpoint, so the Sidebar's
+ * Imports section follows automatically.
+ */
+export const imports = computed<ImportBatch[]>(() => {
+  const out: Record<string, ImportBatch> = {}
+  for (const e of events.value) {
+    const imp = e._import
+    if (!imp || !imp.id) continue
+    if (!out[imp.id]) {
+      out[imp.id] = {
+        id: imp.id,
+        name: imp.name || imp.id,
+        importedAt: imp.importedAt || Date.now(),
+        explanation: imp.explanation,
+        count: 0,
+      }
+    } else if (
+      !out[imp.id].explanation &&
+      typeof imp.explanation === 'string' &&
+      imp.explanation
+    ) {
+      out[imp.id].explanation = imp.explanation
+    }
+    out[imp.id].count = (out[imp.id].count || 0) + 1
+  }
+  return Object.values(out).sort((a, b) => b.importedAt - a.importedAt)
+})
 
 // ── Computed: counts and groupings ───────────────────────
 // Derived from `events.value` so they auto-update whenever a new event is
@@ -147,6 +177,39 @@ export const cacheMap = computed<Record<string, CacheKeyInfo>>(() => {
   }
   return out
 })
+
+// ── Event ingestion ──────────────────────────────────────
+// Helpers used by features/event-stream.ts and features/reconstruction.ts
+// to write into the events signal without leaking signal mechanics into
+// imperative consumers.
+
+export function appendEvent(event: StoredEvent): void {
+  events.value = [...events.value, event]
+}
+
+export function appendEvents(toAdd: StoredEvent[]): void {
+  if (toAdd.length === 0) return
+  events.value = [...events.value, ...toAdd]
+}
+
+export function setEvents(arr: StoredEvent[]): void {
+  events.value = arr
+}
+
+export function sortEventsByTime(): void {
+  const sorted = events.value.slice().sort((a, b) => (a._receivedAt || 0) - (b._receivedAt || 0))
+  events.value = sorted
+}
+
+// Synthetic events (cache reconstruction + cache-create from backfill)
+// use a high _index range that the server's eventCounter (which starts
+// at 0 and increments by ~1 per event) will never realistically reach.
+// This keeps SSE dedup-by-_index correct: real live events have small
+// indices, synthetic ones have large ones, no collisions.
+let _syntheticIndexCounter = 1e9
+export function nextReconstructIndex(): number {
+  return _syntheticIndexCounter++
+}
 
 // Reset everything (used by the Clear All flow).
 export function resetAll() {
