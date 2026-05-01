@@ -1,180 +1,167 @@
-# Dashboard improvements — follow-up work
+# Dashboard improvements — remaining work
 
-The migration from a single 3,800-line inline `<script>` to a Preact +
-Vite + plugin-singlefile codebase is feature-complete and exercised by
-35 Playwright E2E tests. This document lists what's intentionally left
-imperative and the suggested order for finishing the conversion. Each
-item is mergeable on its own; the E2E suite is the safety net.
+Most of the migration is done. The legacy single-file `<script>` is
+gone, signals are the only source of truth, and almost every renderer
+is a Preact component. The two remaining imperative pieces are the
+**Timeline canvas engine** and the **Timeline drawer's HTML-string
+renderers**, both of which boil down to one follow-up item.
 
-## File map (current)
+## Current file map
 
 ```
 src/dashboard/
-├── main.tsx                  Preact bootstrap, hoists shell into <body>, imports runtime
-├── app.tsx                   Top-level layout composing all components
-├── styles.css                Single CSS file (Vite inlines it)
-├── event-log-dashboard.html  Vite entry — empty shell + <div id="root">
-├── components/
-│   ├── Header.tsx            Title, view toggle, search, controls, export menu, paused banner
-│   ├── Sidebar.tsx           EventTypes, CacheOps, Sessions, Imports, Shortcuts (all reactive)
-│   ├── EventList.tsx         Event cards + session separators + empty state
-│   ├── EventCard.tsx         Card header reactive; tab content via dangerouslySetInnerHTML
-│   ├── Modal.tsx             Save + Explain modal driven by signal
-│   ├── Toast.tsx             Toast queue
-│   ├── DropOverlay.tsx       Drag-drop import handler
-│   ├── PausedBanner.tsx      Banner when paused
-│   ├── TimelineView.tsx      Static shell — Timeline imperative renders into it
-│   └── CacheViewShell.tsx    Static shell — CacheView imperative renders into it
-├── store/
-│   ├── signals.ts            All reactive state (events, view, paused, filters, modal, toasts, imports, computed counts)
-│   ├── legacy-mirror.ts      Copies imperative `state` into signals on rAF
-│   ├── modal.ts              openSaveModal / openExplanationModal façade backed by `modal` signal
-│   ├── actions.ts            Façade around action functions exposed via window bridge
-│   └── renderers.ts          Façade around legacy HTML-string renderers (renderJson, renderCacheDiff, …)
-├── lib/                      Pure helpers — unit-tested with Vitest
-│   ├── format.ts             escapeHtml, formatGapDuration
-│   ├── lcs-diff.ts           LCS line diff for cache write rendering
-│   ├── colors.ts             TYPE_COLORS table + getColor (hash fallback)
-│   ├── json-render.ts        renderJson + toggleJson (HTML-string output)
-│   └── cache-diff.ts         deepDiffLeaves, renderCacheDiff, side-by-side renderer
-└── features/
-    ├── runtime.ts            Imperative orchestrator: state, DOM refs, SSE, ingestion,
-    │                         action bridge, modal/snapshot wiring, keyboard shortcuts
-    ├── timeline.ts           setupTimeline() — canvas pan/zoom + drawer
-    ├── cache-view.ts         setupCacheView() — toolbar + entries + diff/edit
-    └── reconstruction.ts     setupReconstruction() — telemetry-from-cache + backfill
+├── main.tsx                      Boot: snapshot detection, Preact mount, hoist into body
+├── app.tsx                       Top-level layout
+├── styles.css                    Single CSS file (Vite inlines it)
+├── event-log-dashboard.html      Vite entry — empty shell + <div id="root">
+│
+├── components/                   Native Preact, all reactive on signals
+│   ├── Header.tsx                Title, view toggle, search, controls, export menu
+│   ├── Sidebar.tsx               EventTypes / CacheOps / Sessions / Imports / Shortcuts
+│   ├── EventList.tsx             Cards + session separators + empty state
+│   ├── EventCard.tsx             Header + tabs (uses <JsonView /> + <DiffView />)
+│   ├── JsonView.tsx              Recursive collapsible JSON tree
+│   ├── DiffView.tsx              Side-by-side cache-write diff with row-level expand
+│   ├── CacheView.tsx             Toolbar + edit mode + entries list with diff
+│   ├── Timeline.tsx              JSX shell + useEffect drives the imperative engine
+│   ├── Modal.tsx                 Save + Explain modes driven by signal
+│   ├── Toast.tsx                 Toast queue
+│   ├── DropOverlay.tsx           Drag-drop import handler
+│   ├── PausedBanner.tsx          Banner when paused
+│   └── SnapshotBanner.tsx        Banner only in exported HTML snapshots
+│
+├── store/                        Reactive state + IO façades
+│   ├── signals.ts                events / view / paused / filters / hidden sets / modal
+│   │                             / toasts / typeCounts / sessionMap / cacheMap / imports
+│   │                             (last four are computed from events.value)
+│   ├── modal.ts                  openSaveModal / openExplanationModal
+│   ├── cache.ts                  cacheInfo / cacheEntries / cacheEditMode + fetch/edit
+│   └── actions.ts                Re-exports features/actions for components
+│
+├── features/                     Imperative pieces, focused modules, signal-only
+│   ├── runtime.ts                ~80 lines: window onclicks, action bridges,
+│   │                             keyboard wiring, setupEventStream, view restore
+│   ├── actions.ts                All sidebar/header actions on signals
+│   ├── event-stream.ts           SSE + on-load recovery + dedup + status dot
+│   ├── reconstruction.ts         Cache backfill + telemetry-from-cache synthesis
+│   ├── snapshot-export.ts        Self-contained HTML snapshot generator
+│   ├── keyboard.ts               Global shortcuts dispatched through actions
+│   └── timeline.ts               Imperative canvas + pan/zoom + drawer engine
+│
+└── lib/                          Pure helpers, unit-tested with Vitest
+    ├── format.ts                 escapeHtml, formatGapDuration
+    ├── lcs-diff.ts               LCS line diff
+    ├── colors.ts                 TYPE_COLORS + getColor (hash fallback)
+    ├── event-helpers.ts          formatDelta, getPreviousEventTime, cacheKeyOf
+    ├── filters.ts                matchesFilters reading signals
+    ├── cache-diff.ts             Pure diff data (no HTML)
+    └── legacy-html.ts            HTML-string renderers used ONLY by Timeline drawer
 ```
 
-The `legacy-app.ts` file is gone. What remains imperative
-(`features/runtime.ts`, `features/timeline.ts`, `features/cache-view.ts`)
-is split into focused modules with clear public APIs and is well under the
-size of any single legacy IIFE.
+## What's still imperative
 
-## Improvements
+### Timeline canvas engine — `features/timeline.ts`
 
-### Native Preact for imperative IIFEs
+~1,160 lines. The canvas drawing, pan/zoom math, hi-DPI handling,
+minimap, drawer event card rendering. Tightly coupled to imperative
+DOM manipulation (canvas contexts, pointer events, requestAnimationFrame
+batching).
 
-These three modules are still imperative-render-into-DOM-by-ID. Each is a
-candidate for a follow-up PR that replaces it with a native Preact
-component, freeing the corresponding renderer bridge entry.
+**Status today.** Wrapped by `<Timeline />` in `components/Timeline.tsx`,
+which renders the static structure (toolbar, canvases, drawer shell) as
+JSX and starts the engine in `useEffect`. The engine reads signal state
+via a Proxy. Its public API is published to the `timelineApi` signal so
+the runtime + keyboard handler can call `invalidate` / `fitAll` / etc.
 
-1. **`components/EventCard` tab content** — currently the JSON tree and
-   cache diff are rendered as HTML strings via `renderJson` /
-   `renderCacheDiff` and injected with `dangerouslySetInnerHTML`. Build
-   a recursive `<JsonView />` Preact component (collapsible nodes via
-   `useState`) and a `<DiffView />` component that takes prev/next.
-   Outcome: delete `lib/json-render.ts` `toggleJson`, drop the
-   `window.toggleJson` expose, drop `store/renderers.ts`.
+**Why this still has `@ts-nocheck`.** ~50 implicit-any `let` declarations
+for canvas / context / drawer DOM refs. Annotating each as `: any`
+defeats the purpose of removing `@ts-nocheck`; properly typing them
+means rewriting parts of the engine.
 
-2. **`features/cache-view.ts` → `components/CacheView.tsx`**
-   ~370 lines, mostly toolbar + entries + diff. The toolbar maps cleanly
-   to a small Preact subtree; the entries are a list of cards (also
-   well-suited to Preact). Edit-mode state moves from a closure variable
-   into a `cacheEditMode` signal. Localstorage persistence stays in the
-   signal's effect.
+**Migration target.** Convert the engine into a `useEffect`-driven
+Preact component:
+- Pure pan/zoom math → `lib/timeline-math.ts` (testable).
+- Canvas refs via `useRef`, drawing in an effect that depends on
+  events / view-window signals.
+- The drawer's tab content becomes JSX using the existing native
+  `<JsonView />` + `<DiffView />` components (deletes the imperative
+  `buildEventTabs` helper inside the engine).
+- Pan/zoom event handlers stay imperative inside the effect (canvas
+  doesn't have a clean declarative model for this).
 
-3. **`features/timeline.ts` → `components/Timeline.tsx`**
-   The largest follow-up at ~1,400 lines. Strategy:
-   - Move pure pan/zoom math (`srcToDisp`, `dispToSrc`, segment building,
-     gap collapsing) into `lib/timeline-math.ts` — testable.
-   - The canvas drawing stays imperative, wrapped in
-     `useEffect(() => render())` reacting to signal changes.
-   - The drawer becomes a Preact subtree.
-   - Pan/zoom event handlers become refs/effects.
-   - Snapshot export (`exportHtmlSnapshot`) moves to
-     `features/snapshot-export.ts` — it doesn't really belong on
-     Timeline conceptually.
+After that lands:
+- `lib/legacy-html.ts` deletes itself (the only consumer is the
+  drawer's HTML-string content).
+- `runtime.ts`'s `window.toggleCard` and `window.__sbToggleJson`
+  exposes go away.
+- `@ts-nocheck` comes off `features/timeline.ts` (which becomes much
+  smaller — most of its body moves into the component).
 
-### Other carve-outs from `features/runtime.ts`
+### Timeline drawer's HTML-string renderers — `lib/legacy-html.ts`
 
-`runtime.ts` is the imperative orchestrator. It can keep shrinking:
+~340 lines. `renderJsonHtml` + `toggleJsonHtml` + `renderCacheDiffHtml`
++ a document-level click handler for the diff "Expand N unchanged lines"
+button. Used ONLY by the Timeline drawer's `buildEventTabs`.
 
-4. **SSE + ingestion** → `features/event-stream.ts` exposing
-   `setupEventStream(state, helpers)`. Wraps `connect`,
-   `recoverMissedEvents`, `loadExisting`, the SSE handler, and the
-   `updateTypeCounts/Session/Cache/ImportMap` helpers. Once Preact owns
-   the rendering reactively, these helpers can write directly to signals
-   instead of the legacy `state` object.
+**Removal.** Falls out automatically when the Timeline drawer migrates
+to JSX (above).
 
-5. **Action functions** → `features/actions.ts`. The pile of
-   `setFilter`, `toggleHidden*`, `deleteEventsBy*`, `deleteAllX*`
-   functions live in `runtime.ts` today and are exposed via
-   `window.__sbDashActions`. Move them to their own module and have the
-   `actions` façade in `store/actions.ts` import them directly. Drop
-   the window bridge.
+## Smaller follow-ups
 
-6. **Snapshot export** → `features/snapshot-export.ts`. The 200+ line
-   `exportHtmlSnapshot` lives inside the Timeline IIFE for historical
-   reasons; it has nothing to do with the timeline. Pull it out.
+1. **Native test coverage for the new Preact components.** Vitest specs
+   exist for `lib/format` and `lib/lcs-diff`. Add specs for
+   `lib/cache-diff` (`buildCacheDiff` / `pairAdjacentChanges` /
+   `buildSxsRows`), `lib/colors` (deterministic hash), and
+   `store/signals` (computed `typeCounts` / `sessionMap` / `cacheMap` /
+   `imports` from a fixture event list).
 
-7. **Keyboard shortcuts** → `features/keyboard.ts`. Single `keydown`
-   listener that dispatches based on context. Already written
-   imperatively but isolated, ~50 lines.
+2. **More E2E coverage.** Currently 35 tests. Lightly covered:
+   paused-while-buffering badge count, Cmd+F focusing search, the
+   snapshot's explanation modal, cache-view edit-mode (toggle / save /
+   delete a real entry).
 
-8. **Snapshot-mode bootstrap IIFE** → fold into `main.tsx`. The
-   IIFE in `runtime.ts` reads `window.__SNAPSHOT__*` and binds the
-   "view explanation" button. Move the explanation button binding into
-   the snapshot banner Preact component (next item).
+3. **`pnpm test:e2e` could pre-build.** Add `"pretest:e2e":
+   "pnpm build:dashboard"` so the suite always runs against the latest
+   build.
 
-9. **Snapshot banner** → `components/SnapshotBanner.tsx`. Currently
-   injected as static HTML by `exportHtmlSnapshot`. Build a Preact
-   component that renders when `window.__SNAPSHOT__ === true`, reading
-   metadata from `window.__SNAPSHOT_META__`. Drop the inline HTML
-   injection in the snapshot exporter.
+4. **Shared icon component.** Each SVG icon is duplicated 3–8x in the
+   markup. A small `<Icon name="…" />` would shrink the bundle a touch
+   and centralize aria attributes.
 
-### Drop the legacy mirror layer
+5. **Server-side: `/cache/entries` payload.** Returns every entry's
+   `content` inline. For projects with megabyte-scale telemetry caches
+   that's a noticeable initial payload — pagination or lazy-load on
+   entry click would help first paint.
 
-Once everything writes directly to signals (steps 1–6), the
-`store/legacy-mirror.ts` file becomes unused: there's no imperative
-`state` object to mirror anymore. Delete it, delete the
-`scheduleMirror(state)` calls, drop the `state` object itself. The
-signals ARE the state.
+6. **Status dot reactivity.** `features/event-stream.ts` mutates
+   `#statusDot` imperatively (className + title) on connect/disconnect.
+   Convert to a `connectionStatus` signal read by `Header`. Tiny —
+   leftover from the imperative era.
 
-### Drop the inline `onclick` attributes
+## How to verify
 
-`renderJson` emits `onclick="toggleJson(this)"` because the buttons
-were rendered as HTML strings. After native Preact JSON view, no
-`window.toggleJson` is needed. Same for `copyEvent` / `copyEventCurl`
-once event cards no longer build inline `<button onclick="...">`
-markup. After this lands, delete the window-expose block at the top of
-`features/runtime.ts`.
+```bash
+cd libs/sb-utils
+pnpm install
+pnpm build              # tsdown + vite (single dist/event-log-dashboard.html)
+pnpm test --run         # 12 Vitest specs
+pnpm test:e2e           # 35 Playwright specs (~7s)
+pnpm typecheck          # tsc --noEmit, clean (root excludes src/dashboard)
+```
 
-### Type the dashboard
+Manual smoke against a real Storybook project:
 
-Both `features/runtime.ts` and `features/timeline.ts` start with
-`// @ts-nocheck`. Stripping that out and typing the surface (the legacy
-state shape, the Timeline state object `st`, the imperative IIFE locals)
-would catch a class of refactor bugs at edit time. The pure modules in
-`lib/` and `store/` are already typed; ts-checking them is enabled.
+```bash
+node dist/bin.mjs event-logger --port 6017 --project-root /path/to/storybook
+# then in the project:
+STORYBOOK_TELEMETRY_URL=http://localhost:6017/event-log yarn storybook
+```
 
-### Tests
-
-- **Unit**: add Vitest specs for `lib/cache-diff` (pairAdjacentChanges,
-  buildSxsRows), `lib/colors` (deterministic hash), `store/signals`
-  computed (typeCounts, sessionMap, cacheMap from a fixture event list).
-- **E2E**: cover paused-while-buffering count badge, Cmd+F focusing
-  search, snapshot's explanation modal, the cache-view edit mode
-  (toggle, save, delete) — currently lightly covered.
-
-### Server-side
-
-These aren't in the migration scope but are noted for completeness:
-
-- The cache `/cache/entries` response has every entry's `content`
-  inline; for projects with megabyte-scale telemetry caches that's a
-  noticeable initial payload. Pagination or lazy-load on entry click
-  would make first paint faster.
-- The dashboard polls `/cache/info` once on load + every cache event;
-  the polled response is small but adds up under heavy cache churn.
-  Consider a single SSE event for cache info changes.
-
-### Build / tooling
-
-- `pnpm test:e2e` currently rebuilds `dist/` only when explicitly
-  invoked; surprising failure mode if you forget to rebuild. Add
-  `"pretest:e2e": "pnpm build:dashboard"` to ensure tests always run
-  against the latest build.
-- `vite-plugin-singlefile` produces ~150 KB / 40 KB gzip; that's fine
-  for a debugging tool but if size matters later, replace the
-  hand-written SVG icons with a tiny shared icon component (each icon
-  is duplicated 5–8x in the markup today).
+Visit `http://localhost:6017`. The dashboard should:
+- Reconstruct existing telemetry from `dev-server/lastEvents` (cards
+  carry the "cache" recon badge until a real telemetry event arrives).
+- Stop reconstructing the moment a real instrumented event lands; new
+  events come in via SSE.
+- Filter / search / pause / expand all work reactively (signals).
+- `Export → HTML snapshot` produces a self-contained file that opens
+  via `file://` and renders the same dashboard with no network calls.
