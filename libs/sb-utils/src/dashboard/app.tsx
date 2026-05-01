@@ -10,7 +10,7 @@ import { Modal } from './components/Modal'
 import { Header } from './components/Header'
 import { PausedBanner } from './components/PausedBanner'
 import { Sidebar } from './components/Sidebar'
-import { EventContainer } from './components/EventContainer'
+import { EventList } from './components/EventList'
 import { TimelineView } from './components/TimelineView'
 import { CacheViewShell } from './components/CacheViewShell'
 import { ToastContainer } from './components/Toast'
@@ -24,7 +24,7 @@ export function App() {
       <PausedBanner />
       <div class="layout" id="layout">
         <Sidebar />
-        <EventContainer />
+        <EventList />
         <TimelineView />
         <CacheViewShell />
       </div>

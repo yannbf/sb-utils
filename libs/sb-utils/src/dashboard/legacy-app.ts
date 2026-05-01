@@ -867,6 +867,11 @@ function toggleCard(card) {
 let lastSessionId = null;
 
 function renderNewEvent(event) {
+  // Event cards rendered by components/EventList.tsx now. Just bump the
+  // mirror so Preact picks up the new event.
+  scheduleMirror(state);
+  return;
+  // eslint-disable-next-line no-unreachable
   emptyState.style.display = 'none';
 
   if (event.sessionId && event.sessionId !== lastSessionId) {
@@ -890,6 +895,10 @@ function renderNewEvent(event) {
 }
 
 function rerenderAll() {
+  // Event list rendered by components/EventList.tsx. Just bump signals.
+  scheduleMirror(state);
+  return;
+  // eslint-disable-next-line no-unreachable
   const children = Array.from(container.children);
   children.forEach(c => { if (c !== emptyState) c.remove(); });
   lastSessionId = null;
@@ -921,34 +930,11 @@ function rerenderAll() {
 }
 
 function applyFiltersInPlace() {
+  // Filter visibility is rendered by components/EventList.tsx (it
+  // toggles `filtered-out` on each card based on signal state). Here we
+  // just bump the mirror so the filter signals propagate, and invalidate
+  // the timeline canvas which still draws imperatively.
   scheduleMirror(state);
-  let anyVisible = false;
-  const cards = container.querySelectorAll('.event-card');
-  cards.forEach(card => {
-    const event = state.events.find(e =>
-      String(e._index != null ? e._index : state.events.indexOf(e)) === card.dataset.index
-    );
-    if (event && matchesFilters(event)) {
-      card.classList.remove('filtered-out');
-      anyVisible = true;
-    } else {
-      card.classList.add('filtered-out');
-    }
-  });
-
-  const seps = container.querySelectorAll('.session-separator');
-  seps.forEach(sep => {
-    const sid = sep.dataset.sessionId;
-    const hasVisibleEvent = Array.from(cards).some(card =>
-      card.dataset.sessionId === sid && !card.classList.contains('filtered-out')
-    );
-    sep.classList.toggle('filtered-out', !hasVisibleEvent);
-  });
-
-  const showEmpty = state.events.length === 0 || !anyVisible;
-  emptyState.style.display = showEmpty ? '' : 'none';
-  if (showEmpty) updateEmptyState(state.events.length > 0);
-  updateCounters();
   if (typeof Timeline !== 'undefined') Timeline.invalidate();
 }
 
@@ -3604,6 +3590,17 @@ if (typeof window !== 'undefined') {
   ;(window as any).toggleJson = toggleJson
   ;(window as any).copyEvent = copyEvent
   ;(window as any).copyEventCurl = copyEventCurl
+
+  // Hybrid renderers used by Preact components for JSON tree / cache diff
+  // / event-tab content. These keep the visual output identical to the
+  // legacy version; rewriting them as Preact components is a follow-up.
+  ;(window as any).__sbDashRenderers = {
+    renderJson,
+    renderCacheDiff,
+    matchesFilters,
+    formatDelta,
+    getPreviousEventTime,
+  }
 
   // Bridge for Preact-rendered sidebar / header components: call into the
   // legacy action functions which mutate `state` and trigger
