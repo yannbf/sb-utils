@@ -1,12 +1,8 @@
 /**
- * One event card. Header is fully reactive Preact (chevron, type badge,
- * index, summary, recon badge, session pill, delta, time, copy buttons).
- * Body is tabs + per-tab content; the tab CONTENT (JSON tree, cache
- * diff) is produced by the legacy renderers and injected via
- * dangerouslySetInnerHTML so behavior stays byte-identical for now.
- *
- * Native Preact JSON / Diff components are listed in IMPROVEMENTS.md as
- * a follow-up.
+ * One event card. Header + body fully native Preact: tab content uses
+ * <JsonView /> for payload/metadata/context/raw and <DiffView /> for
+ * the cache:write Diff tab. No more dangerouslySetInnerHTML, no more
+ * renderers bridge.
  */
 
 import { useState } from 'preact/hooks'
@@ -17,7 +13,10 @@ import {
   type StoredEvent,
 } from '../store/signals'
 import { getColor } from '../lib/colors'
-import { renderers } from '../store/renderers'
+import { formatDelta, getPreviousEventTime } from '../lib/event-helpers'
+import { matchesFilters } from '../lib/filters'
+import { JsonView } from './JsonView'
+import { DiffView } from './DiffView'
 
 type Tab = { key: string; label: string }
 
@@ -55,11 +54,10 @@ function summaryFor(ev: StoredEvent): string {
   return parts.join(' · ')
 }
 
-function tabContent(ev: StoredEvent, key: string, idPrefix: string): string {
-  const r = renderers()
-  if (key === 'diff') return r.renderCacheDiff(ev.payload)
-  const data = key === 'raw' ? ev : (ev as any)[key]
-  return '<div class="json-view">' + r.renderJson(data, 0, idPrefix + '_' + key) + '</div>'
+function TabPanel({ event, tabKey }: { event: StoredEvent; tabKey: string }) {
+  if (tabKey === 'diff') return <DiffView payload={event.payload as any} />
+  const data = tabKey === 'raw' ? event : ((event as any)[tabKey] as unknown)
+  return <JsonView value={data} />
 }
 
 export function EventCard({ event }: { event: StoredEvent }) {
@@ -72,28 +70,37 @@ export function EventCard({ event }: { event: StoredEvent }) {
   const pos = all.indexOf(event)
   const displayIdx = pos >= 0 ? pos + 1 : idx
 
-  const r = renderers()
   const time = event._receivedAt ? new Date(event._receivedAt).toLocaleTimeString() : ''
   const color = getColor(event.eventType || 'unknown')
   const sessionShort = event.sessionId ? event.sessionId.slice(0, 8) : ''
-  const deltaMs = r.getPreviousEventTime(event)
-  const deltaStr = deltaMs != null ? r.formatDelta(deltaMs) : ''
+  const deltaMs = getPreviousEventTime(event, all)
+  const deltaStr = deltaMs != null ? formatDelta(deltaMs) : ''
 
   const isCache = event._source === 'cache-watch'
   const isReconstructed = event._source === 'cache-recon'
   const summary = summaryFor(event)
   const tabs = tabsFor(event)
+  const matched = matchesFilters(event)
 
-  // Active tab: local component state (defaults to first tab).
   const [active, setActive] = useState(tabs[0]?.key ?? 'raw')
-
-  const matched = r.matchesFilters(event)
 
   const toggleExpanded = () => {
     const next = new Set(expandedCards.value)
     if (next.has(idxStr)) next.delete(idxStr)
     else next.add(idxStr)
     expandedCards.value = next
+  }
+
+  const copyJson = () => {
+    const { _index, _receivedAt, ...rest } = event as StoredEvent
+    void navigator.clipboard.writeText(JSON.stringify(rest, null, 2))
+  }
+  const copyCurl = () => {
+    const { _index, _receivedAt, ...rest } = event as StoredEvent
+    const url = location.origin + '/event-log'
+    const body = JSON.stringify(rest)
+    const cmd = `curl -X POST '${url}' -H 'Content-Type: application/json' -d '${body.replace(/'/g, "'\\''")}'`
+    void navigator.clipboard.writeText(cmd)
   }
 
   return (
@@ -148,7 +155,7 @@ export function EventCard({ event }: { event: StoredEvent }) {
             title="Copy JSON"
             onClick={(e) => {
               e.stopPropagation()
-              ;(window as any).copyEvent?.(idx)
+              copyJson()
             }}
           >
             Copy
@@ -158,7 +165,7 @@ export function EventCard({ event }: { event: StoredEvent }) {
             title="Copy as cURL"
             onClick={(e) => {
               e.stopPropagation()
-              ;(window as any).copyEventCurl?.(idx)
+              copyCurl()
             }}
           >
             cURL
@@ -187,9 +194,9 @@ export function EventCard({ event }: { event: StoredEvent }) {
             class="event-tab-content"
             data-tab-content={t.key}
             style={active === t.key ? undefined : { display: 'none' }}
-            // eslint-disable-next-line react/no-danger
-            dangerouslySetInnerHTML={{ __html: tabContent(event, t.key, 'evt' + idx) }}
-          />
+          >
+            <TabPanel event={event} tabKey={t.key} />
+          </div>
         ))}
       </div>
     </div>

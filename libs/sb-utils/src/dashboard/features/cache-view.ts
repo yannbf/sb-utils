@@ -8,10 +8,10 @@
  */
 
 import { escapeHtml } from '../lib/format'
-import { renderers } from '../store/renderers'
+import { renderJsonHtml } from '../lib/legacy-html'
 
 export function setupCacheView(_state: any, _scheduleMirror: (s: any) => void) {
-  const renderJson = (...args: any[]) => (renderers().renderJson as any)(...args)
+  const renderJson = renderJsonHtml
 const CacheView = (() => {
   // Server-resolved cache state. Edit mode is purely client-side now.
   let info = { cacheStatus: 'not-found', projectRoot: null, cacheRoot: null, version: null };

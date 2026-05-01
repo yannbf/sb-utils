@@ -23,16 +23,8 @@ import {
 import { setupTimeline as _setupTimeline } from './timeline'
 import { setupCacheView as _setupCacheView } from './cache-view'
 import { setupReconstruction as _setupReconstruction } from './reconstruction'
-import { renderJson as _renderJson, toggleJson as _toggleJson } from '../lib/json-render'
-import {
-  deepDiffLeaves as _deepDiffLeaves,
-  renderCacheDiff as _renderCacheDiff,
-  jsonLines as _jsonLines,
-  renderSxsRow as _renderSxsRow,
-  pairAdjacentChanges as _pairAdjacentChanges,
-  buildSxsRows as _buildSxsRows,
-  renderSideBySideDiff as _renderSideBySideDiff,
-} from '../lib/cache-diff'
+import { renderJsonHtml as _renderJson, toggleJsonHtml as _toggleJson, renderCacheDiffHtml as _renderCacheDiff } from '../lib/legacy-html'
+import { deepDiffLeaves as _deepDiffLeaves } from '../lib/cache-diff'
 import { getColor as _getColor } from '../lib/colors'
 
 // Re-bind to the names the original script body uses, without touching the
@@ -46,11 +38,6 @@ const renderJson = _renderJson
 const toggleJson = _toggleJson
 const deepDiffLeaves = _deepDiffLeaves
 const renderCacheDiff = _renderCacheDiff
-const jsonLines = _jsonLines
-const renderSxsRow = _renderSxsRow
-const pairAdjacentChanges = _pairAdjacentChanges
-const buildSxsRows = _buildSxsRows
-const renderSideBySideDiff = _renderSideBySideDiff
 
 // ── State ────────────────────────────────────────────
 const state = {
@@ -376,143 +363,10 @@ function getPreviousEventTime(event) {
   return event._receivedAt - prev._receivedAt;
 }
 
-// ── Shared event-detail tab rendering ────────────────
-// Used by both the dashboard's event cards and the timeline's drawer so
-// they stay in sync. Returns the inner HTML for the tabs+content panel
-// plus a function the caller invokes once the HTML is in the DOM to wire
-// up tab-click handlers (delegated to the parent container).
-function buildEventTabs(event, idPrefix, opts) {
-  opts = opts || {};
-  const isCacheEvent = event._source === 'cache-watch';
-  const sections = [];
-  // Diff comes first for cache events — it's the most useful view.
-  if (isCacheEvent) sections.push({ key: 'diff', label: 'Diff' });
-  if (event.payload && Object.keys(event.payload).length > 0) sections.push({ key: 'payload', label: 'Payload' });
-  if (event.metadata && Object.keys(event.metadata).length > 0) sections.push({ key: 'metadata', label: 'Metadata' });
-  if (event.context && Object.keys(event.context).length > 0) sections.push({ key: 'context', label: 'Context' });
-  sections.push({ key: 'raw', label: 'Raw' });
 
-  const tabsHtml = sections.map((s, i) =>
-    '<div class="event-tab' + (i === 0 ? ' active' : '') + '" data-tab="' + s.key + '">' + s.label + '</div>'
-  ).join('');
+// buildEventTabs / buildEventCard removed — EventCard.tsx renders cards now.
+// The Timeline drawer keeps its own local buildEventTabs helper inline.
 
-  const contentHtml = sections.map((s, i) => {
-    let inner;
-    if (s.key === 'diff') {
-      inner = renderCacheDiff(event.payload);
-    } else {
-      const data = s.key === 'raw' ? event : event[s.key];
-      inner = '<div class="json-view">' + renderJson(data, 0, idPrefix + '_' + s.key) + '</div>';
-    }
-    return '<div class="event-tab-content" data-tab-content="' + s.key + '"' +
-      (i !== 0 ? ' style="display:none"' : '') + '>' + inner + '</div>';
-  }).join('');
-
-  // Caller passes the container after inserting innerHTML; we delegate
-  // tab clicks to that container so card / drawer share behavior.
-  function attach(container, opts2) {
-    opts2 = opts2 || {};
-    container.querySelectorAll('.event-tab').forEach(tab => {
-      tab.addEventListener('click', (e) => {
-        if (opts2.stopPropagation) e.stopPropagation();
-        const tabKey = tab.dataset.tab;
-        container.querySelectorAll('.event-tab').forEach(t => t.classList.remove('active'));
-        container.querySelectorAll('.event-tab-content').forEach(c => c.style.display = 'none');
-        tab.classList.add('active');
-        const target = container.querySelector('[data-tab-content="' + tabKey + '"]');
-        if (target) target.style.display = '';
-      });
-    });
-  }
-
-  return { tabsHtml: tabsHtml, contentHtml: contentHtml, attach: attach };
-}
-
-// ── Event card building ──────────────────────────────
-function buildEventCard(event) {
-  // `idx` is the stable per-event identity (server-assigned for SSE
-  // events, large synthetic for backfilled / reconstructed). It powers
-  // dataset.index, expandedCards lookups, copyEvent etc.
-  const idx = event._index != null ? event._index : state.events.indexOf(event);
-  // Display number: chronological position in state.events. After the
-  // backfill sort, position 0 = earliest event. +1 so `#N` starts at 1.
-  const pos = state.events.indexOf(event);
-  const displayIdx = pos >= 0 ? pos + 1 : idx;
-  const time = event._receivedAt ? new Date(event._receivedAt).toLocaleTimeString() : '';
-  const color = getColor(event.eventType);
-  const sessionShort = event.sessionId ? event.sessionId.slice(0, 8) : '';
-  const deltaMs = getPreviousEventTime(event);
-  const deltaStr = deltaMs != null ? formatDelta(deltaMs) : '';
-
-  const isCacheEvent = event._source === 'cache-watch';
-  let summary = '';
-  if (isCacheEvent && event.payload) {
-    // Match the CLI log format: "<namespace>/<key>". The operation is already
-    // conveyed by the eventType badge (cache:write vs cache:delete) and the
-    // diff lives on its own tab, so the summary stays compact.
-    const p = event.payload;
-    summary = (p.namespace || '') + '/' + (p.key || '');
-  } else {
-    const summaryParts = [];
-    if (event.payload) {
-      const p = event.payload;
-      if (p.eventType) summaryParts.push(p.eventType);
-      if (p.type) summaryParts.push(p.type);
-      if (p.name) summaryParts.push(p.name);
-      if (p.status) summaryParts.push(p.status);
-      if (p.error) summaryParts.push('error: ' + (typeof p.error === 'string' ? p.error : p.error.message || 'unknown'));
-    }
-    summary = summaryParts.length > 0 ? summaryParts.join(' \u00b7 ') : '';
-  }
-
-  const card = document.createElement('div');
-  card.className = 'event-card';
-  card.dataset.eventType = event.eventType || '';
-  card.dataset.sessionId = event.sessionId || '';
-  card.dataset.index = idx;
-  card.dataset.searchText = JSON.stringify(event).toLowerCase();
-  // Cache-watch pseudo-events get a subtle border accent (see .cache-event CSS)
-  // so they're easy to pick out of a long timeline of telemetry events.
-  if (isCacheEvent) card.dataset.cacheEvent = 'true';
-  // Reconstructed-from-cache telemetry: small "from cache" badge in
-  // the header so users can tell these aren't from STORYBOOK_TELEMETRY_URL.
-  const isReconstructed = event._source === 'cache-recon';
-  if (isReconstructed) card.dataset.source = 'cache-recon';
-
-  const tabs = buildEventTabs(event, 'evt' + idx);
-
-  card.innerHTML =
-    '<div class="event-header" onclick="toggleCard(this.parentElement)">' +
-      '<span class="expand-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>' +
-      '<span class="event-index">#' + displayIdx + '</span>' +
-      '<span class="event-badge" style="background:' + color.bg + '; color:' + color.fg + '">' +
-        escapeHtml(event.eventType || 'unknown') + '</span>' +
-      '<span class="event-summary">' + escapeHtml(summary) + '</span>' +
-      (isReconstructed
-        ? '<span class="event-recon-badge" title="Reconstructed from a lastEvents cache write — STORYBOOK_TELEMETRY_URL was not set">' +
-            '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15A9 9 0 1 1 5.64 5.64L23 10"/></svg>' +
-            'cache' +
-          '</span>'
-        : '') +
-      (sessionShort ? '<span class="event-session">' + sessionShort + '</span>' : '') +
-      '<span class="event-time-group">' +
-        (deltaStr ? '<span class="event-delta">' + deltaStr + '</span>' : '') +
-        '<span class="event-time">' + time + '</span>' +
-      '</span>' +
-      '<div class="event-actions">' +
-        '<button onclick="event.stopPropagation(); copyEvent(' + idx + ')" title="Copy JSON">Copy</button>' +
-        '<button onclick="event.stopPropagation(); copyEventCurl(' + idx + ')" title="Copy as cURL">cURL</button>' +
-      '</div>' +
-    '</div>' +
-    '<div class="event-body">' +
-      '<div class="event-tabs">' + tabs.tabsHtml + '</div>' +
-      tabs.contentHtml +
-    '</div>';
-
-  tabs.attach(card, { stopPropagation: true });
-
-  return card;
-}
 
 function toggleCard(card) {
   const idx = card.dataset.index;
@@ -1128,21 +982,11 @@ loadExisting().then(() => connect());
 // inline `onclick="toggleCard(...)"` etc. would throw ReferenceError.
 // These four are the only ones the legacy markup references inline.
 if (typeof window !== 'undefined') {
+  // toggleCard is referenced by the legacy timeline drawer's tab clicks;
+  // the JSON-tree expand button in the timeline drawer uses
+  // __sbToggleJson — see lib/legacy-html.ts.
   ;(window as any).toggleCard = toggleCard
-  ;(window as any).toggleJson = toggleJson
-  ;(window as any).copyEvent = copyEvent
-  ;(window as any).copyEventCurl = copyEventCurl
-
-  // Hybrid renderers used by Preact components for JSON tree / cache diff
-  // / event-tab content. These keep the visual output identical to the
-  // legacy version; rewriting them as Preact components is a follow-up.
-  ;(window as any).__sbDashRenderers = {
-    renderJson,
-    renderCacheDiff,
-    matchesFilters,
-    formatDelta,
-    getPreviousEventTime,
-  }
+  ;(window as any).__sbToggleJson = toggleJson
 
   // Bridge for Preact-rendered sidebar / header components: call into the
   // legacy action functions which mutate `state` and trigger

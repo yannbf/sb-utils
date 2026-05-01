@@ -13,16 +13,17 @@
 import { escapeHtml, formatGapDuration as _formatGapDurationLib } from '../lib/format'
 import { lcsLineDiff } from '../lib/lcs-diff'
 import { getColor } from '../lib/colors'
-import { renderers } from '../store/renderers'
+import { renderJsonHtml, renderCacheDiffHtml } from '../lib/legacy-html'
+import { matchesFilters as _matchesFilters } from '../lib/filters'
 import { openSaveModal, openExplanationModal } from '../store/modal'
 import { pushToast } from '../store/signals'
 
 export function setupTimeline(state: any, applyFiltersInPlace: () => void, container: HTMLElement) {
   const formatGapDurationGlobal = _formatGapDurationLib
   const showToast = pushToast
-  const matchesFilters = (e: any) => renderers().matchesFilters(e)
-  const renderJson = (...args: any[]) => (renderers().renderJson as any)(...args)
-  const renderCacheDiff = (...args: any[]) => (renderers().renderCacheDiff as any)(...args)
+  const matchesFilters = (e: any) => _matchesFilters(e)
+  const renderJson = renderJsonHtml
+  const renderCacheDiff = renderCacheDiffHtml
   const cacheKeyOf = (event: any): string | null => {
     if (!event || event._source !== 'cache-watch' || !event.payload) return null
     return (event.payload.namespace || '') + '/' + (event.payload.key || '')

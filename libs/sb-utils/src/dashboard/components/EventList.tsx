@@ -6,23 +6,9 @@
  */
 
 import { useEffect, useRef } from 'preact/hooks'
-import {
-  events,
-  autoScroll,
-  searchQuery,
-  activeFilter,
-  activeSession,
-  activeImport,
-  activeCacheKey,
-  hiddenTypes,
-  hiddenSessions,
-  hiddenImports,
-  hiddenCacheKeys,
-  cacheAllHidden,
-  telemetryAllHidden,
-} from '../store/signals'
+import { events, autoScroll } from '../store/signals'
+import { matchesFilters } from '../lib/filters'
 import { EventCard } from './EventCard'
-import { renderers } from '../store/renderers'
 
 function SessionSeparator({ sessionId, filteredOut }: { sessionId: string; filteredOut: boolean }) {
   return (
@@ -36,28 +22,11 @@ function SessionSeparator({ sessionId, filteredOut }: { sessionId: string; filte
 }
 
 export function EventList() {
-  // Subscribe to every signal that affects what's visible. Reads here
-  // make the component rerun whenever any of them changes.
   const all = events.value
-  const r = renderers()
-  // Touch the filter signals so re-render fires when they change. The
-  // legacy matchesFilters reads from the legacy `state` object which the
-  // mirror keeps in sync, so the actual filter check still goes through
-  // it — but Preact needs the signal touch to know to re-render.
-  searchQuery.value
-  activeFilter.value
-  activeSession.value
-  activeImport.value
-  activeCacheKey.value
-  hiddenTypes.value
-  hiddenSessions.value
-  hiddenImports.value
-  hiddenCacheKeys.value
-  cacheAllHidden.value
-  telemetryAllHidden.value
 
-  // Auto-scroll to bottom whenever new events arrive (and feature is on).
-  // Tracks the previous count via a ref so we only scroll on growth.
+  // Auto-scroll to bottom whenever new events arrive (and the toggle
+  // is on). Tracks the previous count via a ref so we only scroll on
+  // growth, never on filter changes.
   const containerRef = useRef<HTMLDivElement>(null)
   const lastCount = useRef(0)
   useEffect(() => {
@@ -72,12 +41,13 @@ export function EventList() {
   })
 
   // Build the interleaved children: session separator before each first
-  // event of a session run, then the card.
+  // event of a session run, then the card. matchesFilters reads filter
+  // signals directly so this component re-renders when filters change.
   const children: preact.JSX.Element[] = []
   let lastSession: string | null = null
   let anyVisible = false
   for (const ev of all) {
-    const visible = r.matchesFilters(ev)
+    const visible = matchesFilters(ev)
     if (visible) anyVisible = true
     if (ev.sessionId && ev.sessionId !== lastSession) {
       children.push(
