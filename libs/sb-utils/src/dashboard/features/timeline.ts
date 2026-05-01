@@ -23,6 +23,10 @@ export function setupTimeline(state: any, applyFiltersInPlace: () => void, conta
   const matchesFilters = (e: any) => renderers().matchesFilters(e)
   const renderJson = (...args: any[]) => (renderers().renderJson as any)(...args)
   const renderCacheDiff = (...args: any[]) => (renderers().renderCacheDiff as any)(...args)
+  const cacheKeyOf = (event: any): string | null => {
+    if (!event || event._source !== 'cache-watch' || !event.payload) return null
+    return (event.payload.namespace || '') + '/' + (event.payload.key || '')
+  }
   const buildEventTabs = (event: any, idPrefix: string) => {
     const isCacheEvent = event._source === 'cache-watch'
     const sections: Array<{ key: string; label: string }> = []
