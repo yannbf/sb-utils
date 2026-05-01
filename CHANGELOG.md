@@ -1,5 +1,18 @@
 # (Fri May 01 2026)
 
+#### 🐛 Bug Fix
+
+- `@hipster/sb-utils@0.0.14`
+  - add cache inspector [#19](https://github.com/yannbf/sb-utils/pull/19) ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
+# (Fri May 01 2026)
+
 #### ⚠️ Pushed to `main`
 
 - `@hipster/sb-utils@0.0.13`

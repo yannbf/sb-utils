@@ -1,3 +1,16 @@
+# v0.0.14 (Fri May 01 2026)
+
+#### 🐛 Bug Fix
+
+- add cache inspector [#19](https://github.com/yannbf/sb-utils/pull/19) ([@yannbf](https://github.com/yannbf))
+- add cache inspector ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
 # v0.0.13 (Fri May 01 2026)
 
 #### ⚠️ Pushed to `main`
