@@ -7,7 +7,10 @@ export default defineConfig({
     js: '#!/usr/bin/env node',
   },
   onSuccess: () => {
-    // Copy the dashboard HTML asset into dist/ so the built command can find it
+    // Copy the dashboard HTML + CSS assets into dist/ so the built command
+    // can find them. (The HTML loads the CSS via <link>; exportHtmlSnapshot
+    // inlines the CSS on the fly for self-contained snapshots.)
     copyFileSync('src/event-log-dashboard.html', 'dist/event-log-dashboard.html')
+    copyFileSync('src/event-log-dashboard.css', 'dist/event-log-dashboard.css')
   },
 })

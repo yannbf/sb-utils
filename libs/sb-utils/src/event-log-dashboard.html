@@ -4,1412 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Storybook Telemetry Debugger</title>
-<style>
-  :root {
-    --bg: #0a0e14;
-    --bg-raised: #111820;
-    --bg-card: #151d27;
-    --bg-card-hover: #1a2332;
-    --bg-input: #0d1219;
-    --bg-surface: #1c2533;
-    --border: #1e2a3a;
-    --border-light: #172030;
-    --border-hover: #2a3a4e;
-    --text: #e2e8f0;
-    --text-muted: #9ba8b9;
-    --text-dim: #5f7085;
-    --accent: #6c9ef8;
-    --accent-bright: #87b4ff;
-    --accent-muted: rgba(108,158,248,0.12);
-    --accent-strong: rgba(108,158,248,0.22);
-    --green: #4ade80;
-    --green-muted: rgba(74,222,128,0.12);
-    --yellow: #fbbf24;
-    --yellow-muted: rgba(251,191,36,0.10);
-    --red: #f87171;
-    --red-muted: rgba(248,113,113,0.10);
-    --purple: #c084fc;
-    --purple-muted: rgba(192,132,252,0.12);
-    --orange: #fb923c;
-    --cyan: #22d3ee;
-    --pink: #f472b6;
-    --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', 'Cascadia Code', Menlo, monospace;
-    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-    --radius: 10px;
-    --radius-sm: 6px;
-    --radius-xs: 4px;
-    --shadow-sm: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.15);
-    --shadow-md: 0 4px 12px rgba(0,0,0,0.25), 0 2px 4px rgba(0,0,0,0.15);
-    --shadow-lg: 0 8px 24px rgba(0,0,0,0.3), 0 4px 8px rgba(0,0,0,0.2);
-    --transition: 0.15s ease;
-  }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--font-sans);
-    font-size: 14px;
-    line-height: 1.5;
-    overflow: hidden;
-    height: 100vh;
-  }
-
-  /* ── Header ──────────────────────────────────────── */
-  .header {
-    position: relative;
-    z-index: 100;
-    background: var(--bg-raised);
-    border-bottom: 1px solid var(--border);
-    padding: 0 20px;
-    height: 52px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-  }
-
-  .header-title {
-    font-size: 14px;
-    font-weight: 600;
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    letter-spacing: -0.01em;
-    color: var(--text);
-  }
-
-  .header-title .logo {
-    width: 22px;
-    height: 26px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-
-  .header-title .logo svg {
-    width: 22px;
-    height: 26px;
-  }
-
-  .status-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: var(--green);
-    box-shadow: 0 0 8px rgba(74,222,128,0.5);
-    animation: pulse 2.5s ease-in-out infinite;
-    flex-shrink: 0;
-  }
-
-  .status-dot.paused {
-    background: var(--yellow);
-    box-shadow: 0 0 8px rgba(251,191,36,0.4);
-    animation: none;
-  }
-
-  .status-dot.disconnected {
-    background: var(--red);
-    box-shadow: 0 0 8px rgba(248,113,113,0.4);
-    animation: none;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
-  }
-
-  /* ── Controls ────────────────────────────────────── */
-  .controls {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex: 1;
-    min-width: 0;
-    justify-content: flex-end;
-  }
-
-  .search-box {
-    position: relative;
-    max-width: 320px;
-    flex: 1;
-    margin-right: auto;
-  }
-
-  .search-box input {
-    width: 100%;
-    padding: 7px 36px 7px 34px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text);
-    font-size: 13px;
-    font-family: var(--font-sans);
-    outline: none;
-    transition: border-color var(--transition), box-shadow var(--transition);
-  }
-
-  .search-box input:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-muted), var(--shadow-sm);
-  }
-
-  .search-box input::placeholder { color: var(--text-dim); }
-
-  .search-box .search-icon {
-    position: absolute;
-    left: 11px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--text-dim);
-    pointer-events: none;
-    display: flex;
-  }
-
-  .search-box .search-hint {
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    pointer-events: none;
-  }
-
-  .separator {
-    width: 1px;
-    height: 20px;
-    background: var(--border);
-    margin: 0 4px;
-  }
-
-  .btn {
-    height: 32px;
-    padding: 0 12px;
-    border: 1px solid var(--border);
-    border-radius: 7px;
-    background: var(--bg-card);
-    color: var(--text-muted);
-    font-size: 12px;
-    font-weight: 500;
-    font-family: var(--font-sans);
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all var(--transition);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .btn svg { flex-shrink: 0; }
-
-  .btn:hover {
-    background: var(--bg-card-hover);
-    color: var(--text);
-    border-color: var(--border-hover);
-  }
-
-  .btn.active {
-    background: var(--accent-muted);
-    color: var(--accent);
-    border-color: rgba(108,158,248,0.3);
-  }
-
-  .btn.danger:hover {
-    color: var(--red);
-    border-color: rgba(248,113,113,0.3);
-    background: var(--red-muted);
-  }
-
-  .export-wrap { position: relative; display: inline-flex; }
-  .export-wrap .chevron { opacity: 0.7; margin-left: 2px; transition: transform var(--transition); }
-  .export-wrap.open .chevron { transform: rotate(180deg); }
-  .export-menu {
-    position: absolute;
-    top: calc(100% + 6px);
-    right: 0;
-    min-width: 240px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
-    padding: 4px;
-    display: none;
-    flex-direction: column;
-    z-index: 100;
-  }
-  .export-wrap.open .export-menu { display: flex; }
-  .export-item {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-    padding: 8px 10px;
-    border: none;
-    background: transparent;
-    color: var(--text);
-    font-family: var(--font-sans);
-    font-size: 12px;
-    text-align: left;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background var(--transition);
-  }
-  .export-item:hover { background: var(--bg-card-hover); }
-  .export-item-title { font-weight: 500; }
-  .export-item-sub { font-size: 11px; color: var(--text-dim); }
-
-  .event-counter {
-    font-size: 12px;
-    color: var(--text-dim);
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-    font-weight: 500;
-    padding-left: 4px;
-  }
-
-  /* ── Paused banner ──────────────────────────────── */
-  .paused-banner {
-    display: none;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    padding: 8px 16px;
-    background: linear-gradient(180deg, rgba(251,191,36,0.08) 0%, rgba(251,191,36,0.04) 100%);
-    border-bottom: 1px solid rgba(251,191,36,0.12);
-    color: var(--yellow);
-    font-size: 13px;
-    font-weight: 500;
-  }
-
-  .paused-banner.visible { display: flex; }
-
-  .paused-banner button {
-    padding: 3px 14px;
-    background: var(--yellow);
-    color: var(--bg);
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 600;
-    font-family: var(--font-sans);
-    transition: opacity var(--transition);
-  }
-
-  .paused-banner button:hover { opacity: 0.85; }
-
-  /* ── Layout ──────────────────────────────────────── */
-  .layout {
-    display: flex;
-    height: calc(100vh - 52px);
-  }
-
-  .layout.has-banner {
-    height: calc(100vh - 52px - 37px);
-  }
-
-  /* ── Sidebar ─────────────────────────────────────── */
-  .sidebar {
-    width: 230px;
-    min-width: 230px;
-    background: var(--bg-raised);
-    border-right: 1px solid var(--border);
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .sidebar-section {
-    padding: 16px 14px 8px;
-  }
-
-  .sidebar-section + .sidebar-section {
-    border-top: 1px solid var(--border);
-  }
-
-  .sidebar-section:last-child {
-    margin-top: auto;
-    border-top: 1px solid var(--border);
-    padding-bottom: 16px;
-  }
-
-  .sidebar-section-title {
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    color: var(--text-dim);
-    padding: 0 6px 10px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-  }
-  .sidebar-section-hint {
-    font-size: 9px;
-    font-weight: 500;
-    letter-spacing: 0.4px;
-    text-transform: none;
-    color: var(--text-dim);
-    opacity: 0.7;
-  }
-  .import-meta {
-    font-size: 10px;
-    color: var(--text-dim);
-    margin-top: 2px;
-    font-weight: 400;
-    letter-spacing: 0;
-    text-transform: none;
-  }
-  .filter-item .label-row.col { flex-direction: column; align-items: flex-start; gap: 2px; }
-
-  .filter-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 6px 8px;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    font-size: 13px;
-    color: var(--text-muted);
-    transition: all 0.1s;
-    user-select: none;
-  }
-
-  .filter-item:hover {
-    background: rgba(255,255,255,0.04);
-    color: var(--text);
-  }
-
-  .filter-item.active {
-    background: var(--accent-muted);
-    color: var(--accent-bright);
-  }
-
-  .filter-item .count {
-    font-size: 11px;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-    background: rgba(255,255,255,0.06);
-    padding: 1px 7px;
-    border-radius: 10px;
-    min-width: 22px;
-    height: 22px;
-    line-height: 20px;
-    text-align: center;
-    color: inherit;
-    flex-shrink: 0;
-  }
-
-  .filter-item.active .count {
-    background: var(--accent-strong);
-  }
-
-  .filter-item .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    margin-right: 8px;
-    flex-shrink: 0;
-  }
-
-  .filter-item .label-row {
-    display: flex;
-    align-items: center;
-    min-width: 0;
-    gap: 0;
-    flex: 1;
-  }
-
-  .filter-item .label-row span:last-child {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .filter-item .item-actions {
-    display: none;
-    align-items: center;
-    gap: 2px;
-    flex-shrink: 0;
-    height: 22px;
-  }
-
-  .filter-item:not([data-filter="all"]):hover .item-actions { display: flex; }
-  .filter-item:not([data-filter="all"]):hover .count { display: none; }
-
-  .filter-item .item-action {
-    width: 22px;
-    height: 22px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: none;
-    background: none;
-    color: var(--text-dim);
-    cursor: pointer;
-    border-radius: 4px;
-    padding: 0;
-    transition: all 0.1s;
-  }
-
-  .filter-item .item-action:hover {
-    background: rgba(255,255,255,0.08);
-    color: var(--text);
-  }
-
-  .filter-item .item-action.danger:hover {
-    color: var(--red);
-    background: var(--red-muted);
-  }
-
-  .filter-item.hidden-item {
-    opacity: 0.45;
-  }
-
-  .filter-item.hidden-item .dot {
-    opacity: 0.4;
-  }
-
-  .sessions-empty {
-    padding: 8px;
-    color: var(--text-dim);
-    font-size: 12px;
-  }
-
-  .shortcuts-list {
-    padding: 2px 6px;
-    color: var(--text-dim);
-    font-size: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .shortcut-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  /* ── Main content ────────────────────────────────── */
-  .main {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px 24px;
-    background: var(--bg);
-  }
-
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    color: var(--text-dim);
-    gap: 16px;
-  }
-
-  .empty-state .empty-icon {
-    width: 80px;
-    height: 80px;
-    border-radius: 20px;
-    background: linear-gradient(135deg, rgba(108,158,248,0.08) 0%, rgba(192,132,252,0.06) 100%);
-    border: 1px solid rgba(108,158,248,0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 4px;
-  }
-
-  .empty-state .empty-icon svg {
-    width: 36px;
-    height: 36px;
-    opacity: 0.5;
-  }
-
-  .empty-state h3 {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text-muted);
-    letter-spacing: -0.01em;
-  }
-
-  .empty-state p { font-size: 13px; color: var(--text-dim); }
-
-  .empty-state .filter-hint {
-    font-size: 12px;
-    color: var(--text-dim);
-    margin-top: -4px;
-  }
-
-  .empty-state .filter-hint button {
-    background: none;
-    border: 1px solid var(--border);
-    border-radius: 5px;
-    color: var(--accent);
-    padding: 2px 10px;
-    font-size: 12px;
-    font-family: var(--font-sans);
-    cursor: pointer;
-    margin-left: 4px;
-    transition: all 0.1s;
-  }
-
-  .empty-state .filter-hint button:hover {
-    background: var(--accent-muted);
-    border-color: rgba(108,158,248,0.3);
-  }
-
-  .empty-state code {
-    font-family: var(--font-mono);
-    font-size: 12px;
-    background: var(--bg-card);
-    padding: 10px 18px;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    color: var(--text-muted);
-    user-select: all;
-  }
-
-  /* ── Event cards ─────────────────────────────────── */
-  .event-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    margin-bottom: 6px;
-    overflow: hidden;
-    transition: border-color var(--transition), box-shadow var(--transition);
-    animation: slideIn 0.2s ease-out;
-  }
-
-  .event-card.filtered-out { display: none; }
-
-  .event-card:hover {
-    border-color: var(--border-hover);
-    box-shadow: var(--shadow-sm);
-  }
-
-  .event-card.expanded {
-    box-shadow: var(--shadow-md);
-    border-color: var(--border-hover);
-  }
-
-  .event-card.highlight {
-    animation: flashHighlight 1.5s ease-out;
-  }
-
-  @keyframes slideIn {
-    from { opacity: 0; transform: translateY(-4px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  @keyframes flashHighlight {
-    0% { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-muted), var(--shadow-md); }
-    100% { border-color: var(--border); box-shadow: none; }
-  }
-
-  .event-header {
-    display: flex;
-    align-items: center;
-    padding: 10px 14px;
-    cursor: pointer;
-    gap: 10px;
-    user-select: none;
-    transition: background var(--transition);
-  }
-
-  .event-header:hover { background: rgba(255,255,255,0.02); }
-
-  .expand-icon {
-    color: var(--text-muted);
-    width: 18px;
-    height: 18px;
-    flex-shrink: 0;
-    transition: transform var(--transition);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .event-card.expanded .expand-icon { transform: rotate(90deg); }
-
-  .event-badge {
-    font-size: 11px;
-    font-weight: 600;
-    font-family: var(--font-mono);
-    padding: 3px 10px;
-    border-radius: 5px;
-    white-space: nowrap;
-    letter-spacing: 0.01em;
-  }
-
-  .event-index {
-    font-size: 11px;
-    color: var(--text-dim);
-    font-family: var(--font-mono);
-    font-variant-numeric: tabular-nums;
-    min-width: 28px;
-  }
-
-  .event-summary {
-    flex: 1;
-    font-size: 12px;
-    color: var(--text-dim);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-family: var(--font-mono);
-  }
-
-  .event-time-group {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
-  .event-delta {
-    font-size: 10px;
-    color: var(--text-dim);
-    font-family: var(--font-mono);
-    white-space: nowrap;
-    opacity: 0.6;
-    padding: 1px 6px;
-    background: rgba(255,255,255,0.03);
-    border-radius: 3px;
-  }
-
-  .event-time {
-    font-size: 11px;
-    color: var(--text-dim);
-    font-family: var(--font-mono);
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .event-session {
-    font-size: 10px;
-    color: var(--text-dim);
-    font-family: var(--font-mono);
-    background: rgba(255,255,255,0.05);
-    padding: 2px 8px;
-    border-radius: 4px;
-    letter-spacing: 0.02em;
-  }
-
-  .event-actions {
-    display: flex;
-    gap: 2px;
-    opacity: 0;
-    transition: opacity 0.1s;
-  }
-
-  .event-header:hover .event-actions { opacity: 1; }
-
-  .event-actions button {
-    padding: 3px 8px;
-    background: none;
-    border: 1px solid transparent;
-    border-radius: 4px;
-    color: var(--text-dim);
-    cursor: pointer;
-    font-size: 11px;
-    font-weight: 500;
-    font-family: var(--font-sans);
-    transition: all 0.1s;
-  }
-
-  .event-actions button:hover {
-    background: var(--bg-surface);
-    border-color: var(--border);
-    color: var(--text);
-  }
-
-  /* ── Event body ──────────────────────────────────── */
-  .event-body {
-    display: none;
-    border-top: 1px solid var(--border);
-    background: rgba(0,0,0,0.15);
-  }
-
-  .event-card.expanded .event-body { display: block; }
-
-  .event-tabs {
-    display: flex;
-    border-bottom: 1px solid var(--border);
-    padding: 0 14px;
-    gap: 0;
-    background: rgba(0,0,0,0.1);
-  }
-
-  .event-tab {
-    padding: 9px 14px;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text-dim);
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    transition: all 0.1s;
-    user-select: none;
-  }
-
-  .event-tab:hover { color: var(--text-muted); }
-  .event-tab.active {
-    color: var(--accent);
-    border-bottom-color: var(--accent);
-  }
-
-  .event-tab-content {
-    padding: 14px 16px;
-    max-height: 500px;
-    overflow: auto;
-  }
-
-  .json-view {
-    font-family: var(--font-mono);
-    font-size: 12px;
-    line-height: 1.7;
-    white-space: pre-wrap;
-    word-break: break-all;
-  }
-
-  .json-key { color: var(--accent); }
-  .json-string { color: var(--green); }
-  .json-number { color: var(--orange); }
-  .json-boolean { color: var(--purple); }
-  .json-null { color: var(--text-dim); }
-  .json-bracket { color: var(--text-dim); }
-  .json-toggle {
-    cursor: pointer;
-    user-select: none;
-    color: var(--text-dim);
-    border: none;
-    background: none;
-    font-family: var(--font-mono);
-    font-size: 12px;
-    padding: 0;
-    transition: color 0.1s;
-  }
-  .json-toggle:hover { color: var(--text); }
-  .json-collapsed-indicator {
-    color: var(--text-dim);
-    font-style: italic;
-    font-size: 11px;
-  }
-  .json-hidden { display: none; }
-
-  /* ── Scrollbar ───────────────────────────────────── */
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.14); }
-
-  /* ── Toast ───────────────────────────────────────── */
-  .toast {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 10px 18px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--green);
-    z-index: 1000;
-    box-shadow: var(--shadow-lg);
-    animation: toastIn 0.2s ease-out, toastOut 0.2s ease-in 1.5s forwards;
-    pointer-events: none;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-  @keyframes toastOut { from { opacity: 1; } to { opacity: 0; } }
-
-  /* ── Modal ──────────────────────────────────────── */
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(8, 12, 22, 0.68);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    z-index: 10001;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-  }
-  .modal-overlay.active { display: flex; }
-  .modal-card {
-    width: 100%;
-    max-width: 480px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
-    font-family: var(--font-sans);
-    color: var(--text);
-    display: flex;
-    flex-direction: column;
-    max-height: calc(100vh - 48px);
-    overflow: hidden;
-    animation: modalIn 0.18s ease-out;
-  }
-  @keyframes modalIn {
-    from { opacity: 0; transform: translateY(6px) scale(0.98); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-  }
-  .modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--border);
-  }
-  .modal-title {
-    margin: 0;
-    font-size: 14px;
-    font-weight: 600;
-    letter-spacing: 0.2px;
-  }
-  .modal-close {
-    background: none;
-    border: none;
-    color: var(--text-dim);
-    cursor: pointer;
-    font-size: 16px;
-    line-height: 1;
-    padding: 4px 6px;
-    border-radius: 6px;
-  }
-  .modal-close:hover { color: var(--text); background: var(--bg-surface); }
-  .modal-body {
-    padding: 16px 20px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    font-size: 13px;
-  }
-  .modal-body p { margin: 0; color: var(--text-dim); font-size: 12px; line-height: 1.5; }
-  .modal-field { display: flex; flex-direction: column; gap: 6px; }
-  .modal-field label {
-    font-size: 11px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-dim);
-  }
-  .modal-field .hint { font-size: 11px; color: var(--text-dim); font-weight: 400; text-transform: none; letter-spacing: 0; }
-  .modal-input-wrap {
-    display: flex;
-    align-items: stretch;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--bg-surface);
-    overflow: hidden;
-  }
-  .modal-input-wrap:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(108, 158, 248, 0.18); }
-  .modal-input-wrap input {
-    flex: 1;
-    background: transparent;
-    border: none;
-    outline: none;
-    color: var(--text);
-    font-family: var(--font-mono);
-    font-size: 13px;
-    padding: 9px 12px;
-    min-width: 0;
-  }
-  .modal-input-suffix {
-    display: flex;
-    align-items: center;
-    padding: 0 12px;
-    color: var(--text-dim);
-    font-family: var(--font-mono);
-    font-size: 12px;
-    background: rgba(255, 255, 255, 0.03);
-    border-left: 1px solid var(--border);
-  }
-  .modal-textarea {
-    width: 100%;
-    min-height: 96px;
-    max-height: 220px;
-    resize: vertical;
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text);
-    font-family: var(--font-sans);
-    font-size: 13px;
-    line-height: 1.5;
-    padding: 10px 12px;
-    outline: none;
-  }
-  .modal-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(108, 158, 248, 0.18); }
-  .modal-explanation-view {
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 12px 14px;
-    font-size: 13px;
-    line-height: 1.55;
-    color: var(--text);
-    white-space: pre-wrap;
-    word-break: break-word;
-  }
-  .modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    padding: 12px 20px;
-    border-top: 1px solid var(--border);
-    background: rgba(255, 255, 255, 0.015);
-  }
-  .modal-btn {
-    padding: 7px 14px;
-    border-radius: 7px;
-    border: 1px solid var(--border);
-    background: var(--bg-surface);
-    color: var(--text);
-    font-size: 12px;
-    font-family: var(--font-sans);
-    cursor: pointer;
-    transition: background 0.12s ease, border-color 0.12s ease;
-  }
-  .modal-btn:hover { background: var(--bg-card-hover); border-color: var(--border-hover); }
-  .modal-btn.primary {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #0b0d12;
-    font-weight: 600;
-  }
-  .modal-btn.primary:hover { background: #7fb3ff; border-color: #7fb3ff; }
-  .modal-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-  /* ── Import drop overlay ────────────────────────── */
-  .drop-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(8, 12, 22, 0.78);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    z-index: 10000;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-  }
-  .drop-overlay.active { display: flex; }
-  .drop-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    padding: 40px 56px;
-    border: 2px dashed var(--accent);
-    border-radius: 16px;
-    background: rgba(108, 158, 248, 0.08);
-    color: var(--text);
-    font-family: var(--font-sans);
-    text-align: center;
-  }
-  .drop-card svg { color: var(--accent); }
-  .drop-card h3 { margin: 0; font-size: 16px; font-weight: 500; letter-spacing: 0.2px; }
-  .drop-card p { margin: 0; font-size: 12px; color: var(--text-dim); }
-
-  /* ── Session separator ──────────────────────────── */
-  .session-separator {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 0 8px;
-    color: var(--text-dim);
-    font-size: 11px;
-    font-family: var(--font-mono);
-  }
-
-  .session-separator.filtered-out { display: none; }
-
-  .session-separator::before,
-  .session-separator::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--border);
-  }
-
-  .session-separator .session-label {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    padding: 3px 12px;
-    border-radius: 20px;
-    white-space: nowrap;
-    font-weight: 500;
-    letter-spacing: 0.02em;
-  }
-
-  /* ── Kbd ──────────────────────────────────────────── */
-  .kbd {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 20px;
-    padding: 1px 5px;
-    font-size: 10px;
-    font-family: var(--font-mono);
-    font-weight: 500;
-    color: var(--text-dim);
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 4px;
-    line-height: 1.4;
-  }
-
-  /* ── View toggle ────────────────────────────────── */
-  .view-toggle {
-    display: inline-flex;
-    background: var(--bg-input);
-    border: 1px solid var(--border);
-    border-radius: 7px;
-    padding: 2px;
-    gap: 0;
-  }
-  .view-toggle button {
-    padding: 5px 11px;
-    border: none;
-    background: none;
-    color: var(--text-muted);
-    font-size: 12px;
-    font-weight: 500;
-    font-family: var(--font-sans);
-    cursor: pointer;
-    border-radius: 5px;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    transition: background var(--transition), color var(--transition);
-  }
-  .view-toggle button:hover { color: var(--text); }
-  .view-toggle button.active {
-    background: var(--bg-surface);
-    color: var(--text);
-    box-shadow: var(--shadow-sm);
-  }
-  .view-toggle svg { width: 13px; height: 13px; opacity: 0.85; }
-
-  body.view-timeline #scrollBtn,
-  body.view-timeline #expandAllBtn { display: none !important; }
-
-  /* ── Timeline view ──────────────────────────────── */
-  .timeline {
-    flex: 1;
-    min-width: 0;
-    background: var(--bg);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    position: relative;
-  }
-
-  .tl-toolbar {
-    height: 36px;
-    background: var(--bg-raised);
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    padding: 0 14px;
-    gap: 10px;
-    font-size: 11px;
-    color: var(--text-muted);
-    flex-shrink: 0;
-    white-space: nowrap;
-  }
-  .tl-toolbar b { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
-  .tl-toolbar .tl-live {
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    color: var(--green);
-    padding: 2px 9px 2px 6px;
-    border: 1px solid rgba(74,222,128,0.28);
-    border-radius: 10px;
-    background: var(--green-muted);
-    font-family: var(--font-mono);
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-  }
-  .tl-toolbar .tl-live::before {
-    content: '';
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--green);
-    box-shadow: 0 0 5px rgba(74,222,128,0.7);
-    animation: pulse 2.2s ease-in-out infinite;
-  }
-  .tl-toolbar .tl-live.off { display: none; }
-  .tl-toolbar .tl-sep {
-    width: 1px;
-    height: 14px;
-    background: var(--border);
-  }
-  .tl-toolbar-right {
-    margin-left: auto;
-    display: flex;
-    gap: 4px;
-  }
-  .tl-toolbar .tl-btn {
-    height: 26px;
-    padding: 0 10px;
-    font-size: 11px;
-  }
-
-  .tl-axis-canvas {
-    width: 100%;
-    height: 26px;
-    display: block;
-    background: var(--bg);
-    border-bottom: 1px solid var(--border-light);
-    flex-shrink: 0;
-  }
-
-  .tl-main {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-    position: relative;
-    background: var(--bg);
-  }
-  .tl-content-canvas { display: block; cursor: grab; }
-  .tl-content-canvas.grabbing { cursor: grabbing; }
-  .tl-content-canvas.hovering { cursor: pointer; }
-
-  .tl-minimap-wrap {
-    position: relative;
-    height: 44px;
-    background: var(--bg-raised);
-    border-top: 1px solid var(--border);
-    padding: 6px 14px;
-    flex-shrink: 0;
-  }
-  .tl-minimap-wrap canvas {
-    width: 100%;
-    height: 100%;
-    display: block;
-    cursor: grab;
-    border-radius: 3px;
-  }
-  .tl-minimap-wrap canvas.grabbing { cursor: grabbing; }
-  .tl-minimap-wrap canvas.crosshair { cursor: crosshair; }
-  .tl-minimap-select {
-    position: absolute;
-    top: 6px; bottom: 6px;
-    background: rgba(108, 158, 248, 0.18);
-    border: 1px solid rgba(108, 158, 248, 0.8);
-    border-radius: 2px;
-    pointer-events: none;
-    display: none;
-  }
-  .tl-minimap-select.active { display: block; }
-
-  .tl-tooltip {
-    position: absolute;
-    background: var(--bg-card);
-    border: 1px solid var(--border-hover);
-    border-radius: 6px;
-    padding: 8px 10px;
-    font-size: 11px;
-    box-shadow: var(--shadow-lg);
-    pointer-events: none;
-    z-index: 30;
-    min-width: 180px;
-    font-family: var(--font-mono);
-    display: none;
-  }
-  .tl-tooltip .tt-badge {
-    display: inline-block;
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-size: 10px;
-    font-weight: 600;
-    margin-bottom: 6px;
-    font-family: var(--font-mono);
-  }
-  .tl-tooltip .tt-row {
-    display: flex;
-    justify-content: space-between;
-    gap: 14px;
-    padding: 2px 0;
-    color: var(--text-muted);
-  }
-  .tl-tooltip .tt-row .val { color: var(--text); }
-  .tl-tooltip .tt-hint {
-    color: var(--text-dim);
-    font-style: italic;
-    margin-top: 6px;
-    font-size: 10px;
-    border-top: 1px solid var(--border);
-    padding-top: 5px;
-  }
-
-  .tl-jump {
-    position: absolute;
-    bottom: 58px;
-    right: 20px;
-    padding: 8px 14px;
-    background: var(--accent);
-    color: #0a0e14;
-    border: none;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-    font-family: var(--font-sans);
-    cursor: pointer;
-    box-shadow: var(--shadow-lg), 0 0 0 3px rgba(108,158,248,0.18);
-    z-index: 25;
-    display: none;
-    transition: transform var(--transition);
-  }
-  .tl-jump:hover { transform: translateX(-1px); }
-  .tl-jump.visible { display: inline-flex; align-items: center; gap: 5px; }
-
-  .tl-drawer {
-    position: absolute;
-    top: 36px;
-    right: 0;
-    bottom: 44px;
-    width: 420px;
-    max-width: 80%;
-    background: var(--bg-card);
-    border-left: 1px solid var(--border);
-    box-shadow: var(--shadow-lg);
-    z-index: 20;
-    display: none;
-    flex-direction: column;
-  }
-  .tl-drawer.open {
-    display: flex;
-    animation: drawerIn 0.18s ease-out;
-  }
-  @keyframes drawerIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-  .tl-drawer-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 14px;
-    border-bottom: 1px solid var(--border);
-    gap: 10px;
-    flex-shrink: 0;
-  }
-  .tl-drawer-title {
-    font-weight: 500;
-    font-size: 13px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-width: 0;
-  }
-  .tl-drawer-nav {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    flex-shrink: 0;
-  }
-  .tl-drawer-btn, .tl-drawer-close {
-    width: 26px;
-    height: 26px;
-    background: none;
-    border: 1px solid var(--border);
-    color: var(--text-muted);
-    cursor: pointer;
-    border-radius: 5px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    font-size: 14px;
-    padding: 0;
-  }
-  .tl-drawer-btn:hover:not(:disabled),
-  .tl-drawer-close:hover { color: var(--text); background: var(--bg-surface); border-color: var(--border-hover); }
-  .tl-drawer-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-  .tl-drawer-close { margin-left: 6px; }
-  .tl-drawer-pos {
-    font-size: 10px;
-    color: var(--text-dim);
-    font-family: var(--font-mono);
-    font-variant-numeric: tabular-nums;
-    min-width: 44px;
-    text-align: center;
-  }
-  .tl-drawer-body { flex: 1; overflow-y: auto; }
-
-  .tl-empty {
-    position: absolute;
-    inset: 62px 0 50px 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-dim);
-    gap: 14px;
-    pointer-events: none;
-    z-index: 5;
-  }
-  .tl-empty.has-action { pointer-events: auto; }
-  .tl-empty h3 { font-size: 15px; color: var(--text-muted); font-weight: 600; }
-  .tl-empty p { font-size: 12px; text-align: center; max-width: 440px; line-height: 1.5; }
-  .tl-empty code {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 6px 10px;
-    color: var(--text-muted);
-  }
-  .tl-empty .tl-empty-action {
-    padding: 7px 14px;
-    font-size: 12px;
-    font-family: var(--font-sans);
-    background: var(--bg-raised);
-    border: 1px solid var(--border-hover);
-    color: var(--text);
-    border-radius: 6px;
-    cursor: pointer;
-  }
-  .tl-empty .tl-empty-action:hover { background: var(--bg-surface); border-color: var(--accent); }
-
-  .tl-toolbar .tl-toggle {
-    height: 26px;
-    padding: 0 10px;
-    font-size: 11px;
-    font-family: var(--font-sans);
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text-muted);
-    border-radius: 5px;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-  }
-  .tl-toolbar .tl-toggle:hover { color: var(--text); background: var(--bg-surface); border-color: var(--border-hover); }
-  .tl-toolbar .tl-toggle.active {
-    color: var(--accent);
-    background: rgba(108,158,248,0.08);
-    border-color: rgba(108,158,248,0.5);
-  }
-</style>
+<link rel="stylesheet" href="/event-log-dashboard.css" />
 </head>
 <body>
 
@@ -1452,6 +47,10 @@
     <button type="button" data-view="timeline" role="tab" title="Timeline view (V)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><circle cx="7" cy="12" r="2.2" fill="currentColor" stroke="none"/><circle cx="13" cy="12" r="2.2" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="2.2" fill="currentColor" stroke="none"/></svg>
       Timeline
+    </button>
+    <button type="button" data-view="cache" role="tab" title="Cache view (V)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 11v6c0 1.66 4.03 3 9 3s9-1.34 9-3v-6"/></svg>
+      Cache
     </button>
   </div>
 
@@ -1523,8 +122,26 @@
       <div id="filterList">
         <div class="filter-item active" data-filter="all">
           <div class="label-row"><span>All events</span></div>
+          <div class="item-actions">
+            <button class="item-action danger trash-btn" id="eventsAllTrashBtn" title="Delete all telemetry events">DEL</button>
+            <button class="item-action eye-btn" id="eventsAllEyeBtn" title="Hide all telemetry events">EYE</button>
+          </div>
           <span class="count" id="countAll">0</span>
         </div>
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Cache Operations</div>
+      <div id="cacheList">
+        <div class="filter-item active" data-cache-key="__all__">
+          <div class="label-row"><span>All operations</span></div>
+          <div class="item-actions">
+            <button class="item-action danger trash-btn" id="cacheAllTrashBtn" title="Delete all cache events">DEL</button>
+            <button class="item-action eye-btn" id="cacheAllEyeBtn" title="Hide all cache events">EYE</button>
+          </div>
+          <span class="count" id="cacheAllCount">0</span>
+        </div>
+        <div class="sessions-empty" id="cacheListEmpty">No cache operations yet</div>
       </div>
     </div>
     <div class="sidebar-section">
@@ -1621,6 +238,50 @@
       <p>Events will appear on the timeline as they arrive</p>
     </div>
   </div>
+
+  <!-- ── Cache view ─────────────────────────────────── -->
+  <div class="cache-view" id="cacheView" style="display:none">
+    <div class="cache-toolbar">
+      <div class="cache-root-info" id="cacheRootInfo">
+        <span class="cache-root-status" id="cacheRootStatus">Resolving…</span>
+        <span class="cache-root-path" id="cacheRootPath"></span>
+        <span class="cache-root-version" id="cacheRootVersion"></span>
+      </div>
+      <div class="cache-toolbar-actions">
+        <div class="sidebar-toggle-row" id="cacheEditToggleRow" title="Toggle edit mode — when on, edit/delete/clear actions appear" style="padding: 4px 8px; cursor: pointer;">
+          <div style="margin-right: 8px;">
+            <span class="label">Edit mode</span>
+          </div>
+          <div class="toggle-switch" id="cacheEditToggleSwitch"></div>
+        </div>
+        <button type="button" class="btn" id="cacheRefreshBtn" title="Reload entries from disk">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+          Refresh
+        </button>
+        <button type="button" class="btn" id="cacheChangeRootBtn" title="Switch to a different project root">
+          Change root…
+        </button>
+        <button type="button" class="btn danger" id="cacheClearBtn" title="Wipe all entries" style="display:none">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+          Clear cache
+        </button>
+      </div>
+    </div>
+
+    <div class="cache-writes-banner" id="cacheWritesBanner" style="display:none">
+      <span>⚠ Edit mode is on — saves and deletes hit the real <code>node_modules/.cache/storybook</code>.</span>
+    </div>
+
+    <div class="cache-empty" id="cacheEmpty" style="display:none">
+      <div class="empty-icon">
+        <svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 11v6c0 1.66 4.03 3 9 3s9-1.34 9-3v-6"/></svg>
+      </div>
+      <h3 id="cacheEmptyTitle">No Storybook cache detected</h3>
+      <p id="cacheEmptyMsg">Run <code>event-logger</code> from a Storybook project, pass <code>--project-root &lt;path&gt;</code>, or use “Change root…” above.</p>
+    </div>
+
+    <div class="cache-entries" id="cacheEntries"></div>
+  </div>
 </div>
 
 <script>
@@ -1642,6 +303,20 @@ const state = {
   hiddenTypes: new Set(),
   hiddenSessions: new Set(),
   hiddenImports: new Set(),
+  // Cache-event grouping mirrors sessions: keyed by `namespace/key` (the
+  // human label users already see in the event summary), with the same
+  // filter / hide / delete affordances.
+  cacheMap: {},
+  activeCacheKey: null,
+  hiddenCacheKeys: new Set(),
+  // Master "All operations" toggle — hides every cache event regardless
+  // of per-key state. Sits above the per-key list, mirroring the "All
+  // events" entry in the Event Types section.
+  cacheAllHidden: false,
+  // Master "All events" toggle — hides every non-cache (telemetry)
+  // event globally. Combined with cacheAllHidden, the user can isolate
+  // either stream in a single click.
+  telemetryAllHidden: false,
   view: 'dashboard',
 };
 
@@ -1723,6 +398,8 @@ const sessionList = document.getElementById('sessionList');
 const importList = document.getElementById('importList');
 const importsSection = document.getElementById('importsSection');
 const sessionsEmpty = document.getElementById('sessionsEmpty');
+const cacheList = document.getElementById('cacheList');
+const cacheListEmpty = document.getElementById('cacheListEmpty');
 const searchInput = document.getElementById('searchInput');
 const pauseBtn = document.getElementById('pauseBtn');
 const pauseSvg = document.getElementById('pauseSvg');
@@ -1750,6 +427,7 @@ const emptyIcon = document.getElementById('emptyIcon');
 let filterRafPending = false;
 let sessionRafPending = false;
 let importRafPending = false;
+let cacheRafPending = false;
 
 function scheduleFilterRender() {
   if (filterRafPending) return;
@@ -1769,6 +447,82 @@ function scheduleImportRender() {
   requestAnimationFrame(() => { importRafPending = false; renderImportsNow(); });
 }
 
+function scheduleCacheRender() {
+  if (cacheRafPending) return;
+  cacheRafPending = true;
+  requestAnimationFrame(() => { cacheRafPending = false; renderCacheKeysNow(); });
+}
+
+// `namespace/key` is the human label used in cache event summaries and the
+// CLI log line. Returns null for non-cache events.
+function cacheKeyOf(event) {
+  if (!event || event._source !== 'cache-watch' || !event.payload) return null;
+  return (event.payload.namespace || '') + '/' + (event.payload.key || '');
+}
+
+// Wire up the "All operations" row buttons once. The handler is registered
+// on DOMContentLoaded so the SVG_EYE / SVG_TRASH constants and the DOM are
+// both available — the master row never gets re-rendered, only its state
+// is updated, so binding once is enough.
+function bindCacheAllRow() {
+  const allEye = document.getElementById('cacheAllEyeBtn');
+  const allTrash = document.getElementById('cacheAllTrashBtn');
+  if (allEye) allEye.innerHTML = SVG_EYE;
+  if (allTrash) allTrash.innerHTML = SVG_TRASH;
+  if (allEye) {
+    allEye.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleCacheAllHidden();
+    });
+  }
+  if (allTrash) {
+    allTrash.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteAllCacheEvents();
+    });
+  }
+  const allRow = document.querySelector('#cacheList [data-cache-key="__all__"]');
+  if (allRow) {
+    // Clicking the row label clears any active per-key filter so we're
+    // back to "all cache" — mirrors how "All events" works above.
+    allRow.querySelector('.label-row').addEventListener('click', () => {
+      state.activeCacheKey = null;
+      renderCacheKeysNow();
+      applyFiltersInPlace();
+      if (typeof Timeline !== 'undefined') Timeline.invalidate();
+    });
+  }
+}
+
+// Same treatment for the telemetry "All events" master row — eye/trash
+// affordances live alongside the count, just like sessions / imports.
+function bindEventsAllRow() {
+  const allEye = document.getElementById('eventsAllEyeBtn');
+  const allTrash = document.getElementById('eventsAllTrashBtn');
+  if (allEye) allEye.innerHTML = SVG_EYE;
+  if (allTrash) allTrash.innerHTML = SVG_TRASH;
+  if (allEye) {
+    allEye.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleTelemetryAllHidden();
+    });
+  }
+  if (allTrash) {
+    allTrash.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!confirm('Delete all telemetry events? Cache operations are kept.')) return;
+      deleteAllTelemetryEvents();
+    });
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => { bindCacheAllRow(); bindEventsAllRow(); });
+} else {
+  bindCacheAllRow();
+  bindEventsAllRow();
+}
+
 // ── SSE connection with reconnection recovery ────────
 let eventSource = null;
 
@@ -1782,6 +536,7 @@ function connect() {
     updateTypeCounts(event);
     updateSessionMap(event);
     updateImportMap(event);
+    updateCacheMap(event);
 
     if (state.paused) {
       state.pausedWhileCount++;
@@ -1791,6 +546,10 @@ function connect() {
     }
     updateCounters();
     if (typeof Timeline !== 'undefined') Timeline.invalidate();
+    // Cache events should refresh the snapshot panel if it's currently visible.
+    if (event._source === 'cache-watch' && typeof CacheView !== 'undefined') {
+      CacheView.onCacheEvent(event);
+    }
   };
   eventSource.onopen = () => {
     statusDot.className = 'status-dot';
@@ -1839,6 +598,26 @@ function updateSessionMap(event) {
   }
   state.sessionMap[sid].count++;
   scheduleSessionRender();
+}
+
+function updateCacheMap(event) {
+  const ck = cacheKeyOf(event);
+  if (!ck) return;
+  const ts = event._receivedAt || Date.now();
+  if (!state.cacheMap[ck]) {
+    state.cacheMap[ck] = {
+      key: ck,
+      namespace: event.payload && event.payload.namespace,
+      logicalKey: event.payload && event.payload.key,
+      count: 0,
+      firstSeen: ts,
+      lastOp: event.payload && event.payload.operation,
+    };
+  }
+  const entry = state.cacheMap[ck];
+  entry.count++;
+  entry.lastOp = (event.payload && event.payload.operation) || entry.lastOp;
+  scheduleCacheRender();
 }
 
 function updateImportMap(event) {
@@ -1908,6 +687,306 @@ function escapeHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+// ── Cache diff rendering ─────────────────────────────
+// Recursively walk previousContent vs content and yield a flat list of
+// leaf-level changes with full key paths. Stops recursing into arrays
+// (they're treated as primitives — reordering doesn't render well as a
+// line-by-line diff). The watcher's surface diff in payload.diff is
+// ignored when we have both sides of the content available, which is
+// always the case for `update` operations.
+function deepDiffLeaves(prev, next, basePath, out) {
+  basePath = basePath || [];
+  out = out || [];
+  const isPlainObj = (v) => typeof v === 'object' && v !== null && !Array.isArray(v);
+
+  if (!isPlainObj(prev) || !isPlainObj(next)) {
+    if (JSON.stringify(prev) !== JSON.stringify(next)) {
+      out.push({ kind: 'changed', path: basePath, from: prev, to: next });
+    }
+    return out;
+  }
+
+  // Removals: keys in prev not in next
+  for (const k of Object.keys(prev)) {
+    if (!(k in next)) {
+      out.push({ kind: 'removed', path: basePath.concat(k), from: prev[k] });
+    }
+  }
+  // Additions and changes
+  for (const k of Object.keys(next)) {
+    if (!(k in prev)) {
+      out.push({ kind: 'added', path: basePath.concat(k), to: next[k] });
+      continue;
+    }
+    if (JSON.stringify(prev[k]) === JSON.stringify(next[k])) continue;
+    if (isPlainObj(prev[k]) && isPlainObj(next[k])) {
+      deepDiffLeaves(prev[k], next[k], basePath.concat(k), out);
+    } else {
+      out.push({ kind: 'changed', path: basePath.concat(k), from: prev[k], to: next[k] });
+    }
+  }
+  return out;
+}
+
+// Side-by-side line-level diff (GitHub-style). Pretty-prints both sides
+// as multi-line JSON, then runs an LCS line diff and renders two columns
+// with red/green highlights and line numbers in gutters.
+function renderCacheDiff(payload) {
+  if (!payload) return '<div class="diff-view-empty">No diff data on this event.</div>';
+
+  const op = payload.operation;
+  let prev = payload.previousContent;
+  let next = payload.content;
+
+  if (op === 'create') {
+    // Whole right side is added; left is empty.
+    return renderSideBySideDiff(undefined, next, { headerLeft: 'Before (empty)', headerRight: 'Created' });
+  }
+  if (op === 'delete') {
+    return renderSideBySideDiff(prev, undefined, { headerLeft: 'Deleted', headerRight: 'After (gone)' });
+  }
+
+  // update — fall through to side-by-side
+  if (JSON.stringify(prev) === JSON.stringify(next)) {
+    return '<div class="diff-view-empty">No detected changes between the previous and current value.</div>';
+  }
+  return renderSideBySideDiff(prev, next, { headerLeft: 'Before', headerRight: 'After' });
+}
+
+// Pretty-print a JSON-serializable value for the diff. Returns lines so
+// the caller can feed them straight into the LCS diff. `undefined` is
+// treated as zero lines (used for create/delete cases).
+function jsonLines(value) {
+  if (value === undefined) return [];
+  if (value === null) return ['null'];
+  let json;
+  try { json = JSON.stringify(value, null, 2); } catch { json = String(value); }
+  if (typeof json !== 'string') json = String(json);
+  return json.split('\n');
+}
+
+// Standard LCS line diff. Returns an array of ops:
+//   { op: 'eq',  left, right, li, ri }   — same line, kept on both sides
+//   { op: 'del', left,        li     }   — only on the left
+//   { op: 'add',        right,     ri }  — only on the right
+// `li` / `ri` are 1-based line numbers for gutter display.
+function lcsLineDiff(leftLines, rightLines) {
+  const m = leftLines.length, n = rightLines.length;
+  const dp = [];
+  for (let i = 0; i <= m; i++) dp.push(new Int32Array(n + 1));
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (leftLines[i - 1] === rightLines[j - 1]) dp[i][j] = dp[i - 1][j - 1] + 1;
+      else dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+    }
+  }
+  const ops = [];
+  let i = m, j = n;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && leftLines[i - 1] === rightLines[j - 1]) {
+      ops.push({ op: 'eq', left: leftLines[i - 1], right: rightLines[j - 1], li: i, ri: j });
+      i--; j--;
+    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+      ops.push({ op: 'add', right: rightLines[j - 1], ri: j });
+      j--;
+    } else {
+      ops.push({ op: 'del', left: leftLines[i - 1], li: i });
+      i--;
+    }
+  }
+  ops.reverse();
+  return ops;
+}
+
+// Number of unchanged lines kept around each change as visible context.
+// Larger runs of `eq` ops get collapsed into a single expander row that
+// reveals them on click — same UX as GitHub's PR diff.
+var SXS_CONTEXT = 3;
+
+function renderSxsRow(o) {
+  const cellHtml = (text) => '<pre class="sxs-cell-pre">' + (text == null ? '' : escapeHtml(text)) + '</pre>';
+  if (o.op === 'eq') {
+    return (
+      '<div class="sxs-row eq">' +
+        '<div class="sxs-gutter">' + o.li + '</div>' +
+        '<div class="sxs-cell">' + cellHtml(o.left) + '</div>' +
+        '<div class="sxs-gutter">' + o.ri + '</div>' +
+        '<div class="sxs-cell">' + cellHtml(o.right) + '</div>' +
+      '</div>'
+    );
+  }
+  if (o.op === 'change') {
+    // Adjacent del+add paired into a single row so the corresponding
+    // before/after values sit on the same baseline (GitHub-style).
+    return (
+      '<div class="sxs-row change">' +
+        '<div class="sxs-gutter del-gutter">' + o.li + '</div>' +
+        '<div class="sxs-cell del-cell"><span class="sxs-marker">-</span>' + cellHtml(o.left) + '</div>' +
+        '<div class="sxs-gutter add-gutter">' + o.ri + '</div>' +
+        '<div class="sxs-cell add-cell"><span class="sxs-marker">+</span>' + cellHtml(o.right) + '</div>' +
+      '</div>'
+    );
+  }
+  if (o.op === 'del') {
+    return (
+      '<div class="sxs-row del">' +
+        '<div class="sxs-gutter del-gutter">' + o.li + '</div>' +
+        '<div class="sxs-cell del-cell"><span class="sxs-marker">-</span>' + cellHtml(o.left) + '</div>' +
+        '<div class="sxs-gutter"></div>' +
+        '<div class="sxs-cell empty"></div>' +
+      '</div>'
+    );
+  }
+  return (
+    '<div class="sxs-row add">' +
+      '<div class="sxs-gutter"></div>' +
+      '<div class="sxs-cell empty"></div>' +
+      '<div class="sxs-gutter add-gutter">' + o.ri + '</div>' +
+      '<div class="sxs-cell add-cell"><span class="sxs-marker">+</span>' + cellHtml(o.right) + '</div>' +
+    '</div>'
+  );
+}
+
+// Walk the LCS ops list and pair every contiguous run of `del`s followed
+// by `add`s into single `change` rows so before/after values appear on
+// the same baseline. Leftover unpaired ops (when the run lengths differ)
+// stay as plain `del` / `add` rows.
+function pairAdjacentChanges(ops) {
+  const out = [];
+  let i = 0;
+  while (i < ops.length) {
+    if (ops[i].op === 'del') {
+      const dels = [];
+      while (i < ops.length && ops[i].op === 'del') { dels.push(ops[i]); i++; }
+      const adds = [];
+      while (i < ops.length && ops[i].op === 'add') { adds.push(ops[i]); i++; }
+      const n = Math.max(dels.length, adds.length);
+      for (let j = 0; j < n; j++) {
+        const d = dels[j];
+        const a = adds[j];
+        if (d && a) {
+          out.push({ op: 'change', left: d.left, right: a.right, li: d.li, ri: a.ri });
+        } else if (d) {
+          out.push(d);
+        } else if (a) {
+          out.push(a);
+        }
+      }
+    } else if (ops[i].op === 'add') {
+      // A bare `add` run not preceded by `del` — keep as-is.
+      while (i < ops.length && ops[i].op === 'add') { out.push(ops[i]); i++; }
+    } else {
+      out.push(ops[i]);
+      i++;
+    }
+  }
+  return out;
+}
+
+// Walk the LCS ops list and decide which lines to render and which to
+// collapse. We always keep `SXS_CONTEXT` lines of context next to each
+// change; longer runs of unchanged lines become a single expander row.
+function buildSxsRows(ops) {
+  const rows = [];
+  let i = 0;
+  while (i < ops.length) {
+    const op = ops[i];
+    if (op.op !== 'eq') { rows.push(renderSxsRow(op)); i++; continue; }
+
+    // Collect the full eq run.
+    let runStart = i;
+    while (i < ops.length && ops[i].op === 'eq') i++;
+    const run = ops.slice(runStart, i);
+
+    const isFirst = runStart === 0;
+    const isLast = i === ops.length;
+    const ctx = SXS_CONTEXT;
+
+    // How many lines to keep visible at the head/tail of this run?
+    //   - Top of file: nothing above means we hide the whole thing if it's long.
+    //   - Sandwiched between changes: keep ctx at start AND end.
+    //   - Bottom of file: same logic flipped.
+    const keepHead = isFirst ? 0 : Math.min(ctx, run.length);
+    const keepTail = isLast ? 0 : Math.min(ctx, run.length - keepHead);
+    const hiddenLen = run.length - keepHead - keepTail;
+
+    // Always show the head context.
+    for (let k = 0; k < keepHead; k++) rows.push(renderSxsRow(run[k]));
+
+    if (hiddenLen > 0) {
+      const hiddenStart = run[keepHead].li;
+      const hiddenEnd = run[keepHead + hiddenLen - 1].li;
+      // Encode the slice of `ops` to expand directly into the row's data
+      // attribute — clicking the expander replaces it with these rows.
+      const hiddenOps = run.slice(keepHead, keepHead + hiddenLen);
+      const encoded = encodeURIComponent(JSON.stringify(hiddenOps));
+      rows.push(
+        '<div class="sxs-row sxs-collapsed" data-sxs-hidden="' + encoded + '">' +
+          '<div class="sxs-collapsed-cell" colspan="4">' +
+            '<button type="button" class="sxs-expand-btn">' +
+              '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/><polyline points="6 3 12 9 18 3"/></svg>' +
+              ' Expand ' + hiddenLen + ' unchanged line' + (hiddenLen === 1 ? '' : 's') +
+              ' <span class="sxs-collapsed-range">(' + hiddenStart + '–' + hiddenEnd + ')</span>' +
+            '</button>' +
+          '</div>' +
+        '</div>'
+      );
+    }
+
+    // Show the tail context.
+    for (let k = run.length - keepTail; k < run.length; k++) rows.push(renderSxsRow(run[k]));
+  }
+  return rows.join('');
+}
+
+function renderSideBySideDiff(prev, next, opts) {
+  opts = opts || {};
+  const leftLines = jsonLines(prev);
+  const rightLines = jsonLines(next);
+  // Pair adjacent del+add into `change` rows so the before/after values
+  // line up on the same row instead of stacking vertically.
+  const ops = pairAdjacentChanges(lcsLineDiff(leftLines, rightLines));
+
+  const body = buildSxsRows(ops);
+
+  // Stats banner above the diff so users see at a glance what changed.
+  // A paired `change` counts as both an addition and a removal.
+  let added = 0, removed = 0;
+  for (const o of ops) {
+    if (o.op === 'add') added++;
+    else if (o.op === 'del') removed++;
+    else if (o.op === 'change') { added++; removed++; }
+  }
+
+  return (
+    '<div class="sxs-diff">' +
+      '<div class="sxs-header">' +
+        '<div class="sxs-header-cell">' + escapeHtml(opts.headerLeft || 'Before') +
+          ' <span class="sxs-stat sxs-stat-removed">−' + removed + '</span></div>' +
+        '<div class="sxs-header-cell">' + escapeHtml(opts.headerRight || 'After') +
+          ' <span class="sxs-stat sxs-stat-added">+' + added + '</span></div>' +
+      '</div>' +
+      '<div class="sxs-body">' + body + '</div>' +
+    '</div>'
+  );
+}
+
+// Delegated click handler for the "Expand N unchanged lines" buttons.
+// Lives at the document level since the diff view is rebuilt on every
+// tab switch — listeners on the rendered HTML would leak.
+document.addEventListener('click', (e) => {
+  const btn = e.target && (e.target.closest ? e.target.closest('.sxs-expand-btn') : null);
+  if (!btn) return;
+  const row = btn.closest('.sxs-collapsed');
+  if (!row) return;
+  let hidden;
+  try {
+    hidden = JSON.parse(decodeURIComponent(row.dataset.sxsHidden || '[]'));
+  } catch { return; }
+  const html = hidden.map(renderSxsRow).join('');
+  row.outerHTML = html;
+});
+
 // ── Time helpers ─────────────────────────────────────
 function formatDelta(ms) {
   if (ms < 1000) return '+' + ms + 'ms';
@@ -1924,34 +1003,17 @@ function getPreviousEventTime(event) {
   return event._receivedAt - prev._receivedAt;
 }
 
-// ── Event card building ──────────────────────────────
-function buildEventCard(event) {
-  const idx = event._index != null ? event._index : state.events.indexOf(event);
-  const time = event._receivedAt ? new Date(event._receivedAt).toLocaleTimeString() : '';
-  const color = getColor(event.eventType);
-  const sessionShort = event.sessionId ? event.sessionId.slice(0, 8) : '';
-  const deltaMs = getPreviousEventTime(event);
-  const deltaStr = deltaMs != null ? formatDelta(deltaMs) : '';
-
-  const summaryParts = [];
-  if (event.payload) {
-    const p = event.payload;
-    if (p.eventType) summaryParts.push(p.eventType);
-    if (p.type) summaryParts.push(p.type);
-    if (p.name) summaryParts.push(p.name);
-    if (p.status) summaryParts.push(p.status);
-    if (p.error) summaryParts.push('error: ' + (typeof p.error === 'string' ? p.error : p.error.message || 'unknown'));
-  }
-  const summary = summaryParts.length > 0 ? summaryParts.join(' \u00b7 ') : '';
-
-  const card = document.createElement('div');
-  card.className = 'event-card';
-  card.dataset.eventType = event.eventType || '';
-  card.dataset.sessionId = event.sessionId || '';
-  card.dataset.index = idx;
-  card.dataset.searchText = JSON.stringify(event).toLowerCase();
-
+// ── Shared event-detail tab rendering ────────────────
+// Used by both the dashboard's event cards and the timeline's drawer so
+// they stay in sync. Returns the inner HTML for the tabs+content panel
+// plus a function the caller invokes once the HTML is in the DOM to wire
+// up tab-click handlers (delegated to the parent container).
+function buildEventTabs(event, idPrefix, opts) {
+  opts = opts || {};
+  const isCacheEvent = event._source === 'cache-watch';
   const sections = [];
+  // Diff comes first for cache events — it's the most useful view.
+  if (isCacheEvent) sections.push({ key: 'diff', label: 'Diff' });
   if (event.payload && Object.keys(event.payload).length > 0) sections.push({ key: 'payload', label: 'Payload' });
   if (event.metadata && Object.keys(event.metadata).length > 0) sections.push({ key: 'metadata', label: 'Metadata' });
   if (event.context && Object.keys(event.context).length > 0) sections.push({ key: 'context', label: 'Context' });
@@ -1962,11 +1024,78 @@ function buildEventCard(event) {
   ).join('');
 
   const contentHtml = sections.map((s, i) => {
-    const data = s.key === 'raw' ? event : event[s.key];
+    let inner;
+    if (s.key === 'diff') {
+      inner = renderCacheDiff(event.payload);
+    } else {
+      const data = s.key === 'raw' ? event : event[s.key];
+      inner = '<div class="json-view">' + renderJson(data, 0, idPrefix + '_' + s.key) + '</div>';
+    }
     return '<div class="event-tab-content" data-tab-content="' + s.key + '"' +
-      (i !== 0 ? ' style="display:none"' : '') + '>' +
-      '<div class="json-view">' + renderJson(data, 0, 'evt' + idx + '_' + s.key) + '</div></div>';
+      (i !== 0 ? ' style="display:none"' : '') + '>' + inner + '</div>';
   }).join('');
+
+  // Caller passes the container after inserting innerHTML; we delegate
+  // tab clicks to that container so card / drawer share behavior.
+  function attach(container, opts2) {
+    opts2 = opts2 || {};
+    container.querySelectorAll('.event-tab').forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        if (opts2.stopPropagation) e.stopPropagation();
+        const tabKey = tab.dataset.tab;
+        container.querySelectorAll('.event-tab').forEach(t => t.classList.remove('active'));
+        container.querySelectorAll('.event-tab-content').forEach(c => c.style.display = 'none');
+        tab.classList.add('active');
+        const target = container.querySelector('[data-tab-content="' + tabKey + '"]');
+        if (target) target.style.display = '';
+      });
+    });
+  }
+
+  return { tabsHtml: tabsHtml, contentHtml: contentHtml, attach: attach };
+}
+
+// ── Event card building ──────────────────────────────
+function buildEventCard(event) {
+  const idx = event._index != null ? event._index : state.events.indexOf(event);
+  const time = event._receivedAt ? new Date(event._receivedAt).toLocaleTimeString() : '';
+  const color = getColor(event.eventType);
+  const sessionShort = event.sessionId ? event.sessionId.slice(0, 8) : '';
+  const deltaMs = getPreviousEventTime(event);
+  const deltaStr = deltaMs != null ? formatDelta(deltaMs) : '';
+
+  const isCacheEvent = event._source === 'cache-watch';
+  let summary = '';
+  if (isCacheEvent && event.payload) {
+    // Match the CLI log format: "<namespace>/<key>". The operation is already
+    // conveyed by the eventType badge (cache:write vs cache:delete) and the
+    // diff lives on its own tab, so the summary stays compact.
+    const p = event.payload;
+    summary = (p.namespace || '') + '/' + (p.key || '');
+  } else {
+    const summaryParts = [];
+    if (event.payload) {
+      const p = event.payload;
+      if (p.eventType) summaryParts.push(p.eventType);
+      if (p.type) summaryParts.push(p.type);
+      if (p.name) summaryParts.push(p.name);
+      if (p.status) summaryParts.push(p.status);
+      if (p.error) summaryParts.push('error: ' + (typeof p.error === 'string' ? p.error : p.error.message || 'unknown'));
+    }
+    summary = summaryParts.length > 0 ? summaryParts.join(' \u00b7 ') : '';
+  }
+
+  const card = document.createElement('div');
+  card.className = 'event-card';
+  card.dataset.eventType = event.eventType || '';
+  card.dataset.sessionId = event.sessionId || '';
+  card.dataset.index = idx;
+  card.dataset.searchText = JSON.stringify(event).toLowerCase();
+  // Cache-watch pseudo-events get a subtle border accent (see .cache-event CSS)
+  // so they're easy to pick out of a long timeline of telemetry events.
+  if (isCacheEvent) card.dataset.cacheEvent = 'true';
+
+  const tabs = buildEventTabs(event, 'evt' + idx);
 
   card.innerHTML =
     '<div class="event-header" onclick="toggleCard(this.parentElement)">' +
@@ -1986,20 +1115,11 @@ function buildEventCard(event) {
       '</div>' +
     '</div>' +
     '<div class="event-body">' +
-      '<div class="event-tabs">' + tabsHtml + '</div>' +
-      contentHtml +
+      '<div class="event-tabs">' + tabs.tabsHtml + '</div>' +
+      tabs.contentHtml +
     '</div>';
 
-  card.querySelectorAll('.event-tab').forEach(tab => {
-    tab.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const tabKey = tab.dataset.tab;
-      card.querySelectorAll('.event-tab').forEach(t => t.classList.remove('active'));
-      card.querySelectorAll('.event-tab-content').forEach(c => c.style.display = 'none');
-      tab.classList.add('active');
-      card.querySelector('[data-tab-content="' + tabKey + '"]').style.display = '';
-    });
-  });
+  tabs.attach(card, { stopPropagation: true });
 
   return card;
 }
@@ -2105,6 +1225,21 @@ function applyFiltersInPlace() {
 function matchesFilters(event) {
   if (state.hiddenTypes.has(event.eventType)) return false;
   if (event.sessionId && state.hiddenSessions.has(event.sessionId)) return false;
+  // Cache events are filterable / hideable per `namespace/key`, mirroring
+  // how sessions and event types work — see Cache Operations sidebar.
+  // Filters work in tandem with the Event Types filter: e.g. "All events"
+  // + a single cache key shows every telemetry event PLUS only that one
+  // cache key. The master "All operations" eye toggle hides every cache
+  // event regardless of per-key state.
+  if (event._source === 'cache-watch') {
+    if (state.cacheAllHidden) return false;
+    const ck = cacheKeyOf(event);
+    if (ck && state.hiddenCacheKeys.has(ck)) return false;
+    if (state.activeCacheKey && ck !== state.activeCacheKey) return false;
+  } else {
+    // Master "All events" toggle hides everything that isn't a cache pseudo-event.
+    if (state.telemetryAllHidden) return false;
+  }
   const importId = event._import && event._import.id;
   if (importId && state.hiddenImports.has(importId)) return false;
   if (state.activeImport && importId !== state.activeImport) return false;
@@ -2161,8 +1296,24 @@ function renderFiltersNow() {
       eyeBtn.title = state.hiddenTypes.has(type) ? 'Show this event type' : 'Hide this event type';
     }
   }
-  countAll.textContent = state.events.length;
-  filterList.querySelector('[data-filter="all"]').classList.toggle('active', state.activeFilter === 'all');
+  // "All events" row count = telemetry events only (cache events have
+  // their own master row). Reflect master-toggle hidden state on the eye
+  // button so the row mirrors per-type / per-session affordances.
+  const telemetryTotal = state.events.reduce(
+    (acc, e) => acc + (e._source === 'cache-watch' ? 0 : 1),
+    0
+  );
+  countAll.textContent = telemetryTotal;
+  const allRow = filterList.querySelector('[data-filter="all"]');
+  if (allRow) {
+    allRow.classList.toggle('active', state.activeFilter === 'all' && !state.telemetryAllHidden);
+    allRow.classList.toggle('hidden-item', state.telemetryAllHidden);
+    const eyeBtn = allRow.querySelector('#eventsAllEyeBtn');
+    if (eyeBtn) {
+      eyeBtn.innerHTML = state.telemetryAllHidden ? SVG_EYE_OFF : SVG_EYE;
+      eyeBtn.title = state.telemetryAllHidden ? 'Show all telemetry events' : 'Hide all telemetry events';
+    }
+  }
 }
 
 function renderSessionsNow() {
@@ -2417,6 +1568,171 @@ function deleteEventsByImport(importId) {
   rerenderAll();
   updateCounters();
   if (typeof Timeline !== 'undefined') Timeline.invalidate();
+}
+
+// ── Cache Operations sidebar ─────────────────────────
+// Keyed by `namespace/key`. Mirrors sessions/imports: click to filter,
+// eye to hide, trash to delete all events for that key.
+function renderCacheKeysNow() {
+  const entries = Object.values(state.cacheMap).sort(
+    (a, b) => b.firstSeen - a.firstSeen
+  );
+  cacheListEmpty.style.display = entries.length === 0 ? '' : 'none';
+
+  // Master "All operations" row state.
+  const allRow = cacheList.querySelector('[data-cache-key="__all__"]');
+  if (allRow) {
+    const total = entries.reduce((acc, info) => acc + info.count, 0);
+    const countEl = allRow.querySelector('.count');
+    if (countEl) countEl.textContent = total;
+    allRow.classList.toggle('active', state.activeCacheKey === null && !state.cacheAllHidden);
+    allRow.classList.toggle('hidden-item', state.cacheAllHidden);
+    const eyeBtn = allRow.querySelector('.eye-btn');
+    if (eyeBtn) {
+      eyeBtn.innerHTML = state.cacheAllHidden ? SVG_EYE_OFF : SVG_EYE;
+      eyeBtn.title = state.cacheAllHidden ? 'Show all cache events' : 'Hide all cache events';
+    }
+  }
+
+  const existingItems = cacheList.querySelectorAll('.filter-item:not([data-cache-key="__all__"])');
+  const existingKeys = new Map();
+  existingItems.forEach(el => existingKeys.set(el.dataset.cacheKey, el));
+
+  for (const info of entries) {
+    let el = existingKeys.get(info.key);
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'filter-item';
+      el.dataset.cacheKey = info.key;
+      el.innerHTML =
+        '<div class="label-row col">' +
+          '<span>' + escapeHtml(info.namespace || '') + '/' + escapeHtml(info.logicalKey || '') + '</span>' +
+          '<span class="import-meta" data-cache-meta></span>' +
+        '</div>' +
+        '<div class="item-actions">' +
+          '<button class="item-action danger trash-btn" title="Delete all events for this cache key">' + SVG_TRASH + '</button>' +
+          '<button class="item-action eye-btn" title="Hide this cache key">' + SVG_EYE + '</button>' +
+        '</div>' +
+        '<span class="count">0</span>';
+      el.querySelector('.label-row').addEventListener('click', () => {
+        state.activeCacheKey = state.activeCacheKey === info.key ? null : info.key;
+        renderCacheKeysNow();
+        applyFiltersInPlace();
+      });
+      el.querySelector('.eye-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleHiddenCacheKey(info.key);
+      });
+      el.querySelector('.trash-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteEventsByCacheKey(info.key);
+      });
+      cacheList.appendChild(el);
+    }
+    el.querySelector('.count').textContent = info.count;
+    const meta = el.querySelector('[data-cache-meta]');
+    if (meta) meta.textContent = (info.lastOp || '') + (info.count > 1 ? ' · ' + info.count : '');
+    el.classList.toggle('active', state.activeCacheKey === info.key);
+    el.classList.toggle('hidden-item', state.hiddenCacheKeys.has(info.key));
+    const eyeBtn = el.querySelector('.eye-btn');
+    if (eyeBtn) {
+      eyeBtn.innerHTML = state.hiddenCacheKeys.has(info.key) ? SVG_EYE_OFF : SVG_EYE;
+      eyeBtn.title = state.hiddenCacheKeys.has(info.key) ? 'Show this cache key' : 'Hide this cache key';
+    }
+  }
+}
+
+function toggleHiddenCacheKey(ck) {
+  if (state.hiddenCacheKeys.has(ck)) state.hiddenCacheKeys.delete(ck);
+  else state.hiddenCacheKeys.add(ck);
+  renderCacheKeysNow();
+  applyFiltersInPlace();
+  if (typeof Timeline !== 'undefined') Timeline.invalidate();
+}
+
+function deleteEventsByCacheKey(ck) {
+  state.events = state.events.filter(e => cacheKeyOf(e) !== ck);
+  delete state.cacheMap[ck];
+  state.hiddenCacheKeys.delete(ck);
+  if (state.activeCacheKey === ck) state.activeCacheKey = null;
+  rebuildTypeCounts();
+  // sessionMap doesn't include cache events (no sessionId), so it's untouched.
+  const el = cacheList.querySelector('[data-cache-key="' + cssEscape(ck) + '"]');
+  if (el) el.remove();
+  renderFiltersNow();
+  renderCacheKeysNow();
+  rerenderAll();
+  updateCounters();
+  if (typeof Timeline !== 'undefined') Timeline.invalidate();
+}
+
+// "All operations" toggles every cache event globally without touching
+// the per-key list. Lets users get a focused telemetry-only view in one
+// click, while still leaving per-key filtering intact for when they
+// flip it back on.
+function toggleCacheAllHidden() {
+  state.cacheAllHidden = !state.cacheAllHidden;
+  renderCacheKeysNow();
+  applyFiltersInPlace();
+  if (typeof Timeline !== 'undefined') Timeline.invalidate();
+}
+
+// Mirror of toggleCacheAllHidden for the telemetry stream — hides every
+// non-cache event globally without touching per-type filters.
+function toggleTelemetryAllHidden() {
+  state.telemetryAllHidden = !state.telemetryAllHidden;
+  renderFiltersNow();
+  applyFiltersInPlace();
+  if (typeof Timeline !== 'undefined') Timeline.invalidate();
+}
+
+function deleteAllTelemetryEvents() {
+  state.events = state.events.filter(e => e._source === 'cache-watch');
+  state.typeCounts = {};
+  state.sessionMap = {};
+  state.importMap = {};
+  state.hiddenTypes.clear();
+  state.hiddenSessions.clear();
+  state.hiddenImports.clear();
+  state.activeFilter = 'all';
+  state.activeSession = null;
+  state.activeImport = null;
+  state.telemetryAllHidden = false;
+  rebuildTypeCounts();
+  // Strip per-type / per-session / per-import DOM rows; master rows stay.
+  filterList.querySelectorAll('[data-filter]:not([data-filter="all"])').forEach(el => el.remove());
+  sessionList.querySelectorAll('.filter-item').forEach(el => el.remove());
+  importList.querySelectorAll('.filter-item').forEach(el => el.remove());
+  renderFiltersNow();
+  renderSessionsNow();
+  renderImportsNow();
+  rerenderAll();
+  updateCounters();
+  if (typeof Timeline !== 'undefined') Timeline.invalidate();
+}
+
+function deleteAllCacheEvents() {
+  state.events = state.events.filter(e => e._source !== 'cache-watch');
+  state.cacheMap = {};
+  state.hiddenCacheKeys.clear();
+  state.activeCacheKey = null;
+  state.cacheAllHidden = false;
+  rebuildTypeCounts();
+  // Wipe the per-key DOM rows but keep the "All operations" master row.
+  cacheList.querySelectorAll('.filter-item:not([data-cache-key="__all__"])').forEach(el => el.remove());
+  renderFiltersNow();
+  renderCacheKeysNow();
+  rerenderAll();
+  updateCounters();
+  if (typeof Timeline !== 'undefined') Timeline.invalidate();
+}
+
+// `namespace/key` can contain characters CSS attribute selectors can't
+// match without escaping (e.g. `:` in scoped keys). Use the spec's helper
+// when available, fall back to a minimal escape.
+function cssEscape(value) {
+  if (typeof CSS !== 'undefined' && CSS.escape) return CSS.escape(value);
+  return String(value).replace(/[^a-zA-Z0-9_-]/g, ch => '\\' + ch);
 }
 
 function setFilter(type) {
@@ -2679,9 +1995,16 @@ expandAllBtn.addEventListener('click', () => {
   state.expandAll = !state.expandAll;
   expandLabel.textContent = state.expandAll ? 'Collapse' : 'Expand';
   expandAllBtn.classList.toggle('active', state.expandAll);
-  container.querySelectorAll('.event-card').forEach(card => {
-    card.classList.toggle('expanded', state.expandAll);
-  });
+  // The header button is view-aware: in dashboard view it expands event
+  // cards, in cache view it expands cache entries — same affordance, the
+  // user expects it to "do the right thing" for whatever they're looking at.
+  if (state.view === 'cache' && typeof CacheView !== 'undefined') {
+    CacheView.setAllExpanded(state.expandAll);
+  } else {
+    container.querySelectorAll('.event-card').forEach(card => {
+      card.classList.toggle('expanded', state.expandAll);
+    });
+  }
 });
 
 const exportWrap = document.getElementById('exportWrap');
@@ -2900,19 +2223,42 @@ const Timeline = (function () {
 
   function visibleSessions() {
     const map = new Map();
+    // Synthetic cache lane — collects every cache:* pseudo-event into a
+    // single lane labeled "Cache". Sits above the per-session lanes.
+    const CACHE_LANE_ID = '__cache__';
+    let cacheLane = null;
     for (const e of state.events) {
+      // Cache events feed the cache lane regardless of sessionId.
+      if (e._source === 'cache-watch') {
+        const ck = cacheKeyOf(e);
+        if (ck && state.hiddenCacheKeys.has(ck)) continue;
+        if (!cacheLane) {
+          cacheLane = {
+            sid: CACHE_LANE_ID,
+            kind: 'cache',
+            first: e._receivedAt,
+            last: e._receivedAt,
+            events: [],
+          };
+        }
+        if (e._receivedAt < cacheLane.first) cacheLane.first = e._receivedAt;
+        if (e._receivedAt > cacheLane.last) cacheLane.last = e._receivedAt;
+        if (!state.hiddenTypes.has(e.eventType)) cacheLane.events.push(e);
+        continue;
+      }
       if (!e.sessionId) continue;
       if (state.hiddenSessions.has(e.sessionId)) continue;
       let entry = map.get(e.sessionId);
       if (!entry) {
-        entry = { sid: e.sessionId, first: e._receivedAt, last: e._receivedAt, events: [] };
+        entry = { sid: e.sessionId, kind: 'session', first: e._receivedAt, last: e._receivedAt, events: [] };
         map.set(e.sessionId, entry);
       }
       if (e._receivedAt < entry.first) entry.first = e._receivedAt;
       if (e._receivedAt > entry.last) entry.last = e._receivedAt;
       if (!state.hiddenTypes.has(e.eventType)) entry.events.push(e);
     }
-    return Array.from(map.values()).sort((a, b) => a.first - b.first);
+    const sessionLanes = Array.from(map.values()).sort((a, b) => a.first - b.first);
+    return cacheLane ? [cacheLane, ...sessionLanes] : sessionLanes;
   }
 
   // Build piecewise time-mapping segments.
@@ -3279,7 +2625,8 @@ const Timeline = (function () {
         contentCtx.fillRect(barX, yDot - LIFESPAN_H / 2, barW, LIFESPAN_H);
       }
 
-      const dimSession = state.activeSession && state.activeSession !== lane.sid;
+      // Cache lane is never dimmed by an activeSession filter — they're orthogonal.
+      const dimSession = lane.kind !== 'cache' && state.activeSession && state.activeSession !== lane.sid;
       const sessionAlpha = dimSession ? 0.3 : 1;
       const laneHits = [];
       let lastLabelRight = -Infinity;
@@ -3351,7 +2698,8 @@ const Timeline = (function () {
     for (let i = 0; i < sessions.length; i++) {
       const lane = sessions[i];
       const yTop = i * LANE_H;
-      const dimSession = state.activeSession && state.activeSession !== lane.sid;
+      // Cache lane is never dimmed by an activeSession filter — they're orthogonal.
+      const dimSession = lane.kind !== 'cache' && state.activeSession && state.activeSession !== lane.sid;
 
       if (state.activeSession === lane.sid) {
         contentCtx.fillStyle = 'rgba(108,158,248,0.06)';
@@ -3363,11 +2711,14 @@ const Timeline = (function () {
       contentCtx.fillStyle = dimSession ? 'rgba(155,168,185,0.45)' : '#e2e8f0';
       contentCtx.font = '11px ui-monospace, SFMono-Regular, Menlo, monospace';
       contentCtx.textAlign = 'left';
-      contentCtx.fillText(lane.sid.slice(0, 8), 12, yTop + LANE_H / 2 - 6);
+      const laneLabel = lane.kind === 'cache' ? 'Cache' : lane.sid.slice(0, 8);
+      contentCtx.fillText(laneLabel, 12, yTop + LANE_H / 2 - 6);
       contentCtx.fillStyle = dimSession ? 'rgba(95,112,133,0.6)' : '#5f7085';
       contentCtx.font = '10px ui-monospace, SFMono-Regular, Menlo, monospace';
-      const label = lane.events.length + ' event' + (lane.events.length !== 1 ? 's' : '');
-      contentCtx.fillText(label, 12, yTop + LANE_H / 2 + 8);
+      const subLabel = lane.kind === 'cache'
+        ? lane.events.length + ' op' + (lane.events.length !== 1 ? 's' : '')
+        : lane.events.length + ' event' + (lane.events.length !== 1 ? 's' : '');
+      contentCtx.fillText(subLabel, 12, yTop + LANE_H / 2 + 8);
     }
   }
 
@@ -3403,6 +2754,10 @@ const Timeline = (function () {
       if (!e._receivedAt) continue;
       if (state.hiddenTypes.has(e.eventType)) continue;
       if (e.sessionId && state.hiddenSessions.has(e.sessionId)) continue;
+      if (e._source === 'cache-watch') {
+        const ck = cacheKeyOf(e);
+        if (ck && state.hiddenCacheKeys.has(ck)) continue;
+      }
       const x = ((e._receivedAt - first) / range) * w;
       minimapCtx.fillStyle = hexToRgba(getColor(e.eventType).fg, 0.55);
       minimapCtx.fillRect(x, h * 0.25, 1.5, h * 0.5);
@@ -3514,6 +2869,12 @@ const Timeline = (function () {
     if (hit) { openDrawer(hit.event); return; }
     const lane = findLaneLabelAt(e.clientX, e.clientY);
     if (lane) {
+      // Cache lane click jumps to the Cache view rather than acting as a
+      // session filter — sessions don't apply to it.
+      if (lane.sid === '__cache__') {
+        setView('cache');
+        return;
+      }
       state.activeSession = state.activeSession === lane.sid ? null : lane.sid;
       renderSessionsNow();
       applyFiltersInPlace();
@@ -3705,38 +3066,43 @@ const Timeline = (function () {
     return state.events.filter(e => e.sessionId === sid).sort((a, b) => (a._receivedAt || 0) - (b._receivedAt || 0));
   }
 
+  // Cache events live in the synthetic "Cache" lane and don't have a
+  // sessionId — drawer prev/next walks them linearly in chronological
+  // order regardless of namespace/key, so users can scrub through every
+  // cache write in sequence.
+  function allCacheEventsByTime() {
+    return state.events
+      .filter(e => e._source === 'cache-watch')
+      .sort((a, b) => (a._receivedAt || 0) - (b._receivedAt || 0));
+  }
+
+  // Returns the navigable list for a given drawer event — session events
+  // for telemetry, all cache events (linear by time) for cache pseudo-events.
+  function navigableEventsFor(event) {
+    if (!event) return [];
+    if (event._source === 'cache-watch') return allCacheEventsByTime();
+    if (event.sessionId) return sessionEventsFor(event.sessionId);
+    return [];
+  }
+
   function openDrawer(event) {
     const color = getColor(event.eventType);
-    const sections = [];
-    if (event.payload && Object.keys(event.payload).length > 0) sections.push({ key: 'payload', label: 'Payload' });
-    if (event.metadata && Object.keys(event.metadata).length > 0) sections.push({ key: 'metadata', label: 'Metadata' });
-    if (event.context && Object.keys(event.context).length > 0) sections.push({ key: 'context', label: 'Context' });
-    sections.push({ key: 'raw', label: 'Raw' });
-
-    const sessionShort = event.sessionId ? event.sessionId.slice(0, 8) : '—';
+    // Title shows the event-type badge, the index, and a session/cache-key
+    // hint depending on which kind of event it is — cache events don't have
+    // a sessionId, so we surface the namespace/key instead.
+    const isCacheEvent = event._source === 'cache-watch';
+    const subLabel = isCacheEvent
+      ? cacheKeyOf(event) || 'cache'
+      : (event.sessionId ? event.sessionId.slice(0, 8) : '—');
     drawerTitle.innerHTML =
       '<span class="event-badge" style="background:' + color.bg + '; color:' + color.fg + '">' + escapeHtml(event.eventType || 'unknown') + '</span>' +
-      '<span style="color:var(--text-dim); font-size:11px; font-family:var(--font-mono)">#' + event._index + ' · ' + sessionShort + '</span>';
+      '<span style="color:var(--text-dim); font-size:11px; font-family:var(--font-mono)">#' + event._index + ' · ' + escapeHtml(subLabel) + '</span>';
 
-    const tabsHtml = sections.map((s, i) =>
-      '<div class="event-tab' + (i === 0 ? ' active' : '') + '" data-tab="' + s.key + '">' + s.label + '</div>'
-    ).join('');
-    const contentHtml = sections.map((s, i) => {
-      const data = s.key === 'raw' ? event : event[s.key];
-      return '<div class="event-tab-content" data-tab-content="' + s.key + '"' +
-        (i !== 0 ? ' style="display:none"' : '') + '>' +
-        '<div class="json-view">' + renderJson(data, 0, 'tl_' + event._index + '_' + s.key) + '</div></div>';
-    }).join('');
-
-    drawerBody.innerHTML = '<div class="event-tabs">' + tabsHtml + '</div>' + contentHtml;
-    drawerBody.querySelectorAll('.event-tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        drawerBody.querySelectorAll('.event-tab').forEach(t => t.classList.remove('active'));
-        drawerBody.querySelectorAll('.event-tab-content').forEach(c => c.style.display = 'none');
-        tab.classList.add('active');
-        drawerBody.querySelector('[data-tab-content="' + tab.dataset.tab + '"]').style.display = '';
-      });
-    });
+    // Reuse the same tab renderer used by event cards in the dashboard view
+    // — Diff/Payload/Context/Raw and the side-by-side diff stay consistent.
+    const tabs = buildEventTabs(event, 'tl_' + event._index);
+    drawerBody.innerHTML = '<div class="event-tabs">' + tabs.tabsHtml + '</div>' + tabs.contentHtml;
+    tabs.attach(drawerBody);
 
     currentDrawerEvent = event;
     st.selectedIdx = event._index;
@@ -3772,22 +3138,26 @@ const Timeline = (function () {
   }
 
   function updateDrawerNav() {
-    if (!currentDrawerEvent || !currentDrawerEvent.sessionId) {
+    if (!currentDrawerEvent) {
       drawerPrev.disabled = true;
       drawerNext.disabled = true;
       drawerPos.textContent = '';
       return;
     }
-    const list = sessionEventsFor(currentDrawerEvent.sessionId);
+    const list = navigableEventsFor(currentDrawerEvent);
     const pos = list.findIndex(e => e._index === currentDrawerEvent._index);
     drawerPrev.disabled = pos <= 0;
     drawerNext.disabled = pos === -1 || pos >= list.length - 1;
     drawerPos.textContent = pos === -1 ? '' : ((pos + 1) + ' / ' + list.length);
+    // Tooltip wording reflects what we're navigating through.
+    const navLabel = currentDrawerEvent._source === 'cache-watch' ? 'cache operation' : 'session';
+    drawerPrev.title = 'Previous ' + navLabel + ' (←)';
+    drawerNext.title = 'Next ' + navLabel + ' (→)';
   }
 
   function navigateDrawer(dir) {
-    if (!currentDrawerEvent || !currentDrawerEvent.sessionId) return;
-    const list = sessionEventsFor(currentDrawerEvent.sessionId);
+    if (!currentDrawerEvent) return;
+    const list = navigableEventsFor(currentDrawerEvent);
     const pos = list.findIndex(e => e._index === currentDrawerEvent._index);
     const target = list[pos + dir];
     if (!target) return;
@@ -3829,8 +3199,40 @@ const Timeline = (function () {
     // Snapshot name: the file name without extension. Keeps it stable across renames.
     const snapshotName = filename.replace(/\.html$/i, '');
 
+    // Capture cache state at snapshot time (best-effort — if the routes
+    // aren't reachable, we proceed without it). Edit / Refresh / Clear /
+    // Change-root buttons are disabled in the snapshot regardless.
+    let cacheInfo = null;
+    let cacheEntries = null;
+    try {
+      const [infoRes, entriesRes] = await Promise.all([
+        fetch('/cache/info'),
+        fetch('/cache/entries'),
+      ]);
+      cacheInfo = await infoRes.json();
+      const data = await entriesRes.json();
+      cacheEntries = data && Array.isArray(data.entries) ? data.entries : [];
+    } catch (_) { /* leave nulls — snapshot will surface "unavailable" */ }
+
+    // Fetch the external stylesheet so we can inline it into the snapshot —
+    // the served HTML uses <link> for reviewability, but a snapshot must be
+    // a single self-contained file.
+    let inlinedCss = '';
+    try {
+      const cssRes = await fetch('/event-log-dashboard.css');
+      if (cssRes.ok) inlinedCss = await cssRes.text();
+    } catch (_) { /* fall back to no-inline; snapshot will look unstyled */ }
+
     // Clone the live document so the snapshot retains every style + script.
     const clone = document.documentElement.cloneNode(true);
+    // Replace the external stylesheet <link> with an inlined <style> block —
+    // the snapshot is meant to open offline so we can't rely on /event-log-dashboard.css.
+    const cloneLink = clone.querySelector('link[href$="event-log-dashboard.css"]');
+    if (cloneLink && inlinedCss) {
+      const inlineStyle = document.createElement('style');
+      inlineStyle.textContent = inlinedCss;
+      cloneLink.replaceWith(inlineStyle);
+    }
     const events = state.events.slice();
     const [first, last] = dataRange();
     const durationMs = events.length > 1 ? last - first : 0;
@@ -3868,6 +3270,11 @@ const Timeline = (function () {
       '.tl-toolbar .tl-live { display: none !important; }',
       // Kill the drag-and-drop import affordance — import endpoint is stubbed anyway.
       '#dropOverlay { display: none !important; }',
+      // Cache panel: hide everything that would mutate disk state. Edit
+      // mode toggle, Refresh, Change root, Clear, plus per-entry Edit /
+      // Delete buttons (kept Copy because it's read-only).
+      '#cacheRefreshBtn, #cacheChangeRootBtn, #cacheClearBtn, #cacheEditToggleRow { display: none !important; }',
+      '.cache-entry-actions [data-action="edit"], .cache-entry-actions [data-action="delete"], .cache-entry-actions [data-action="save-edit"], .cache-entry-actions [data-action="cancel-edit"] { display: none !important; }',
     ].join('\n');
     clone.querySelector('head').appendChild(snapshotStyle);
 
@@ -3909,12 +3316,16 @@ const Timeline = (function () {
       '#filterList [data-filter]:not([data-filter="all"])',
       '#sessionList .filter-item',
       '#importList .filter-item',
+      '#cacheList .filter-item',
       '#eventContainer .event-card',
       '#eventContainer .session-separator',
     ];
     stripSelectors.forEach((sel) => {
       clone.querySelectorAll(sel).forEach((el) => el.remove());
     });
+    // Reset cache list empty-state so the snapshot's app boots clean.
+    const cloneCacheEmpty = clone.querySelector('#cacheListEmpty');
+    if (cloneCacheEmpty) cloneCacheEmpty.style.display = '';
     // Reset the "All events" active state + count and the empty-state visibility so
     // the snapshot app boots from a clean slate before it ingests the baked events.
     const cloneAll = clone.querySelector('#filterList [data-filter="all"]');
@@ -3934,6 +3345,8 @@ const Timeline = (function () {
       '(function() {',
       '  window.__SNAPSHOT__ = true;',
       '  window.__SNAPSHOT_EVENTS__ = ' + JSON.stringify(events) + ';',
+      '  window.__SNAPSHOT_CACHE_INFO__ = ' + JSON.stringify(cacheInfo) + ';',
+      '  window.__SNAPSHOT_CACHE_ENTRIES__ = ' + JSON.stringify(cacheEntries) + ';',
       '  window.__SNAPSHOT_META__ = ' + JSON.stringify({
         name: snapshotName,
         explanation: explanation,
@@ -3941,13 +3354,26 @@ const Timeline = (function () {
         eventsCount: events.length,
         sessionsCount: sessionCount,
       }) + ';',
-      '  // Serve the baked events for the initial GET /event-log, no-op everything else.',
+      '  // Serve baked data for the read endpoints; no-op everything else.',
       '  window.fetch = function(input, init) {',
       '    var url = typeof input === "string" ? input : (input && input.url) || "";',
-      '    if ((init == null || !init.method || init.method === "GET") && /\\/event-log(\\?|$)/.test(url)) {',
+      '    var method = (init && init.method) || "GET";',
+      '    if (method === "GET" && /\\/event-log(\\?|$)/.test(url)) {',
       '      return Promise.resolve(new Response(JSON.stringify(window.__SNAPSHOT_EVENTS__), { status: 200, headers: { "Content-Type": "application/json" } }));',
       '    }',
-      '    // Swallow POSTs (clear, new events, imports) — snapshot is read-only.',
+      '    if (method === "GET" && /\\/cache\\/info(\\?|$)/.test(url)) {',
+      '      var info = window.__SNAPSHOT_CACHE_INFO__ || { cacheStatus: "not-found", projectRoot: null, cacheRoot: null, version: null };',
+      '      return Promise.resolve(new Response(JSON.stringify(info), { status: 200, headers: { "Content-Type": "application/json" } }));',
+      '    }',
+      '    if (method === "GET" && /\\/cache\\/entries(\\?|$)/.test(url)) {',
+      '      var info2 = window.__SNAPSHOT_CACHE_INFO__ || { cacheStatus: "not-found", projectRoot: null, cacheRoot: null, version: null };',
+      '      var body = Object.assign({}, info2, { entries: window.__SNAPSHOT_CACHE_ENTRIES__ || [] });',
+      '      return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } }));',
+      '    }',
+      '    if (method === "GET" && /\\/config(\\?|$)/.test(url)) {',
+      '      return Promise.resolve(new Response(JSON.stringify({ cacheEnabledByDefault: true, snapshot: true }), { status: 200, headers: { "Content-Type": "application/json" } }));',
+      '    }',
+      '    // Snapshot is read-only — POST/PUT/DELETE are swallowed.',
       '    return Promise.resolve(new Response("", { status: 204 }));',
       '  };',
       '  // Disable SSE so there is no "LIVE" connection attempt.',
@@ -3987,27 +3413,376 @@ Timeline.init();
 
 // ── View switching ───────────────────────────────────
 function setView(view) {
-  if (view !== 'dashboard' && view !== 'timeline') view = 'dashboard';
+  if (view !== 'dashboard' && view !== 'timeline' && view !== 'cache') view = 'dashboard';
   state.view = view;
   try { localStorage.setItem('sbutils.eventlog.view', view); } catch (_) { /* ignore */ }
   document.body.classList.toggle('view-timeline', view === 'timeline');
   document.body.classList.toggle('view-dashboard', view === 'dashboard');
+  document.body.classList.toggle('view-cache', view === 'cache');
   document.getElementById('eventContainer').style.display = view === 'dashboard' ? '' : 'none';
   document.getElementById('timelineView').style.display = view === 'timeline' ? '' : 'none';
+  document.getElementById('cacheView').style.display = view === 'cache' ? '' : 'none';
   document.querySelectorAll('#viewToggle button').forEach(b => {
     b.classList.toggle('active', b.dataset.view === view);
   });
   if (view === 'timeline') Timeline.invalidate();
+  if (view === 'cache') CacheView.refresh();
 }
+
 
 document.querySelectorAll('#viewToggle button').forEach(b => {
   b.addEventListener('click', () => setView(b.dataset.view));
 });
 
-(function initView() {
-  let saved = 'dashboard';
-  try { saved = localStorage.getItem('sbutils.eventlog.view') || 'dashboard'; } catch (_) {}
-  setView(saved);
+// ── Cache view ───────────────────────────────────────
+const CacheView = (() => {
+  // Server-resolved cache state. Edit mode is purely client-side now.
+  let info = { cacheStatus: 'not-found', projectRoot: null, cacheRoot: null, version: null };
+  let entries = [];
+  // Edit mode controls whether write affordances (Edit/Delete/Clear) appear.
+  // Persisted in localStorage per-browser. Never on in snapshots — they're
+  // read-only artifacts and the underlying cache isn't mutable from here.
+  let editMode = false;
+  if (!window.__SNAPSHOT__) {
+    try { editMode = localStorage.getItem('sbutils.eventlog.cache.editMode') === '1'; } catch (_) {}
+  }
+  // Track expanded entries by `${namespace}/${key}` so refresh doesn't collapse them.
+  const expanded = new Set();
+  // Same key set used to remember which entries are mid-edit.
+  const editing = new Map();
+
+  const $ = (id) => document.getElementById(id);
+
+  function entryKey(entry) { return entry.namespace + '/' + entry.key; }
+
+  async function fetchInfo() {
+    try {
+      const res = await fetch('/cache/info');
+      info = await res.json();
+    } catch (err) {
+      info = { cacheStatus: 'unreadable', projectRoot: null, cacheRoot: null, version: null, error: String(err) };
+    }
+    renderHeader();
+  }
+
+  async function fetchEntries() {
+    if (info.cacheStatus !== 'found') { entries = []; renderEntries(); return; }
+    try {
+      const res = await fetch('/cache/entries');
+      const data = await res.json();
+      entries = Array.isArray(data.entries) ? data.entries : [];
+    } catch (err) {
+      entries = [];
+    }
+    renderEntries();
+  }
+
+  function renderHeader() {
+    const status = info.cacheStatus || 'not-found';
+    const statusEl = $('cacheRootStatus');
+    statusEl.textContent = status === 'found' ? 'Active' : status === 'unreadable' ? 'Unreadable' : 'Not found';
+    statusEl.className = 'cache-root-status ' + (status === 'found' ? '' : status);
+
+    const pathEl = $('cacheRootPath');
+    pathEl.textContent = info.projectRoot || 'No project resolved — pass --project-root or click “Change root…”';
+
+    const versionEl = $('cacheRootVersion');
+    if (info.version) {
+      versionEl.style.display = '';
+      versionEl.textContent = 'sb ' + info.version;
+    } else {
+      versionEl.style.display = 'none';
+    }
+
+    // Edit mode toggle visual state + dependent affordances.
+    $('cacheEditToggleSwitch').classList.toggle('on', editMode);
+    $('cacheWritesBanner').style.display = editMode ? '' : 'none';
+    $('cacheClearBtn').style.display = editMode && status === 'found' ? '' : 'none';
+
+    // Empty-state visibility.
+    $('cacheEmpty').style.display = status === 'found' ? 'none' : '';
+  }
+
+  function renderEntries() {
+    const container = $('cacheEntries');
+    if (info.cacheStatus !== 'found') { container.innerHTML = ''; return; }
+
+    // Group by namespace.
+    const byNs = new Map();
+    for (const e of entries) {
+      if (!byNs.has(e.namespace)) byNs.set(e.namespace, []);
+      byNs.get(e.namespace).push(e);
+    }
+    const namespaces = Array.from(byNs.keys()).sort();
+
+    if (namespaces.length === 0) {
+      container.innerHTML = '<div class="cache-empty"><h3>Cache root is empty</h3><p>No entries written yet under <code>' + escapeHtml(info.cacheRoot || '') + '</code></p></div>';
+      return;
+    }
+
+    container.innerHTML = namespaces.map(ns => {
+      const items = byNs.get(ns).sort((a, b) => a.key.localeCompare(b.key));
+      return (
+        '<div class="cache-namespace" data-ns="' + escapeHtml(ns) + '">' +
+          '<div class="cache-namespace-header">' +
+            '<span>' + escapeHtml(ns) + '</span>' +
+            '<span class="cache-namespace-count">' + items.length + ' entr' + (items.length === 1 ? 'y' : 'ies') + '</span>' +
+          '</div>' +
+          items.map(renderEntry).join('') +
+        '</div>'
+      );
+    }).join('');
+
+    // Re-bind events.
+    container.querySelectorAll('.cache-entry-header').forEach(h => {
+      h.addEventListener('click', () => {
+        const wrap = h.closest('.cache-entry');
+        const key = wrap.dataset.fullKey;
+        if (expanded.has(key)) { expanded.delete(key); wrap.classList.remove('expanded'); }
+        else { expanded.add(key); wrap.classList.add('expanded'); }
+      });
+    });
+    container.querySelectorAll('[data-action="copy"]').forEach(b => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const key = b.closest('.cache-entry').dataset.fullKey;
+        const entry = entries.find(x => entryKey(x) === key);
+        if (!entry) return;
+        navigator.clipboard.writeText(JSON.stringify(entry.content, null, 2));
+        b.textContent = 'Copied!';
+        setTimeout(() => { b.textContent = 'Copy content'; }, 1200);
+      });
+    });
+    container.querySelectorAll('[data-action="edit"]').forEach(b => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const wrap = b.closest('.cache-entry');
+        const key = wrap.dataset.fullKey;
+        const entry = entries.find(x => entryKey(x) === key);
+        if (!entry) return;
+        editing.set(key, JSON.stringify(entry.content, null, 2));
+        renderEntries();
+      });
+    });
+    container.querySelectorAll('[data-action="cancel-edit"]').forEach(b => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const key = b.closest('.cache-entry').dataset.fullKey;
+        editing.delete(key);
+        renderEntries();
+      });
+    });
+    container.querySelectorAll('[data-action="save-edit"]').forEach(b => {
+      b.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const wrap = b.closest('.cache-entry');
+        const key = wrap.dataset.fullKey;
+        const entry = entries.find(x => entryKey(x) === key);
+        if (!entry) return;
+        const ta = wrap.querySelector('textarea');
+        let parsed;
+        try { parsed = JSON.parse(ta.value); }
+        catch (err) { alert('Invalid JSON: ' + err.message); return; }
+        try {
+          const url = '/cache/entries/' + encodeURIComponent(entry.key) + '?namespace=' + encodeURIComponent(entry.namespace);
+          const res = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(parsed) });
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            alert('Write failed: ' + (body.error || res.statusText));
+            return;
+          }
+          editing.delete(key);
+          await fetchEntries();
+        } catch (err) {
+          alert('Write failed: ' + err.message);
+        }
+      });
+    });
+    container.querySelectorAll('[data-action="delete"]').forEach(b => {
+      b.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const wrap = b.closest('.cache-entry');
+        const key = wrap.dataset.fullKey;
+        const entry = entries.find(x => entryKey(x) === key);
+        if (!entry) return;
+        if (!confirm('Delete cache entry "' + entry.key + '" in namespace "' + entry.namespace + '"?')) return;
+        try {
+          const url = '/cache/entries/' + encodeURIComponent(entry.key) + '?namespace=' + encodeURIComponent(entry.namespace);
+          const res = await fetch(url, { method: 'DELETE' });
+          if (!res.ok && res.status !== 204) {
+            const body = await res.json().catch(() => ({}));
+            alert('Delete failed: ' + (body.error || res.statusText));
+            return;
+          }
+          editing.delete(key);
+          expanded.delete(key);
+          await fetchEntries();
+        } catch (err) {
+          alert('Delete failed: ' + err.message);
+        }
+      });
+    });
+  }
+
+  function renderEntry(entry) {
+    const fullKey = entryKey(entry);
+    const isExpanded = expanded.has(fullKey);
+    const isEditing = editing.has(fullKey);
+    const ttlTag = entry.ttl
+      ? '<span class="ttl-tag' + (entry.expired ? ' expired' : '') + '">' +
+          (entry.expired ? 'expired' : 'ttl') + ' ' +
+          formatTimeRemaining(entry.ttl) +
+        '</span>'
+      : '';
+
+    let bodyHtml;
+    if (isEditing) {
+      bodyHtml =
+        '<div class="cache-entry-body">' +
+          (editMode
+            ? '<div class="cache-entry-actions">' +
+                '<button data-action="save-edit">Save</button>' +
+                '<button data-action="cancel-edit">Cancel</button>' +
+              '</div>'
+            : '') +
+          '<div class="cache-entry-file">' + escapeHtml(entry.file || '') + '</div>' +
+          '<div class="cache-entry-content"><textarea spellcheck="false">' +
+            escapeHtml(editing.get(fullKey)) +
+          '</textarea></div>' +
+        '</div>';
+    } else {
+      const actions = editMode
+        ? '<button data-action="copy">Copy content</button>' +
+          '<button data-action="edit">Edit</button>' +
+          '<button data-action="delete" class="danger">Delete</button>'
+        : '<button data-action="copy">Copy content</button>';
+      // Wrap renderJson output in `.json-view` so the same `white-space:
+      // pre-wrap` rule that lays out dashboard event-card JSON applies here —
+      // otherwise the rendered output collapses onto a single line.
+      bodyHtml =
+        '<div class="cache-entry-body">' +
+          '<div class="cache-entry-actions">' + actions + '</div>' +
+          '<div class="cache-entry-file">' + escapeHtml(entry.file || '') + '</div>' +
+          '<div class="cache-entry-content"><div class="json-view">' +
+            renderJson(entry.content, 0, 'cache-' + fullKey) +
+          '</div></div>' +
+        '</div>';
+    }
+
+    return (
+      '<div class="cache-entry' + (isExpanded ? ' expanded' : '') + '" data-full-key="' + escapeHtml(fullKey) + '">' +
+        '<div class="cache-entry-header">' +
+          '<span class="cache-entry-expand"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>' +
+          '<span class="cache-entry-key">' + escapeHtml(entry.key) + '</span>' +
+          '<span class="cache-entry-meta">' +
+            ttlTag +
+            '<span>' + formatBytes(entry.size) + '</span>' +
+            '<span>' + formatRelativeTime(entry.mtime) + '</span>' +
+          '</span>' +
+        '</div>' +
+        bodyHtml +
+      '</div>'
+    );
+  }
+
+  function formatBytes(n) {
+    if (n == null) return '';
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+    return (n / 1024 / 1024).toFixed(1) + ' MB';
+  }
+  function formatRelativeTime(ts) {
+    if (!ts) return '';
+    const delta = Date.now() - ts;
+    if (delta < 60_000) return 'just now';
+    if (delta < 3_600_000) return Math.round(delta / 60_000) + 'm ago';
+    if (delta < 86_400_000) return Math.round(delta / 3_600_000) + 'h ago';
+    return Math.round(delta / 86_400_000) + 'd ago';
+  }
+  function formatTimeRemaining(ttlEpoch) {
+    const delta = ttlEpoch - Date.now();
+    if (delta < 0) return Math.abs(Math.round(delta / 60_000)) + 'm ago';
+    if (delta < 3_600_000) return 'in ' + Math.round(delta / 60_000) + 'm';
+    if (delta < 86_400_000) return 'in ' + Math.round(delta / 3_600_000) + 'h';
+    return 'in ' + Math.round(delta / 86_400_000) + 'd';
+  }
+
+  async function refresh() {
+    await fetchInfo();
+    await fetchEntries();
+  }
+
+  async function changeRoot() {
+    const next = prompt(
+      'Switch project root.\n\nEnter the absolute path to a project that has node_modules/.cache/storybook. Leave empty to auto-discover from the server\'s cwd.',
+      info.projectRoot || ''
+    );
+    if (next == null) return;
+    try {
+      const res = await fetch('/cache/project-root', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectRoot: next.trim() || null }),
+      });
+      const data = await res.json();
+      info = data;
+      renderHeader();
+      await fetchEntries();
+    } catch (err) {
+      alert('Failed to change project root: ' + err.message);
+    }
+  }
+
+  async function clearAll() {
+    if (!editMode) return;
+    if (!confirm('Wipe ALL cache entries under ' + info.cacheRoot + '?')) return;
+    try {
+      const res = await fetch('/cache/clear', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) { alert('Clear failed: ' + (data.error || res.statusText)); return; }
+      await fetchEntries();
+    } catch (err) { alert('Clear failed: ' + err.message); }
+  }
+
+  function toggleEditMode() {
+    if (window.__SNAPSHOT__) return; // snapshots are read-only by construction
+    editMode = !editMode;
+    try { localStorage.setItem('sbutils.eventlog.cache.editMode', editMode ? '1' : '0'); } catch (_) {}
+    renderHeader();
+    renderEntries();
+  }
+
+  // Live updates: when a cache:write or cache:delete event arrives via SSE,
+  // refresh entries (cheap — server is local).
+  function onCacheEvent(event) {
+    if (state.view === 'cache') fetchEntries();
+  }
+
+  // Driven by the global Expand/Collapse-all button when the cache view
+  // is active. Marks every entry expanded/collapsed and persists the
+  // intent in the local `expanded` set so subsequent fetchEntries() runs
+  // don't reset it.
+  function setAllExpanded(shouldExpand) {
+    expanded.clear();
+    if (shouldExpand) {
+      for (const e of entries) expanded.add(entryKey(e));
+    }
+    renderEntries();
+  }
+
+  // Initial fetch + bindings. We fetch BOTH info and entries up-front
+  // (not just info) so the Cache tab is fully populated when the user
+  // first visits it — important in HTML snapshots, where the user
+  // shouldn't have to switch tabs and back to trigger entry rendering.
+  document.addEventListener('DOMContentLoaded', () => {
+    $('cacheRefreshBtn').addEventListener('click', refresh);
+    $('cacheChangeRootBtn').addEventListener('click', changeRoot);
+    $('cacheClearBtn').addEventListener('click', clearAll);
+    $('cacheEditToggleRow').addEventListener('click', toggleEditMode);
+    refresh();
+  });
+
+  return { refresh, onCacheEvent, setAllExpanded };
 })();
 
 // ── Load existing events on page load ────────────────
@@ -4020,6 +3795,7 @@ async function loadExisting() {
       updateTypeCounts(event);
       updateSessionMap(event);
       updateImportMap(event);
+      updateCacheMap(event);
     }
     if (state.events.length > 0) rerenderAll();
     Timeline.invalidate();

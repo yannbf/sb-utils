@@ -40,6 +40,15 @@ program
   .option('-q, --quiet', 'Suppress all terminal output except errors')
   .option('--max-events <count>', 'Maximum events to keep in memory (0 = unlimited)', '0')
   .option('--import <path>', 'Preload events from a JSON file exported from the dashboard')
+  .option(
+    '--project-root <path>',
+    'Project to inspect the Storybook cache for. Defaults to walking up from cwd',
+  )
+  .option(
+    '--no-cache',
+    'Hide cache events from the CLI output and start the dashboard with cache toggled off',
+  )
+  .option('--no-cache-watch', 'Disable live cache watching entirely (no cache events captured)')
   .action(async (options) => {
     await eventLogger({
       port: Number(options.port),
@@ -48,6 +57,12 @@ program
       quiet: !!options.quiet,
       maxEvents: Number(options.maxEvents),
       importPath: options.import,
+      projectRoot: options.projectRoot,
+      // commander inverts --no-* flags, so `cache` and `cacheWatch` are
+      // `true` by default and `false` when --no-cache / --no-cache-watch
+      // are passed.
+      noCache: options.cache === false,
+      noCacheWatch: options.cacheWatch === false,
     }).catch(console.error)
   })
 

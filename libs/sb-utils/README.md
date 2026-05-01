@@ -86,6 +86,9 @@ single-file HTML snapshot (with an optional explanation note).
 | `-q, --quiet` | Suppress all terminal output except errors | off |
 | `--max-events <count>` | Cap events kept in memory (`0` = unlimited) | `0` |
 | `--import <path>` | Preload events from a JSON file exported from the dashboard | — |
+| `--project-root <path>` | Project to inspect the Storybook cache for. Defaults to walking up from cwd | auto |
+| `--no-cache` | Hide cache events from CLI output, start dashboard with cache toggled off | cache on |
+| `--no-cache-watch` | Disable live cache watching entirely (no cache events captured) | watching on |
 
 ### HTTP API
 
@@ -98,6 +101,43 @@ single-file HTML snapshot (with an optional explanation note).
 | `POST` | `/event-log/import?name=<name>` | Bulk-import a `{ events, explanation? }` batch |
 | `POST` | `/clear` | Drop all captured events |
 | `GET`  | `/sse` | Real-time SSE stream of incoming events |
+| `GET`  | `/cache/info` | Resolved Storybook cache layout (status, paths, version, namespaces) |
+| `GET`  | `/cache/entries?key=&keyPrefix=&namespace=&projectRoot=` | List cache entries with optional filters |
+| `GET`  | `/cache/entries/:key` | Read a single cache entry by logical key |
+| `PUT`  | `/cache/entries/:key?namespace=&ttl=&createIfMissing=&version=` | Write a cache entry |
+| `DELETE` | `/cache/entries/:key?namespace=` | Delete a single entry |
+| `POST` | `/cache/clear` | Wipe all entries |
+| `POST` | `/cache/project-root` | Switch the active project the dashboard inspects (body: `{ projectRoot }`) |
+
+---
+
+## Cache inspector
+
+`event-logger` watches Storybook's on-disk cache
+(`<project>/node_modules/.cache/storybook/<version>/...`) and surfaces
+read/write activity in three ways:
+
+1. **Live timeline.** Every cache file write or delete becomes a
+   `cache:write` / `cache:delete` pseudo-event in the timeline alongside
+   real telemetry events. The payload includes the logical key, namespace,
+   operation, full content, and a structural diff for updates.
+2. **Snapshot view.** A new "Cache" tab in the dashboard shows every
+   entry in the resolved cache, grouped by namespace, with TTL info and
+   "copy / edit / delete" affordances when writes are enabled.
+3. **Mutation API.** `PUT /cache/entries/:key` lets you plant arbitrary
+   cache state. Useful for reproducing bugs that depend on specific
+   cached state (`ai-setup-pending`, `lastEvents`, etc.) without having
+   to trigger the upstream CLI flow first.
+
+The resolved project root is shown on the Cache tab; click "Change
+root…" to switch projects on the fly — useful when running
+`event-logger` from `~` while debugging a project elsewhere. If no
+Storybook cache is detected, the dashboard renders a clear empty state
+and telemetry capture continues to work.
+
+The Cache tab includes an "Edit mode" toggle that gates Edit / Delete /
+Clear affordances client-side. Off by default; flipping it on shows a
+banner so it's obvious you're operating on real on-disk state.
 
 ---
 
