@@ -1883,3 +1883,55 @@
     background: rgba(108,158,248,0.08);
     border-color: rgba(108,158,248,0.5);
   }
+
+  /* Snapshot mode — only applies to exported HTML files where main.tsx
+     sets `data-snapshot="true"` on <body>. Live dashboard never sees these. */
+  .snapshot-banner {
+    position: sticky; top: 0; z-index: 9999;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 8px 16px; font-family: var(--font-sans); font-size: 12px;
+    background: linear-gradient(90deg, rgba(251,191,36,0.18), rgba(251,191,36,0.05));
+    border-bottom: 1px solid rgba(251,191,36,0.4);
+    color: #fbbf24; letter-spacing: 0.4px;
+  }
+  .snapshot-banner .center { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1; justify-content: center; }
+  .snapshot-banner b { color: #fef3c7; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
+  .snapshot-banner .name { color: #fef3c7; font-weight: 500; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0; }
+  .snapshot-banner .dot { width:8px; height:8px; border-radius:50%; background:#fbbf24; box-shadow:0 0 8px rgba(251,191,36,0.6); }
+  .snapshot-banner .meta { color: rgba(255,255,255,0.6); }
+  .snapshot-banner .explain-btn {
+    margin-left: auto; flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; font-family: var(--font-sans); font-size: 11px;
+    color: #fef3c7; background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.45);
+    border-radius: 6px; cursor: pointer; letter-spacing: 0.3px;
+  }
+  .snapshot-banner .explain-btn:hover { background: rgba(251,191,36,0.22); border-color: rgba(251,191,36,0.7); }
+
+  /* Snapshot layout: banner before header pushes layout below the
+     viewport because body is height:100vh + overflow:hidden. Switch to
+     a flex column so banner + header + layout compose vertically. */
+  body[data-snapshot="true"] { display: flex; flex-direction: column; }
+  body[data-snapshot="true"] .header { flex: 0 0 auto; }
+  body[data-snapshot="true"] #layout { flex: 1 1 0; min-height: 0; height: auto !important; }
+  body[data-snapshot="true"] .layout.has-banner { height: auto !important; }
+
+  /* Hide live-only controls in snapshot mode (each is a no-op there). */
+  body[data-snapshot="true"] #pauseBtn,
+  body[data-snapshot="true"] #scrollBtn,
+  body[data-snapshot="true"] #clearBtn,
+  body[data-snapshot="true"] #pausedResumeBtn { display: none !important; }
+  body[data-snapshot="true"] #statusDot {
+    background: #fbbf24 !important;
+    box-shadow: 0 0 8px rgba(251,191,36,0.5) !important;
+    animation: none !important;
+  }
+  body[data-snapshot="true"] .tl-toolbar .tl-live { display: none !important; }
+  body[data-snapshot="true"] #dropOverlay { display: none !important; }
+  body[data-snapshot="true"] #cacheRefreshBtn,
+  body[data-snapshot="true"] #cacheChangeRootBtn,
+  body[data-snapshot="true"] #cacheClearBtn,
+  body[data-snapshot="true"] #cacheEditToggleRow { display: none !important; }
+  body[data-snapshot="true"] .cache-entry-actions [data-action="edit"],
+  body[data-snapshot="true"] .cache-entry-actions [data-action="delete"],
+  body[data-snapshot="true"] .cache-entry-actions [data-action="save-edit"],
+  body[data-snapshot="true"] .cache-entry-actions [data-action="cancel-edit"] { display: none !important; }

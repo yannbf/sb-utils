@@ -956,25 +956,9 @@ async function loadExisting() {
 
 loadExisting().then(() => connect());
 
-// ── Snapshot-mode runtime ─────────────────────────────
-(function setupSnapshotMode() {
-  if (!window.__SNAPSHOT__) return;
-  const meta = window.__SNAPSHOT_META__ || {};
-  // Title (captured at snapshot build time — reassert in case something else overrode it).
-  if (meta.name) {
-    document.title = meta.name + ' · Snapshot · ' + (meta.eventsCount || 0) + ' events';
-  }
-  // Wire the "View explanation" button in the snapshot banner (only present when there's
-  // an explanation baked into the snapshot).
-  const explainBtn = document.getElementById('snapshotExplainBtn');
-  if (explainBtn && meta.explanation) {
-    explainBtn.addEventListener('click', () => {
-      openExplanationModal(meta.name ? 'Explanation · ' + meta.name : 'Snapshot explanation', meta.explanation);
-    });
-  }
-})();
-
-// Drag-and-drop import lives in components/DropOverlay.tsx now.
+// Snapshot-mode runtime → moved to components/SnapshotBanner.tsx +
+// main.tsx (which sets body[data-snapshot] and the document title).
+// Drag-and-drop import lives in components/DropOverlay.tsx.
 
 // ── Expose handlers used by inline `onclick` attributes ──
 // The original inline <script> declared these as globals automatically.

@@ -52,9 +52,10 @@ test.describe('HTML snapshot export', () => {
     expect(bootstrapIdx).toBeGreaterThan(0)
     expect(bootstrapIdx).toBeLessThan(moduleIdx)
 
-    // Snapshot banner injected.
-    expect(html).toContain('class="snapshot-banner"')
+    // Banner metadata is baked (the banner itself is rendered by Preact
+    // at runtime, not pre-injected as static HTML).
     expect(html).toContain('e2e snapshot') // explanation baked
+    expect(html).toMatch(/__SNAPSHOT_META__/)
   })
 
   test('exported snapshot is interactive — events render and tabs work without a server', async ({

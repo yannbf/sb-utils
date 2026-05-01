@@ -14,10 +14,12 @@ import { EventList } from './components/EventList'
 import { TimelineView } from './components/TimelineView'
 import { CacheViewShell } from './components/CacheViewShell'
 import { ToastContainer } from './components/Toast'
+import { SnapshotBanner } from './components/SnapshotBanner'
 
 export function App() {
   return (
     <>
+      <SnapshotBanner />
       <DropOverlay />
       <Modal />
       <Header />

@@ -1200,85 +1200,14 @@ const Timeline = (function () {
     const durationMs = events.length > 1 ? last - first : 0;
     const sessionCount = new Set(events.map((e) => e.sessionId).filter(Boolean)).size;
 
-    // Snapshot-specific styles: banner, hide controls that can't function statically,
-    // kill the LIVE/green connection indicator so viewers don't think it's still listening.
-    const snapshotStyle = document.createElement('style');
-    snapshotStyle.textContent = [
-      '.snapshot-banner {',
-      '  position: sticky; top: 0; z-index: 9999;',
-      '  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;',
-      '  padding: 8px 16px; font-family: var(--font-sans); font-size: 12px;',
-      '  background: linear-gradient(90deg, rgba(251,191,36,0.18), rgba(251,191,36,0.05));',
-      '  border-bottom: 1px solid rgba(251,191,36,0.4);',
-      '  color: #fbbf24; letter-spacing: 0.4px;',
-      '}',
-      '.snapshot-banner .center { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1; justify-content: center; }',
-      '.snapshot-banner b { color: #fef3c7; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }',
-      '.snapshot-banner .name { color: #fef3c7; font-weight: 500; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0; }',
-      '.snapshot-banner .dot { width:8px; height:8px; border-radius:50%; background:#fbbf24; box-shadow:0 0 8px rgba(251,191,36,0.6); }',
-      '.snapshot-banner .meta { color: rgba(255,255,255,0.6); }',
-      '.snapshot-banner .explain-btn {',
-      '  margin-left: auto; flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;',
-      '  padding: 4px 10px; font-family: var(--font-sans); font-size: 11px;',
-      '  color: #fef3c7; background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.45);',
-      '  border-radius: 6px; cursor: pointer; letter-spacing: 0.3px;',
-      '}',
-      '.snapshot-banner .explain-btn:hover { background: rgba(251,191,36,0.22); border-color: rgba(251,191,36,0.7); }',
-      // Body is height: 100vh + overflow: hidden in the live dashboard. The
-      // banner sits before the header and naturally pushes the layout below
-      // the viewport, clipping the bottom rows. Switch to a flex column so
-      // banner + header + layout compose vertically and the layout fills
-      // whatever remains of 100vh — works regardless of banner wrap height.
-      'body { display: flex; flex-direction: column; }',
-      '.snapshot-banner { flex: 0 0 auto; }',
-      '.header { flex: 0 0 auto; }',
-      '#layout { flex: 1 1 0; min-height: 0; height: auto !important; }',
-      '.layout.has-banner { height: auto !important; }',
-      // Neuter live-only controls
-      '#pauseBtn, #scrollBtn, #clearBtn, #pausedResumeBtn { display: none !important; }',
-      // Kill the green "connected" status dot in the header — snapshot banner conveys mode.
-      '#statusDot { background: #fbbf24 !important; box-shadow: 0 0 8px rgba(251,191,36,0.5) !important; animation: none !important; }',
-      // Kill the timeline LIVE pill.
-      '.tl-toolbar .tl-live { display: none !important; }',
-      // Kill the drag-and-drop import affordance — import endpoint is stubbed anyway.
-      '#dropOverlay { display: none !important; }',
-      // Cache panel: hide everything that would mutate disk state. Edit
-      // mode toggle, Refresh, Change root, Clear, plus per-entry Edit /
-      // Delete buttons (kept Copy because it's read-only).
-      '#cacheRefreshBtn, #cacheChangeRootBtn, #cacheClearBtn, #cacheEditToggleRow { display: none !important; }',
-      '.cache-entry-actions [data-action="edit"], .cache-entry-actions [data-action="delete"], .cache-entry-actions [data-action="save-edit"], .cache-entry-actions [data-action="cancel-edit"] { display: none !important; }',
-    ].join('\n');
-    clone.querySelector('head').appendChild(snapshotStyle);
-
     // Update title so snapshot tabs are distinguishable.
     const titleEl = clone.querySelector('title');
     if (titleEl) titleEl.textContent = snapshotName + ' · Snapshot · ' + events.length + ' events';
 
-    // Inject the Snapshot banner (with the snapshot name) at top of body.
-    // The banner also hosts the "View explanation" button on the right (when present).
-    const body = clone.querySelector('body');
-    const banner = document.createElement('div');
-    banner.className = 'snapshot-banner';
-    const explainBtnHtml = explanation
-      ? '<button type="button" class="explain-btn" id="snapshotExplainBtn">' +
-          '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>' +
-          'View explanation' +
-        '</button>'
-      : '';
-    banner.innerHTML =
-      '<div class="center">' +
-        '<span class="dot"></span>' +
-        '<b>Snapshot</b>' +
-        '<span class="name">' + escapeHtml(snapshotName) + '</span>' +
-        '<span class="meta">·</span>' +
-        '<span class="meta">captured ' + escapeHtml(snapAt.toLocaleString()) + '</span>' +
-        '<span class="meta">·</span>' +
-        '<span class="meta">' + events.length + ' event' + (events.length === 1 ? '' : 's') + ' · ' + sessionCount + ' session' + (sessionCount === 1 ? '' : 's') +
-        (durationMs > 0 ? ' · ' + formatGapDuration(durationMs) + ' span' : '') +
-        '</span>' +
-      '</div>' +
-      explainBtnHtml;
-    body.insertBefore(banner, body.firstChild);
+    // Banner + snapshot styling is now Preact-rendered in the snapshot
+    // (components/SnapshotBanner.tsx) and lives in styles.css scoped to
+    // `body[data-snapshot="true"]`. Nothing to inject here besides the
+    // baked __SNAPSHOT_* globals further down.
 
     // When we cloned the live document (fallback path), strip dynamic DOM
     // that was rendered from runtime state — the baked __SNAPSHOT__ globals

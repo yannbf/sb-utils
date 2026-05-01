@@ -1,6 +1,30 @@
 import { render } from 'preact'
 import { App } from './app'
 import './styles.css'
+import { installSxsExpandHandler } from './lib/legacy-html'
+
+// Snapshot mode — when this page was loaded as an exported HTML
+// snapshot, the bake set `window.__SNAPSHOT__ = true` (see
+// features/snapshot-export.ts). Flag the body so snapshot-only CSS
+// applies (hide live-only controls, switch the body to flex column).
+if ((window as any).__SNAPSHOT__) {
+  document.body.dataset.snapshot = 'true'
+  // Reassert the title — the bake captured it but other scripts
+  // (Preact mount, etc.) sometimes step on it during boot.
+  const meta = ((window as any).__SNAPSHOT_META__ || {}) as {
+    name?: string
+    eventsCount?: number
+  }
+  if (meta.name) {
+    document.title = meta.name + ' · Snapshot · ' + (meta.eventsCount || 0) + ' events'
+  }
+}
+
+// The Timeline drawer still produces HTML-string side-by-side diffs that
+// need a click handler for "Expand N unchanged lines" rows. Install it
+// once at boot; the Preact <DiffView> in event cards has its own
+// per-row useState and does not need this.
+installSxsExpandHandler()
 
 const root = document.getElementById('root')
 if (!root) throw new Error('#root not found')
