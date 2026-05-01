@@ -1,3 +1,15 @@
+# v0.0.15 (Fri May 01 2026)
+
+#### ⚠️ Pushed to `main`
+
+- improve cache writing and event recollection ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
 # v0.0.14 (Fri May 01 2026)
 
 #### 🐛 Bug Fix
