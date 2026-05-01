@@ -6,7 +6,7 @@
  */
 
 import { DropOverlay } from './components/DropOverlay'
-import { ModalShell } from './components/ModalShell'
+import { Modal } from './components/Modal'
 import { Header } from './components/Header'
 import { PausedBanner } from './components/PausedBanner'
 import { Sidebar } from './components/Sidebar'
@@ -19,7 +19,7 @@ export function App() {
   return (
     <>
       <DropOverlay />
-      <ModalShell />
+      <Modal />
       <Header />
       <PausedBanner />
       <div class="layout" id="layout">

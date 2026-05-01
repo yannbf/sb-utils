@@ -8,6 +8,10 @@ import { escapeHtml as _escapeHtml, formatGapDuration as _formatGapDuration } fr
 import { lcsLineDiff as _lcsLineDiff } from './lib/lcs-diff'
 import { scheduleMirror as _scheduleMirror } from './store/legacy-mirror'
 import { pushToast as _pushToast } from './store/signals'
+import {
+  openSaveModal as _openSaveModal,
+  openExplanationModal as _openExplanationModal,
+} from './store/modal'
 
 // Re-bind to the names the original script body uses, without touching the
 // (large) body that follows. This gives us the module split without
@@ -1772,112 +1776,11 @@ function copyEventCurl(idx) {
 }
 
 // ── Modal infrastructure ────────────────────────────
-const modalOverlay = document.getElementById('modalOverlay');
-const modalTitleEl = document.getElementById('modalTitle');
-const modalBodyEl = document.getElementById('modalBody');
-const modalFooterEl = document.getElementById('modalFooter');
-const modalCloseBtn = document.getElementById('modalCloseBtn');
-let modalResolve = null;
-let modalKeyHandler = null;
-
-function closeModal(result) {
-  if (!modalOverlay.classList.contains('active')) return;
-  modalOverlay.classList.remove('active');
-  if (modalKeyHandler) {
-    document.removeEventListener('keydown', modalKeyHandler);
-    modalKeyHandler = null;
-  }
-  const resolve = modalResolve;
-  modalResolve = null;
-  modalBodyEl.innerHTML = '';
-  modalFooterEl.innerHTML = '';
-  if (resolve) resolve(result == null ? null : result);
-}
-
-modalCloseBtn.addEventListener('click', () => closeModal(null));
-modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(null); });
-
-function stripExt(name, ext) {
-  const suffix = '.' + ext;
-  return name.endsWith(suffix) ? name.slice(0, -suffix.length) : name;
-}
-function appendExt(name, ext) {
-  const trimmed = (name || '').trim();
-  if (!trimmed) return null;
-  const suffix = '.' + ext;
-  return trimmed.endsWith(suffix) ? trimmed : trimmed + suffix;
-}
-
-function openSaveModal(opts) {
-  // opts: { kind: 'json' | 'html', defaultName, extension, withExplanation: bool }
-  return new Promise((resolve) => {
-    const { kind, defaultName, extension } = opts;
-    const withExplanation = !!opts.withExplanation;
-    modalTitleEl.textContent = kind === 'html' ? 'Export HTML snapshot' : 'Export JSON';
-    const baseName = stripExt(defaultName, extension);
-    const parts = [];
-    parts.push('<div class="modal-field">');
-    parts.push('<label for="modalFilenameInput">File name</label>');
-    parts.push('<div class="modal-input-wrap">');
-    parts.push('<input type="text" id="modalFilenameInput" spellcheck="false" autocomplete="off" />');
-    parts.push('</div>');
-    parts.push('</div>');
-    if (withExplanation) {
-      parts.push('<div class="modal-field">');
-      parts.push('<label for="modalExplanationInput">Explanation <span class="hint">(optional — describe what this telemetry run was about)</span></label>');
-      parts.push('<textarea id="modalExplanationInput" class="modal-textarea" placeholder="e.g. Reproduced the duplicate boot-event regression after running `storybook dev` twice."></textarea>');
-      parts.push('</div>');
-    }
-    modalBodyEl.innerHTML = parts.join('');
-    modalFooterEl.innerHTML =
-      '<button type="button" class="modal-btn" id="modalCancelBtn">Cancel</button>' +
-      '<button type="button" class="modal-btn primary" id="modalSubmitBtn">Save</button>';
-
-    const nameInput = document.getElementById('modalFilenameInput');
-    const explanationInput = withExplanation ? document.getElementById('modalExplanationInput') : null;
-    const submitBtn = document.getElementById('modalSubmitBtn');
-    const cancelBtn = document.getElementById('modalCancelBtn');
-    nameInput.value = baseName;
-
-    function submit() {
-      const filename = appendExt(nameInput.value, extension);
-      if (!filename) { nameInput.focus(); return; }
-      const explanation = explanationInput ? explanationInput.value.trim() : '';
-      closeModal({ filename: filename, explanation: explanation });
-    }
-
-    submitBtn.addEventListener('click', submit);
-    cancelBtn.addEventListener('click', () => closeModal(null));
-    nameInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
-    });
-
-    modalKeyHandler = (e) => { if (e.key === 'Escape') closeModal(null); };
-    document.addEventListener('keydown', modalKeyHandler);
-    modalResolve = resolve;
-    modalOverlay.classList.add('active');
-    // Select just the base name so the user can start typing immediately.
-    setTimeout(() => {
-      nameInput.focus();
-      nameInput.select();
-    }, 0);
-  });
-}
-
-function openExplanationModal(title, text) {
-  return new Promise((resolve) => {
-    modalTitleEl.textContent = title || 'Snapshot explanation';
-    modalBodyEl.innerHTML =
-      '<div class="modal-explanation-view">' + escapeHtml(text || '') + '</div>';
-    modalFooterEl.innerHTML =
-      '<button type="button" class="modal-btn primary" id="modalCloseActionBtn">Close</button>';
-    document.getElementById('modalCloseActionBtn').addEventListener('click', () => closeModal(null));
-    modalKeyHandler = (e) => { if (e.key === 'Escape') closeModal(null); };
-    document.addEventListener('keydown', modalKeyHandler);
-    modalResolve = resolve;
-    modalOverlay.classList.add('active');
-  });
-}
+// Modal logic moved into components/Modal.tsx + store/modal.ts; the
+// helpers below are thin aliases so the rest of the legacy file keeps
+// working.
+const openSaveModal = _openSaveModal;
+const openExplanationModal = _openExplanationModal;
 
 async function exportEvents() {
   const filtered = state.events.filter(matchesFilters).map(e => {
