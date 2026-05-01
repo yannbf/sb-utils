@@ -25,6 +25,8 @@ import { setupCacheView as _setupCacheView } from './cache-view'
 import { setupReconstruction as _setupReconstruction } from './reconstruction'
 import { exportHtmlSnapshot as _exportHtmlSnapshot } from './snapshot-export'
 import { setupEventStream as _setupEventStream } from './event-stream'
+import { wireRuntimeBridges as _wireRuntimeBridges } from './actions'
+import { setupKeyboardShortcuts as _setupKeyboardShortcuts } from './keyboard'
 import { renderJsonHtml as _renderJson, toggleJsonHtml as _toggleJson, renderCacheDiffHtml as _renderCacheDiff } from '../lib/legacy-html'
 import { deepDiffLeaves as _deepDiffLeaves } from '../lib/cache-diff'
 import { getColor as _getColor } from '../lib/colors'
@@ -761,40 +763,8 @@ function isTypingTarget(el) {
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
   return false;
 }
-document.addEventListener('keydown', (e) => {
-  if (e.target === searchInput) {
-    if (e.key === 'Escape') {
-      searchInput.value = ''; state.searchQuery = '';
-      searchInput.blur(); applyFiltersInPlace();
-    }
-    return;
-  }
-  // Don't hijack typing inside any other input/textarea (e.g. the save/explanation modal).
-  if (isTypingTarget(e.target)) return;
-  // Don't fire shortcuts while a modal dialog is open — except Escape, which is handled
-  // by the modal itself via its own listener.
-  if (modalOverlay.classList.contains('active')) return;
-  if (e.key === 'Escape') {
-    if (typeof Timeline !== 'undefined' && Timeline.isDrawerOpen && Timeline.isDrawerOpen()) {
-      Timeline.closeDrawer();
-      return;
-    }
-  }
-  if (state.view === 'timeline' && typeof Timeline !== 'undefined' && Timeline.isDrawerOpen && Timeline.isDrawerOpen()) {
-    if (e.key === 'ArrowLeft') { e.preventDefault(); Timeline.navigate(-1); return; }
-    if (e.key === 'ArrowRight') { e.preventDefault(); Timeline.navigate(1); return; }
-  }
-  if (e.key === ' ') { e.preventDefault(); setPaused(!state.paused); }
-  else if (e.key === 'v' || e.key === 'V') {
-    e.preventDefault();
-    setView(state.view === 'timeline' ? 'dashboard' : 'timeline');
-  }
-  else if (e.key === 'e' || e.key === 'E') {
-    if (state.view !== 'timeline') expandAllBtn.click();
-  }
-  else if (e.key === '/') { e.preventDefault(); searchInput.focus(); }
-  else if ((e.ctrlKey || e.metaKey) && e.key === 'f') { e.preventDefault(); searchInput.focus(); }
-});
+// Keyboard shortcuts moved to features/keyboard.ts. Wired below after
+// Timeline is set up so the drawer's navigation hooks are reachable.
 
 // ── Timeline view ────────────────────────────────────
 // Moved to features/timeline.ts. setupTimeline() returns the same
@@ -882,99 +852,19 @@ _setupEventStream({
 // inline `onclick="toggleCard(...)"` etc. would throw ReferenceError.
 // These four are the only ones the legacy markup references inline.
 if (typeof window !== 'undefined') {
-  // toggleCard is referenced by the legacy timeline drawer's tab clicks;
-  // the JSON-tree expand button in the timeline drawer uses
-  // __sbToggleJson — see lib/legacy-html.ts.
+  // Inline `onclick` handlers used by the Timeline drawer's HTML-string
+  // markup (lib/legacy-html.ts). Will go away when Timeline migrates.
   ;(window as any).toggleCard = toggleCard
   ;(window as any).__sbToggleJson = toggleJson
-
-  // Bridge for Preact-rendered sidebar / header components: call into the
-  // legacy action functions which mutate `state` and trigger
-  // re-render+mirror. As components migrate, these calls are replaced with
-  // direct signal mutations and this bridge object can shrink.
-  ;(window as any).__sbDashActions = {
-    setFilter,
-    setSession: (sid: string | null) => {
-      state.activeSession = sid
-      scheduleSessionRender()
-      applyFiltersInPlace()
-    },
-    setActiveImport: (id: string | null) => {
-      state.activeImport = id
-      scheduleImportRender()
-      applyFiltersInPlace()
-    },
-    setActiveCacheKey: (key: string | null) => {
-      state.activeCacheKey = key
-      scheduleCacheRender()
-      applyFiltersInPlace()
-      if (typeof Timeline !== 'undefined') Timeline.invalidate()
-    },
-    toggleHiddenType,
-    toggleHiddenSession,
-    toggleHiddenImport,
-    toggleHiddenCacheKey,
-    toggleCacheAllHidden,
-    toggleTelemetryAllHidden,
-    deleteEventsByType,
-    deleteEventsBySession,
-    deleteEventsByImport,
-    deleteEventsByCacheKey,
-    deleteAllTelemetryEvents,
-    deleteAllCacheEvents,
-    // Header
-    setPaused,
-    setAutoScroll: (v: boolean) => {
-      state.autoScroll = v
-      scrollBtn.classList.toggle('active', v)
-      if (v) container.scrollTop = container.scrollHeight
-      scheduleMirror(state)
-    },
-    setExpandAll: (v: boolean) => {
-      state.expandAll = v
-      expandAllBtn.classList.toggle('active', v)
-      if (state.view === 'cache' && typeof CacheView !== 'undefined') {
-        CacheView.setAllExpanded(v)
-      } else {
-        container.querySelectorAll('.event-card').forEach((card: any) => {
-          card.classList.toggle('expanded', v)
-        })
-      }
-      scheduleMirror(state)
-    },
-    setSearchQuery: (q: string) => {
-      state.searchQuery = q
-      applyFiltersInPlace()
-    },
-    setView,
-    exportEvents,
-    exportHtmlSnapshot: () => _exportHtmlSnapshot(),
-    clearAll: async () => {
-      await fetch('/clear', { method: 'POST' })
-      state.events = []
-      state.typeCounts = {}
-      state.sessionMap = {}
-      state.importMap = {}
-      state.cacheMap = {}
-      state.expandedCards.clear()
-      state.pausedWhileCount = 0
-      state.hiddenTypes.clear()
-      state.hiddenSessions.clear()
-      state.hiddenImports.clear()
-      state.hiddenCacheKeys.clear()
-      state.cacheAllHidden = false
-      state.telemetryAllHidden = false
-      state.activeFilter = 'all'
-      state.activeSession = null
-      state.activeImport = null
-      state.activeCacheKey = null
-      state.realTelemetryDetected = false
-      lastSessionId = null
-      rerenderAll()
-      applyFiltersInPlace()
-      if (typeof Timeline !== 'undefined') Timeline.invalidate()
-      if (typeof CacheView !== 'undefined') CacheView.refresh()
-      _pushToast('Cleared all events')
-    },
-  }
 }
+
+// Components import action functions directly from `store/actions`
+// (which re-exports from `features/actions.ts`). Wire the imperative
+// runtime hooks they need (Timeline.invalidate, CacheView.refresh) so
+// signal-driven actions can refresh the still-imperative views.
+_wireRuntimeBridges({
+  invalidateTimeline: () => Timeline && Timeline.invalidate(),
+  refreshCache: () => CacheView && CacheView.refresh(),
+});
+
+_setupKeyboardShortcuts(() => Timeline || null);

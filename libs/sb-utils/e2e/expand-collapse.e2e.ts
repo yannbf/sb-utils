@@ -41,6 +41,10 @@ test.describe('expand / collapse', () => {
   test('the E shortcut toggles expand-all', async ({ page, eventLogger }) => {
     await page.goto(eventLogger.url)
     await eventLogger.postEvent({ eventType: 'boot', sessionId: 's1' })
+    // Wait for the card to render before pressing the shortcut so we
+    // assert the toggle effect, not a race between SSE delivery and
+    // keystroke dispatch.
+    await expect(page.locator('#eventContainer .event-card')).toHaveCount(1)
     await page.keyboard.press('e')
     await expect(page.locator('#eventContainer .event-card.expanded')).toHaveCount(1)
   })
