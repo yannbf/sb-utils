@@ -873,62 +873,12 @@ function renderNewEvent(event) {
   // mirror so Preact picks up the new event.
   scheduleMirror(state);
   return;
-  // eslint-disable-next-line no-unreachable
-  emptyState.style.display = 'none';
-
-  if (event.sessionId && event.sessionId !== lastSessionId) {
-    const sep = document.createElement('div');
-    sep.className = 'session-separator';
-    sep.dataset.sessionId = event.sessionId;
-    sep.innerHTML = '<span class="session-label">Session ' + event.sessionId.slice(0, 8) + '</span>';
-    if (!matchesFilters(event)) sep.classList.add('filtered-out');
-    container.appendChild(sep);
-    lastSessionId = event.sessionId;
-  }
-
-  const card = buildEventCard(event);
-  if (state.expandAll) card.classList.add('expanded');
-  if (!matchesFilters(event)) card.classList.add('filtered-out');
-  container.appendChild(card);
-
-  if (state.autoScroll && !card.classList.contains('filtered-out')) {
-    container.scrollTop = container.scrollHeight;
-  }
 }
 
 function rerenderAll() {
   // Event list rendered by components/EventList.tsx. Just bump signals.
   scheduleMirror(state);
   return;
-  // eslint-disable-next-line no-unreachable
-  const children = Array.from(container.children);
-  children.forEach(c => { if (c !== emptyState) c.remove(); });
-  lastSessionId = null;
-
-  if (state.events.length === 0) { emptyState.style.display = ''; updateEmptyState(false); return; }
-  emptyState.style.display = 'none';
-
-  const frag = document.createDocumentFragment();
-  for (const event of state.events) {
-    if (event.sessionId && event.sessionId !== lastSessionId) {
-      const sep = document.createElement('div');
-      sep.className = 'session-separator';
-      sep.dataset.sessionId = event.sessionId;
-      sep.innerHTML = '<span class="session-label">Session ' + event.sessionId.slice(0, 8) + '</span>';
-      if (!matchesFilters(event)) sep.classList.add('filtered-out');
-      frag.appendChild(sep);
-      lastSessionId = event.sessionId;
-    }
-    const card = buildEventCard(event);
-    if (state.expandAll || state.expandedCards.has(String(card.dataset.index))) card.classList.add('expanded');
-    if (!matchesFilters(event)) card.classList.add('filtered-out');
-    frag.appendChild(card);
-  }
-  container.appendChild(frag);
-
-  const visibleCards = container.querySelectorAll('.event-card:not(.filtered-out)');
-  if (visibleCards.length === 0) { emptyState.style.display = ''; updateEmptyState(true); }
-  if (state.autoScroll) container.scrollTop = container.scrollHeight;
 }
 
 function applyFiltersInPlace() {
@@ -980,194 +930,16 @@ function renderFiltersNow() {
   // Sidebar EventTypes is now rendered by components/Sidebar.tsx. The
   // legacy DOM under #filterList is left empty after the first render.
   return;
-  // eslint-disable-next-line no-unreachable
-  for (const [type, count] of Object.entries(state.typeCounts)) {
-    let el = filterList.querySelector('[data-filter="' + type + '"]');
-    if (!el) {
-      el = document.createElement('div');
-      el.className = 'filter-item';
-      el.dataset.filter = type;
-      const color = getColor(type);
-      el.innerHTML =
-        '<div class="label-row"><span class="dot" style="background:' + color.fg + '"></span><span>' + escapeHtml(type) + '</span></div>' +
-        '<div class="item-actions">' +
-          '<button class="item-action danger trash-btn" title="Delete all events of this type">' + SVG_TRASH + '</button>' +
-          '<button class="item-action eye-btn" title="Hide this event type">' + SVG_EYE + '</button>' +
-        '</div>' +
-        '<span class="count">0</span>';
-      // Click label row to filter
-      el.querySelector('.label-row').addEventListener('click', () => setFilter(type));
-      // Eye button: toggle visibility
-      el.querySelector('.eye-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        toggleHiddenType(type);
-      });
-      // Trash button: delete events of this type
-      el.querySelector('.trash-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        deleteEventsByType(type);
-      });
-      filterList.appendChild(el);
-    }
-    el.querySelector('.count').textContent = count;
-    el.classList.toggle('active', state.activeFilter === type);
-    el.classList.toggle('hidden-item', state.hiddenTypes.has(type));
-    const eyeBtn = el.querySelector('.eye-btn');
-    if (eyeBtn) {
-      eyeBtn.innerHTML = state.hiddenTypes.has(type) ? SVG_EYE_OFF : SVG_EYE;
-      eyeBtn.title = state.hiddenTypes.has(type) ? 'Show this event type' : 'Hide this event type';
-    }
-  }
-  // "All events" row count = telemetry events only (cache events have
-  // their own master row). Reflect master-toggle hidden state on the eye
-  // button so the row mirrors per-type / per-session affordances.
-  const telemetryTotal = state.events.reduce(
-    (acc, e) => acc + (e._source === 'cache-watch' ? 0 : 1),
-    0
-  );
-  countAll.textContent = telemetryTotal;
-  const allRow = filterList.querySelector('[data-filter="all"]');
-  if (allRow) {
-    allRow.classList.toggle('active', state.activeFilter === 'all' && !state.telemetryAllHidden);
-    allRow.classList.toggle('hidden-item', state.telemetryAllHidden);
-    const eyeBtn = allRow.querySelector('#eventsAllEyeBtn');
-    if (eyeBtn) {
-      eyeBtn.innerHTML = state.telemetryAllHidden ? SVG_EYE_OFF : SVG_EYE;
-      eyeBtn.title = state.telemetryAllHidden ? 'Show all telemetry events' : 'Hide all telemetry events';
-    }
-  }
 }
 
 function renderSessionsNow() {
   // Sessions list rendered by components/Sidebar.tsx now.
   return;
-  // eslint-disable-next-line no-unreachable
-  const entries = Object.entries(state.sessionMap).sort((a, b) => b[1].firstSeen - a[1].firstSeen);
-  sessionsEmpty.style.display = entries.length === 0 ? '' : 'none';
-
-  const existingItems = sessionList.querySelectorAll('.filter-item');
-  const existingSids = new Map();
-  existingItems.forEach(el => existingSids.set(el.dataset.sessionId, el));
-
-  for (const [sid, info] of entries) {
-    let el = existingSids.get(sid);
-    if (!el) {
-      el = document.createElement('div');
-      el.className = 'filter-item';
-      el.dataset.sessionId = sid;
-      el.innerHTML =
-        '<div class="label-row"><span>' + sid.slice(0, 12) + '...</span></div>' +
-        '<div class="item-actions">' +
-          '<button class="item-action danger trash-btn" title="Delete all events from this session">' + SVG_TRASH + '</button>' +
-          '<button class="item-action eye-btn" title="Hide this session">' + SVG_EYE + '</button>' +
-        '</div>' +
-        '<span class="count">0</span>';
-      // Click label row to filter
-      el.querySelector('.label-row').addEventListener('click', () => {
-        state.activeSession = state.activeSession === sid ? null : sid;
-        renderSessionsNow();
-        applyFiltersInPlace();
-      });
-      // Eye button
-      el.querySelector('.eye-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        toggleHiddenSession(sid);
-      });
-      // Trash button
-      el.querySelector('.trash-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        deleteEventsBySession(sid);
-      });
-      sessionList.appendChild(el);
-    }
-    el.querySelector('.count').textContent = info.count;
-    el.classList.toggle('active', state.activeSession === sid);
-    el.classList.toggle('hidden-item', state.hiddenSessions.has(sid));
-    const eyeBtn = el.querySelector('.eye-btn');
-    if (eyeBtn) {
-      eyeBtn.innerHTML = state.hiddenSessions.has(sid) ? SVG_EYE_OFF : SVG_EYE;
-      eyeBtn.title = state.hiddenSessions.has(sid) ? 'Show this session' : 'Hide this session';
-    }
-  }
 }
 
 function renderImportsNow() {
   // Imports list rendered by components/Sidebar.tsx now.
   return;
-  // eslint-disable-next-line no-unreachable
-  const entries = Object.values(state.importMap).sort((a, b) => b.importedAt - a.importedAt);
-  importsSection.style.display = entries.length === 0 ? 'none' : '';
-  if (entries.length === 0) return;
-
-  const existingEls = new Map();
-  importList.querySelectorAll('.filter-item').forEach(el => existingEls.set(el.dataset.importId, el));
-
-  for (const info of entries) {
-    let el = existingEls.get(info.id);
-    if (!el) {
-      el = document.createElement('div');
-      el.className = 'filter-item';
-      el.dataset.importId = info.id;
-      el.innerHTML =
-        '<div class="label-row col">' +
-          '<span>' + escapeHtml(info.name) + '</span>' +
-          '<span class="import-meta"></span>' +
-        '</div>' +
-        '<div class="item-actions">' +
-          '<button class="item-action danger trash-btn" title="Remove this imported batch">' + SVG_TRASH + '</button>' +
-          '<button class="item-action eye-btn" title="Hide this import">' + SVG_EYE + '</button>' +
-        '</div>' +
-        '<span class="count">0</span>';
-      el.querySelector('.label-row').addEventListener('click', () => {
-        state.activeImport = state.activeImport === info.id ? null : info.id;
-        renderImportsNow();
-        applyFiltersInPlace();
-      });
-      el.querySelector('.eye-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        toggleHiddenImport(info.id);
-      });
-      el.querySelector('.trash-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        deleteEventsByImport(info.id);
-      });
-      importList.appendChild(el);
-    }
-    el.querySelector('.count').textContent = info.count;
-    const sessCount = info.sessions.size;
-    const metaEl = el.querySelector('.import-meta');
-    if (metaEl) metaEl.textContent = sessCount + ' session' + (sessCount === 1 ? '' : 's');
-    el.classList.toggle('active', state.activeImport === info.id);
-    el.classList.toggle('hidden-item', state.hiddenImports.has(info.id));
-    const eyeBtn = el.querySelector('.eye-btn');
-    if (eyeBtn) {
-      eyeBtn.innerHTML = state.hiddenImports.has(info.id) ? SVG_EYE_OFF : SVG_EYE;
-      eyeBtn.title = state.hiddenImports.has(info.id) ? 'Show this import' : 'Hide this import';
-    }
-    // Only add the (?) button when there's an explanation. Its visibility is then governed
-    // purely by the existing `.filter-item:hover .item-actions` rule — no inline display
-    // tricks that could leak through.
-    const actionsEl = el.querySelector('.item-actions');
-    let infoBtn = el.querySelector('.info-btn');
-    if (info.explanation && !infoBtn) {
-      infoBtn = document.createElement('button');
-      infoBtn.className = 'item-action info-btn';
-      infoBtn.title = 'View explanation';
-      infoBtn.innerHTML = SVG_INFO;
-      infoBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const entry = state.importMap[info.id];
-        if (entry && entry.explanation) {
-          openExplanationModal('Explanation · ' + entry.name, entry.explanation);
-        }
-      });
-      // Insert at the start of item-actions (before trash/eye) so it reads left-to-right
-      // as: info, trash, eye.
-      actionsEl.insertBefore(infoBtn, actionsEl.firstChild);
-    } else if (!info.explanation && infoBtn) {
-      infoBtn.remove();
-    }
-  }
 }
 
 function toggleHiddenType(type) {
@@ -1304,73 +1076,6 @@ function deleteEventsByImport(importId) {
 function renderCacheKeysNow() {
   // Cache Operations rendered by components/Sidebar.tsx now.
   return;
-  // eslint-disable-next-line no-unreachable
-  const entries = Object.values(state.cacheMap).sort(
-    (a, b) => b.firstSeen - a.firstSeen
-  );
-  cacheListEmpty.style.display = entries.length === 0 ? '' : 'none';
-
-  // Master "All operations" row state.
-  const allRow = cacheList.querySelector('[data-cache-key="__all__"]');
-  if (allRow) {
-    const total = entries.reduce((acc, info) => acc + info.count, 0);
-    const countEl = allRow.querySelector('.count');
-    if (countEl) countEl.textContent = total;
-    allRow.classList.toggle('active', state.activeCacheKey === null && !state.cacheAllHidden);
-    allRow.classList.toggle('hidden-item', state.cacheAllHidden);
-    const eyeBtn = allRow.querySelector('.eye-btn');
-    if (eyeBtn) {
-      eyeBtn.innerHTML = state.cacheAllHidden ? SVG_EYE_OFF : SVG_EYE;
-      eyeBtn.title = state.cacheAllHidden ? 'Show all cache events' : 'Hide all cache events';
-    }
-  }
-
-  const existingItems = cacheList.querySelectorAll('.filter-item:not([data-cache-key="__all__"])');
-  const existingKeys = new Map();
-  existingItems.forEach(el => existingKeys.set(el.dataset.cacheKey, el));
-
-  for (const info of entries) {
-    let el = existingKeys.get(info.key);
-    if (!el) {
-      el = document.createElement('div');
-      el.className = 'filter-item';
-      el.dataset.cacheKey = info.key;
-      el.innerHTML =
-        '<div class="label-row col">' +
-          '<span>' + escapeHtml(info.namespace || '') + '/' + escapeHtml(info.logicalKey || '') + '</span>' +
-          '<span class="import-meta" data-cache-meta></span>' +
-        '</div>' +
-        '<div class="item-actions">' +
-          '<button class="item-action danger trash-btn" title="Delete all events for this cache key">' + SVG_TRASH + '</button>' +
-          '<button class="item-action eye-btn" title="Hide this cache key">' + SVG_EYE + '</button>' +
-        '</div>' +
-        '<span class="count">0</span>';
-      el.querySelector('.label-row').addEventListener('click', () => {
-        state.activeCacheKey = state.activeCacheKey === info.key ? null : info.key;
-        renderCacheKeysNow();
-        applyFiltersInPlace();
-      });
-      el.querySelector('.eye-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        toggleHiddenCacheKey(info.key);
-      });
-      el.querySelector('.trash-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        deleteEventsByCacheKey(info.key);
-      });
-      cacheList.appendChild(el);
-    }
-    el.querySelector('.count').textContent = info.count;
-    const meta = el.querySelector('[data-cache-meta]');
-    if (meta) meta.textContent = (info.lastOp || '') + (info.count > 1 ? ' · ' + info.count : '');
-    el.classList.toggle('active', state.activeCacheKey === info.key);
-    el.classList.toggle('hidden-item', state.hiddenCacheKeys.has(info.key));
-    const eyeBtn = el.querySelector('.eye-btn');
-    if (eyeBtn) {
-      eyeBtn.innerHTML = state.hiddenCacheKeys.has(info.key) ? SVG_EYE_OFF : SVG_EYE;
-      eyeBtn.title = state.hiddenCacheKeys.has(info.key) ? 'Show this cache key' : 'Hide this cache key';
-    }
-  }
 }
 
 function toggleHiddenCacheKey(ck) {
