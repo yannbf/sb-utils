@@ -13,6 +13,19 @@
         "libs/sb-utils/playground"
       ],
       "port": 6017
+    },
+    {
+      "name": "event-logger-mealdrop",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "libs/sb-utils/dist/bin.mjs",
+        "event-logger",
+        "--port",
+        "6019",
+        "--project-root",
+        "/Users/yannbraga/Dev/mealdrop"
+      ],
+      "port": 6019
     }
   ]
 }
