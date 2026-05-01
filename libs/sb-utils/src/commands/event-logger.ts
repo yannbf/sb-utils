@@ -267,6 +267,31 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
     return c.json({ total: events.length, byType, bySessions })
   })
 
+  // JSON API: export captured events as a downloadable, re-importable file.
+  // Matches the dashboard's JSON export shape so agents can produce the same
+  // artifact without assembling it by hand.
+  app.get('/event-log/export', (c) => {
+    const type = c.req.query('type')
+    const sessionId = c.req.query('sessionId')
+    const explanation = c.req.query('explanation') ?? ''
+    let result = events as StoredEvent[]
+    if (type) result = result.filter((e) => e.eventType === type)
+    if (sessionId) result = result.filter((e) => e.sessionId === sessionId)
+    // Strip server-only bookkeeping so the export is portable, matching the
+    // dashboard's client-side `exportEvents()` behavior.
+    const cleaned = result.map((e) => {
+      const { _index, _receivedAt, ...rest } = e as StoredEvent
+      return rest
+    })
+    const payload = { version: 1, explanation, events: cleaned }
+    const filename = `telemetry-${new Date()
+      .toISOString()
+      .replace(/[:.]/g, '-')
+      .slice(0, 19)}.json`
+    c.header('Content-Disposition', `attachment; filename="${filename}"`)
+    return c.json(payload)
+  })
+
   // JSON API: events by type (legacy endpoint, kept for compat)
   app.get('/events/:type', (c) => {
     const type = c.req.param('type')
@@ -322,6 +347,7 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
             capture: `Run any Storybook command with STORYBOOK_TELEMETRY_URL=${url}/event-log to capture events`,
             queryAll: `GET ${url}/event-log — all captured events (supports ?type=<eventType>&sessionId=<id> filters)`,
             queryCount: `GET ${url}/event-log/count — event count summary by type and session`,
+            export: `GET ${url}/event-log/export — download a re-importable { version, explanation, events } JSON file (supports ?type=, ?sessionId=, ?explanation=)`,
             clear: `POST ${url}/clear — delete all captured events`,
             stream: `GET ${url}/sse — real-time SSE stream of incoming events`,
           }
