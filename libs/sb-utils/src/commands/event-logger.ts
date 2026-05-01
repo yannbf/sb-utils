@@ -9,6 +9,13 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { isAgent, agent } from 'std-env'
 import { blue, bright, grey } from '../utils/colors'
+import {
+  createCacheRoutes,
+  resolveCacheLocation,
+  watchCache,
+  type CacheChange,
+  type CacheLocation,
+} from '../cache'
 
 type TelemetryEvent = {
   eventType: string
@@ -36,6 +43,18 @@ export type EventLoggerOptions = {
   quiet: boolean
   maxEvents: number
   importPath?: string
+  projectRoot?: string
+  /**
+   * Suppress cache event logging in the CLI and tell the dashboard to start
+   * with the cache toggle off. The watcher and routes still run so the user
+   * can flip it back on from the UI without restarting the process.
+   */
+  noCache?: boolean
+  /**
+   * Hard-off for the cache watcher (server-side). Kills cache event capture
+   * entirely. The dashboard's Cache tab still reads via /cache/* on demand.
+   */
+  noCacheWatch?: boolean
 }
 
 export async function eventLogger(options: EventLoggerOptions): Promise<void> {
@@ -150,18 +169,88 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
     }
   }
 
-  // Load and cache dashboard HTML at startup
+  // ── Cache integration ──────────────────────────────
+  // Active cache location. Mutable because the dashboard can switch project
+  // roots at runtime via POST /cache/project-root.
+  let cacheLocation: CacheLocation = resolveCacheLocation({
+    projectRoot: options.projectRoot ?? null,
+  })
+  let cacheWatchHandle: { close: () => void } | null = null
+
+  function ingestCacheChange(change: CacheChange) {
+    const eventType = change.operation === 'delete' ? 'cache:delete' : 'cache:write'
+    const index = eventCounter++
+    // The dashboard reads `_source` to differentiate cache events from
+    // telemetry for styling and filtering. StoredEvent is open-ended so this
+    // is structurally valid.
+    const stored: StoredEvent & { _source: string } = {
+      eventType,
+      _index: index,
+      _receivedAt: change.timestamp,
+      _source: 'cache-watch',
+      payload: {
+        key: change.key,
+        namespace: change.namespace,
+        file: change.file,
+        operation: change.operation,
+        content: change.content,
+        previousContent: change.previousContent,
+        diff: change.diff,
+      },
+      context: {
+        cacheRoot: cacheLocation.cacheRoot,
+        projectRoot: cacheLocation.projectRoot,
+      },
+    }
+    if (maxEvents > 0 && events.length >= maxEvents) events.shift()
+    events.push(stored)
+
+    if (jsonMode) {
+      process.stdout.write(JSON.stringify(stored) + '\n')
+    } else if (!quiet && !options.noCache) {
+      const op = change.operation.toUpperCase().padEnd(6)
+      log.info(`${grey(`#${index}`)} ${blue(`cache ${op}`)} ${change.namespace}/${change.key}`)
+    }
+
+    broadcastEvent(stored)
+  }
+
+  function startCacheWatcher() {
+    if (cacheWatchHandle) {
+      cacheWatchHandle.close()
+      cacheWatchHandle = null
+    }
+    if (options.noCacheWatch) return
+    cacheWatchHandle = watchCache(() => cacheLocation, ingestCacheChange)
+  }
+  startCacheWatcher()
+
+  // Load and cache dashboard HTML + CSS at startup. The CSS lives in its own
+  // file so it's reviewable and editable independently — the running server
+  // serves it as a static file, and `exportHtmlSnapshot` inlines it on the
+  // fly so the generated HTML stays a single self-contained artifact.
   const __dirname = path.dirname(fileURLToPath(import.meta.url))
-  const htmlPaths = [
-    path.join(__dirname, '..', 'event-log-dashboard.html'),
-    path.join(__dirname, 'event-log-dashboard.html'),
-  ]
-  const htmlPath = htmlPaths.find((p) => fs.existsSync(p))
+  const findAsset = (filename: string): string | null => {
+    const candidates = [
+      path.join(__dirname, '..', filename),
+      path.join(__dirname, filename),
+    ]
+    return candidates.find((p) => fs.existsSync(p)) ?? null
+  }
+
+  const htmlPath = findAsset('event-log-dashboard.html')
   if (!htmlPath) {
     log.error('Could not find event-log-dashboard.html')
     process.exit(1)
   }
   const cachedHtml = fs.readFileSync(htmlPath, 'utf-8')
+
+  const cssPath = findAsset('event-log-dashboard.css')
+  if (!cssPath) {
+    log.error('Could not find event-log-dashboard.css')
+    process.exit(1)
+  }
+  const cachedCss = fs.readFileSync(cssPath, 'utf-8')
 
   const app = new Hono()
 
@@ -172,6 +261,36 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
   app.get('/', (c) => {
     return c.html(cachedHtml)
   })
+
+  // External stylesheet — kept in its own file for reviewability.
+  app.get('/event-log-dashboard.css', (c) => {
+    c.header('Content-Type', 'text/css; charset=utf-8')
+    c.header('Cache-Control', 'no-cache')
+    return c.body(cachedCss)
+  })
+
+  // Cache inspection sub-app at /cache/*
+  app.route(
+    '/cache',
+    createCacheRoutes({
+      getLocation: () => cacheLocation,
+      setProjectRoot: (newRoot) => {
+        cacheLocation = resolveCacheLocation({ projectRoot: newRoot })
+        // Re-seed the watcher against the new root so subsequent writes
+        // appear in the timeline immediately.
+        startCacheWatcher()
+        return cacheLocation
+      },
+    })
+  )
+
+  // GET /config — dashboard preferences resolved from CLI flags. The UI
+  // reads this once on load to pick its initial toggle states.
+  app.get('/config', (c) =>
+    c.json({
+      cacheEnabledByDefault: !options.noCache,
+    })
+  )
 
   // SSE endpoint for real-time streaming
   app.get('/sse', (c) => {
@@ -340,6 +459,14 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
           api: `${url}/event-log`,
           sse: `${url}/sse`,
           telemetryUrl: `${url}/event-log`,
+          cache: {
+            status: cacheLocation.status,
+            projectRoot: cacheLocation.projectRoot,
+            cacheRoot: cacheLocation.cacheRoot,
+            version: cacheLocation.version,
+            watching: !options.noCacheWatch && cacheLocation.status === 'found',
+            enabledByDefault: !options.noCache,
+          },
         }
         if (detectedAgent) {
           readyPayload.agent = detectedAgent
@@ -350,15 +477,29 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
             export: `GET ${url}/event-log/export — download a re-importable { version, explanation, events } JSON file (supports ?type=, ?sessionId=, ?explanation=)`,
             clear: `POST ${url}/clear — delete all captured events`,
             stream: `GET ${url}/sse — real-time SSE stream of incoming events`,
+            cacheInfo: `GET ${url}/cache/info — resolved Storybook cache layout (status, paths, version, namespaces)`,
+            cacheList: `GET ${url}/cache/entries — list all cache entries (supports ?key=, ?keyPrefix=, ?namespace=, ?projectRoot=)`,
+            cacheRead: `GET ${url}/cache/entries/<key> — read one entry by logical key`,
+            cacheWrite: `PUT ${url}/cache/entries/<key> — write JSON body as cache content (supports ?namespace=, ?ttl=, ?createIfMissing=true&version=)`,
+            cacheDelete: `DELETE ${url}/cache/entries/<key> — delete one entry`,
+            cacheClear: `POST ${url}/cache/clear — wipe all entries`,
+            cacheSwitchRoot: `POST ${url}/cache/project-root with { projectRoot } — switch the active project the dashboard inspects`,
           }
         }
         process.stderr.write(JSON.stringify(readyPayload) + '\n')
       } else if (!quiet) {
+        const cacheLine = options.noCache
+          ? `${blue('Cache')}        ${grey('disabled (--no-cache) — toggle on in the dashboard to re-enable')}`
+          : cacheLocation.status === 'found'
+            ? `${blue('Cache')}        ${cacheLocation.projectRoot} (sb ${cacheLocation.version})`
+            : `${blue('Cache')}        ${grey('not detected — pass --project-root <path> or pick one in the dashboard')}`
         note(
           [
             `${blue('Dashboard')}    ${url}`,
             `${blue('Event API')}    ${url}/event-log`,
+            `${blue('Cache API')}    ${url}/cache/entries`,
             `${blue('SSE stream')}   ${url}/sse`,
+            cacheLine,
             '',
             `Point Storybook at this collector:`,
             `STORYBOOK_TELEMETRY_URL=${url}/event-log`,
@@ -402,6 +543,8 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
 
     // Close all SSE clients
     sseClients.clear()
+
+    cacheWatchHandle?.close()
 
     server.close()
 
