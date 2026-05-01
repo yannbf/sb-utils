@@ -20,7 +20,7 @@ import {
   openSaveModal as _openSaveModal,
   openExplanationModal as _openExplanationModal,
 } from '../store/modal'
-import { setupTimeline as _setupTimeline } from './timeline'
+import { timelineApi as _timelineApi } from '../components/Timeline'
 import { refreshCache as _refreshCache, refreshCacheEntries as _refreshCacheEntries } from '../store/cache'
 import { setupReconstruction as _setupReconstruction } from './reconstruction'
 import { exportHtmlSnapshot as _exportHtmlSnapshot } from './snapshot-export'
@@ -767,10 +767,17 @@ function isTypingTarget(el) {
 // Timeline is set up so the drawer's navigation hooks are reachable.
 
 // ── Timeline view ────────────────────────────────────
-// Moved to features/timeline.ts. setupTimeline() returns the same
-// imperative API ({ init, invalidate, fitAll, closeDrawer, navigate,
-// isDrawerOpen, exportHtmlSnapshot }) used elsewhere in this file.
-const Timeline = _setupTimeline(state, applyFiltersInPlace, container);
+// Timeline is the Preact component in components/Timeline.tsx. It
+// publishes its imperative API (invalidate, fitAll, navigate, …) to
+// `timelineApi` after mount; we read through that signal so this
+// module doesn't need to reach into Preact internals.
+const Timeline = {
+  invalidate: () => _timelineApi.value?.invalidate(),
+  fitAll: () => _timelineApi.value?.fitAll(),
+  closeDrawer: () => _timelineApi.value?.closeDrawer(),
+  navigate: (dir: number) => _timelineApi.value?.navigate(dir),
+  isDrawerOpen: () => !!_timelineApi.value?.isDrawerOpen(),
+};
 
 // View switching is owned by components/Header.tsx + features/actions.ts.
 

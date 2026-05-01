@@ -11,7 +11,7 @@ import { Header } from './components/Header'
 import { PausedBanner } from './components/PausedBanner'
 import { Sidebar } from './components/Sidebar'
 import { EventList } from './components/EventList'
-import { TimelineView } from './components/TimelineView'
+import { Timeline } from './components/Timeline'
 import { CacheView } from './components/CacheView'
 import { ToastContainer } from './components/Toast'
 import { SnapshotBanner } from './components/SnapshotBanner'
@@ -27,7 +27,7 @@ export function App() {
       <div class="layout" id="layout">
         <Sidebar />
         <EventList />
-        <TimelineView />
+        <Timeline />
         <CacheView />
       </div>
       <ToastContainer />
