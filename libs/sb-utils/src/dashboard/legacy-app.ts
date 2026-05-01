@@ -3719,69 +3719,7 @@ loadExisting().then(() => connect());
   }
 })();
 
-// ── Drag-and-drop JSON import ─────────────────────────
-(function setupDropImport() {
-  if (window.__SNAPSHOT__) return; // Snapshot is read-only — no import.
-  const overlay = document.getElementById('dropOverlay');
-  if (!overlay) return;
-  let depth = 0;
-  function isFileDrag(e) {
-    return e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
-  }
-  window.addEventListener('dragenter', (e) => {
-    if (!isFileDrag(e)) return;
-    depth++;
-    overlay.classList.add('active');
-  });
-  window.addEventListener('dragover', (e) => {
-    if (!isFileDrag(e)) return;
-    e.preventDefault();
-    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
-  });
-  window.addEventListener('dragleave', (e) => {
-    if (!isFileDrag(e)) return;
-    depth = Math.max(0, depth - 1);
-    if (depth === 0) overlay.classList.remove('active');
-  });
-  window.addEventListener('drop', async (e) => {
-    if (!isFileDrag(e)) return;
-    e.preventDefault();
-    depth = 0;
-    overlay.classList.remove('active');
-    const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-    if (!file) return;
-    if (!/\.json$/i.test(file.name) && file.type !== 'application/json') {
-      showToast('Only .json files are supported');
-      return;
-    }
-    let parsed;
-    try {
-      parsed = JSON.parse(await file.text());
-    } catch (err) {
-      showToast('Invalid JSON: ' + (err && err.message ? err.message : 'parse error'));
-      return;
-    }
-    if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.events)) {
-      showToast('Expected a JSON object shaped like { events, explanation? }');
-      return;
-    }
-    try {
-      const res = await fetch('/event-log/import?name=' + encodeURIComponent(file.name), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(parsed),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        showToast('Import failed: ' + (data.error || res.statusText));
-        return;
-      }
-      showToast('Imported ' + data.imported + ' events from ' + file.name);
-    } catch (err) {
-      showToast('Import failed: ' + (err && err.message ? err.message : 'network error'));
-    }
-  });
-})();
+// Drag-and-drop import lives in components/DropOverlay.tsx now.
 
 // ── Expose handlers used by inline `onclick` attributes ──
 // The original inline <script> declared these as globals automatically.
