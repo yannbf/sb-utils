@@ -46,8 +46,36 @@ const state = {
   // event globally. Combined with cacheAllHidden, the user can isolate
   // either stream in a single click.
   telemetryAllHidden: false,
+  // Reconstruction is on by default. We synthesize telemetry events from
+  // cache writes to `lastEvents` so the dashboard works even without
+  // STORYBOOK_TELEMETRY_URL set (real telemetry still goes to
+  // production). As soon as a real instrumented event arrives, we set
+  // `realTelemetryDetected = true` and stop reconstructing to avoid
+  // duplication.
+  realTelemetryDetected: false,
   view: 'dashboard',
 };
+// In a snapshot, restore the flag from the bake so reconstruction stays
+// off if it was off live — otherwise we'd add ghost recon events for
+// every lastEvents entry whose eventId differs from the matching real
+// telemetry event in baked state.events.
+if (typeof window !== 'undefined' && window.__SNAPSHOT_REAL_TELEMETRY_DETECTED__ === true) {
+  state.realTelemetryDetected = true;
+}
+
+// Synthetic events (cache reconstruction + cache-create from backfill)
+// use a high _index range that the server's eventCounter (which starts
+// at 0 and increments by ~1 per event) will never realistically reach.
+// This keeps SSE dedup-by-_index correct: real live events have small
+// indices, synthetic ones have large ones, no collisions.
+//
+// The displayed `#N` next to each card / drawer is computed from the
+// event's chronological position in state.events at render time, so
+// users see `#1, #2, #3…` top-to-bottom regardless of underlying _index.
+let _syntheticIndexCounter = 1e9;
+function nextReconstructIndex() {
+  return _syntheticIndexCounter++;
+}
 
 // ── Color mapping for event types ────────────────────
 const TYPE_COLORS = {
@@ -245,20 +273,11 @@ function bindEventsAllRow() {
   }
 }
 
-// The bind calls used to live here, but in the original inline-script setup
-// the script ran during HTML parsing (readyState === 'loading') so binding
-// happened on DOMContentLoaded — by which point all const declarations later
-// in the file (SVG_EYE, SVG_TRASH, …) had already initialized.
-//
-// As an ES module the script runs after DOM parse (readyState === 'complete'),
-// so calling bind*() here would hit those constants before their declarations
-// (TDZ / undefined). The bind calls are issued from main.tsx after this
-// module finishes evaluating instead. See `dashboard/main.tsx`.
-if (typeof window !== 'undefined') {
-  ;(window as any).__sbDashboardBind = () => {
-    bindCacheAllRow();
-    bindEventsAllRow();
-  };
+if (document.readyState === 'loading') {
+
+} else {
+  bindCacheAllRow();
+  bindEventsAllRow();
 }
 
 // ── SSE connection with reconnection recovery ────────
@@ -268,7 +287,20 @@ function connect() {
   eventSource = new EventSource('/sse');
   eventSource.onmessage = (e) => {
     const event = JSON.parse(e.data);
+    // Dedupe by eventId first (the canonical identity), then by _index
+    // (server-assigned ordinal — covers SSE replay after reconnect).
+    // Synthetic events use a high _index range so this check can't
+    // false-positive on small server-assigned indices.
+    if (event.eventId && state.events.some(ex => ex.eventId === event.eventId)) return;
     if (event._index != null && state.events.some(ex => ex._index === event._index)) return;
+
+    // First time we see a real instrumented telemetry event (i.e. one
+    // that didn't originate from our cache-watch / cache-recon pipeline),
+    // shut off reconstruction. Real events take precedence — no point
+    // synthesizing duplicates from the same lastEvents writes.
+    if (!event._source && !state.realTelemetryDetected) {
+      state.realTelemetryDetected = true;
+    }
 
     state.events.push(event);
     updateTypeCounts(event);
@@ -288,6 +320,13 @@ function connect() {
     if (event._source === 'cache-watch' && typeof CacheView !== 'undefined') {
       CacheView.onCacheEvent(event);
     }
+    // Telemetry reconstruction: any cache:write to `lastEvents` is a
+    // signal that telemetry just fired. Synthesize the corresponding
+    // events into the timeline. The function self-cancels once a real
+    // instrumented telemetry event has been seen.
+    if (event._source === 'cache-watch') {
+      reconstructTelemetryFromCacheWrite(event);
+    }
   };
   eventSource.onopen = () => {
     statusDot.className = 'status-dot';
@@ -306,6 +345,7 @@ async function recoverMissedEvents() {
     const serverEvents = await res.json();
     let recovered = 0;
     for (const event of serverEvents) {
+      if (event.eventId && state.events.some(ex => ex.eventId === event.eventId)) continue;
       if (event._index != null && !state.events.some(ex => ex._index === event._index)) {
         state.events.push(event);
         updateTypeCounts(event);
@@ -767,7 +807,14 @@ function buildEventTabs(event, idPrefix, opts) {
 
 // ── Event card building ──────────────────────────────
 function buildEventCard(event) {
+  // `idx` is the stable per-event identity (server-assigned for SSE
+  // events, large synthetic for backfilled / reconstructed). It powers
+  // dataset.index, expandedCards lookups, copyEvent etc.
   const idx = event._index != null ? event._index : state.events.indexOf(event);
+  // Display number: chronological position in state.events. After the
+  // backfill sort, position 0 = earliest event. +1 so `#N` starts at 1.
+  const pos = state.events.indexOf(event);
+  const displayIdx = pos >= 0 ? pos + 1 : idx;
   const time = event._receivedAt ? new Date(event._receivedAt).toLocaleTimeString() : '';
   const color = getColor(event.eventType);
   const sessionShort = event.sessionId ? event.sessionId.slice(0, 8) : '';
@@ -804,16 +851,26 @@ function buildEventCard(event) {
   // Cache-watch pseudo-events get a subtle border accent (see .cache-event CSS)
   // so they're easy to pick out of a long timeline of telemetry events.
   if (isCacheEvent) card.dataset.cacheEvent = 'true';
+  // Reconstructed-from-cache telemetry: small "from cache" badge in
+  // the header so users can tell these aren't from STORYBOOK_TELEMETRY_URL.
+  const isReconstructed = event._source === 'cache-recon';
+  if (isReconstructed) card.dataset.source = 'cache-recon';
 
   const tabs = buildEventTabs(event, 'evt' + idx);
 
   card.innerHTML =
     '<div class="event-header" onclick="toggleCard(this.parentElement)">' +
       '<span class="expand-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>' +
-      '<span class="event-index">#' + idx + '</span>' +
+      '<span class="event-index">#' + displayIdx + '</span>' +
       '<span class="event-badge" style="background:' + color.bg + '; color:' + color.fg + '">' +
         escapeHtml(event.eventType || 'unknown') + '</span>' +
       '<span class="event-summary">' + escapeHtml(summary) + '</span>' +
+      (isReconstructed
+        ? '<span class="event-recon-badge" title="Reconstructed from a lastEvents cache write — STORYBOOK_TELEMETRY_URL was not set">' +
+            '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15A9 9 0 1 1 5.64 5.64L23 10"/></svg>' +
+            'cache' +
+          '</span>'
+        : '') +
       (sessionShort ? '<span class="event-session">' + sessionShort + '</span>' : '') +
       '<span class="event-time-group">' +
         (deltaStr ? '<span class="event-delta">' + deltaStr + '</span>' : '') +
@@ -1435,6 +1492,187 @@ function deleteAllCacheEvents() {
   rerenderAll();
   updateCounters();
   if (typeof Timeline !== 'undefined') Timeline.invalidate();
+}
+
+// ── Reconstruction from cache (always on by default) ─
+// Storybook's `dev-server/lastEvents` cache is rewritten every time
+// telemetry fires — each entry under content[<eventType>] is the full
+// TelemetryEvent body plus a timestamp. We synthesize telemetry events
+// from those writes so the dashboard works even when the user hasn't
+// set STORYBOOK_TELEMETRY_URL (real telemetry continues to flow to
+// production unmodified).
+//
+// Once a real instrumented telemetry event arrives via SSE we flip
+// `state.realTelemetryDetected` and short-circuit reconstruction —
+// real events are canonical, no point shadowing them with synthesized
+// copies.
+function reconstructTelemetryFromCacheWrite(cacheEvent) {
+  if (state.realTelemetryDetected) return;
+  if (!cacheEvent || !cacheEvent.payload) return;
+  const p = cacheEvent.payload;
+  // Only the lastEvents key under dev-server is the telemetry log.
+  if (p.key !== 'lastEvents' || p.namespace !== 'dev-server') return;
+  // Deletes don't add events.
+  if (p.operation === 'delete') return;
+
+  const next = (p.content && typeof p.content === 'object') ? p.content : {};
+  const prev = (p.previousContent && typeof p.previousContent === 'object') ? p.previousContent : {};
+
+  // Reusable accounting matching the SSE handler — keeps reconstructed
+  // events behaving identically to "real" telemetry events.
+  const ingest = (event) => {
+    state.events.push(event);
+    updateTypeCounts(event);
+    updateSessionMap(event);
+    updateImportMap(event);
+    if (state.paused) {
+      state.pausedWhileCount++;
+      pausedCountEl.textContent = state.pausedWhileCount;
+    } else {
+      renderNewEvent(event);
+    }
+  };
+
+  // First pass: collect candidates that are actually new or changed AND
+  // not already present (by eventId) in state.events. We sort them by
+  // their cache-recorded timestamp before assigning indices, so the
+  // displayed `#N` follows chronology.
+  const candidates = [];
+  for (const eventType of Object.keys(next)) {
+    const entry = next[eventType];
+    if (!entry || typeof entry !== 'object' || !entry.body) continue;
+    const prevEntry = prev[eventType];
+    if (prevEntry && JSON.stringify(prevEntry) === JSON.stringify(entry)) continue;
+
+    const body = entry.body;
+    // Dedupe against any matching eventId already in state — covers
+    // overlap with real telemetry that arrived between the cache write
+    // and our processing.
+    if (body && body.eventId && state.events.some(e => e.eventId === body.eventId)) continue;
+
+    candidates.push({
+      body,
+      timestamp: typeof entry.timestamp === 'number'
+        ? entry.timestamp
+        : (cacheEvent._receivedAt || Date.now()),
+    });
+  }
+  candidates.sort((a, b) => a.timestamp - b.timestamp);
+
+  for (const c of candidates) {
+    const reconstructed = Object.assign({}, c.body, {
+      _source: 'cache-recon',
+      _index: nextReconstructIndex(),
+      _receivedAt: c.timestamp,
+    });
+    ingest(reconstructed);
+  }
+  if (candidates.length > 0) {
+    updateCounters();
+    if (typeof Timeline !== 'undefined') Timeline.invalidate();
+  }
+}
+
+// Synthesize a `cache:write` event for a pre-existing cache entry so it
+// shows up in the timeline / Cache Operations sidebar with the right
+// timestamp. Used by the on-load backfill — we lose nothing since we
+// also have the live watcher running for subsequent changes.
+function ingestSyntheticCacheCreate(entry, cacheRoot, projectRoot) {
+  if (!entry || !entry.key) return;
+  const ts = typeof entry.mtime === 'number' ? entry.mtime : Date.now();
+  // Dedupe: don't re-synthesize a cache event for a (file, mtime) we've
+  // already represented in the timeline — regardless of which operation
+  // captured it. A baked snapshot's `update` write at the current mtime
+  // means we've already shown this state; adding a synthetic `create`
+  // for the same (file, mtime) just produces a duplicate.
+  if (state.events.some(e =>
+    e._source === 'cache-watch' &&
+    e.payload && e.payload.file === entry.file &&
+    e._receivedAt === ts
+  )) return;
+
+  const synthetic = {
+    eventType: 'cache:write',
+    _source: 'cache-watch',
+    _index: nextReconstructIndex(),
+    _receivedAt: ts,
+    payload: {
+      key: entry.key,
+      namespace: entry.namespace,
+      file: entry.file,
+      operation: 'create',
+      content: entry.content,
+      previousContent: null,
+      diff: null,
+    },
+    context: { cacheRoot: cacheRoot || null, projectRoot: projectRoot || null },
+  };
+  state.events.push(synthetic);
+  updateTypeCounts(synthetic);
+  updateCacheMap(synthetic);
+  if (state.paused) {
+    state.pausedWhileCount++;
+    pausedCountEl.textContent = state.pausedWhileCount;
+  } else {
+    renderNewEvent(synthetic);
+  }
+}
+
+// On page load: fetch every existing cache entry, materialize them as
+// `cache:write op=create` events in the timeline, and reconstruct the
+// telemetry stream from `lastEvents`. Best-effort — silent failure
+// just means the dashboard boots empty.
+async function backfillFromCache() {
+  try {
+    const res = await fetch('/cache/entries');
+    if (!res.ok) return;
+    const data = await res.json();
+    const entries = (data && Array.isArray(data.entries)) ? data.entries : [];
+    if (entries.length === 0) return;
+
+    // Cache operation backfill — sorted by mtime locally; telemetry
+    // reconstruction sorts by its own timestamps. Each pass is sorted
+    // internally but they push into state.events as two separate runs,
+    // so we re-sort the whole array at the end to merge them.
+    const sorted = entries.slice().sort((a, b) => (a.mtime || 0) - (b.mtime || 0));
+    for (const entry of sorted) {
+      ingestSyntheticCacheCreate(entry, data.cacheRoot, data.projectRoot);
+    }
+
+    if (!state.realTelemetryDetected) {
+      const lastEvents = entries.find(e => e.key === 'lastEvents' && e.namespace === 'dev-server');
+      if (lastEvents && lastEvents.content && typeof lastEvents.content === 'object') {
+        reconstructTelemetryFromCacheWrite({
+          _source: 'cache-watch',
+          _receivedAt: Date.now(),
+          payload: {
+            key: 'lastEvents',
+            namespace: 'dev-server',
+            operation: 'update',
+            previousContent: {},
+            content: lastEvents.content,
+          },
+        });
+      }
+    }
+
+    // Final merge: chronological order across both backfilled streams
+    // (cache:create from mtime + reconstructed telemetry from entry
+    // timestamps) plus any real telemetry already loaded from /event-log.
+    // The subsequent rerenderAll() in loadExisting picks up this order.
+    sortEventsByTime();
+
+    updateCounters();
+    if (typeof Timeline !== 'undefined') Timeline.invalidate();
+  } catch (_) { /* best-effort */ }
+}
+
+// Sort state.events by _receivedAt ascending. Stable enough for our
+// use — same-ms ties keep insertion order. Called after batch ingestion
+// (backfill) so the dashboard list and session separators reflect true
+// chronology rather than ingestion-pass grouping.
+function sortEventsByTime() {
+  state.events.sort((a, b) => (a._receivedAt || 0) - (b._receivedAt || 0));
 }
 
 // `namespace/key` can contain characters CSS attribute selectors can't
@@ -2098,9 +2336,12 @@ const Timeline = (function () {
     return includeSeconds ? base + ':' + pad2(d.getSeconds()) : base;
   }
 
-  // Imported at module top; aliased here to keep call sites inside the
-  // Timeline IIFE unchanged.
-  const formatGapDuration = formatGapDurationGlobal;
+  function formatGapDuration(ms) {
+    if (ms < 1000) return ms + 'ms';
+    if (ms < 60000) return (ms / 1000).toFixed(1) + 's';
+    if (ms < 3600000) return Math.round(ms / 60000) + 'm';
+    return (ms / 3600000).toFixed(1) + 'h';
+  }
 
   function invalidate() {
     if (rafPending) return;
@@ -2798,12 +3039,22 @@ const Timeline = (function () {
     // hint depending on which kind of event it is — cache events don't have
     // a sessionId, so we surface the namespace/key instead.
     const isCacheEvent = event._source === 'cache-watch';
+    const isReconstructed = event._source === 'cache-recon';
     const subLabel = isCacheEvent
       ? cacheKeyOf(event) || 'cache'
       : (event.sessionId ? event.sessionId.slice(0, 8) : '—');
+    const reconBadge = isReconstructed
+      ? '<span class="event-recon-badge" title="Reconstructed from a lastEvents cache write — STORYBOOK_TELEMETRY_URL was not set">' +
+          '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15A9 9 0 1 1 5.64 5.64L23 10"/></svg>' +
+          'cache' +
+        '</span>'
+      : '';
+    const drawerPos = state.events.indexOf(event);
+    const drawerDisplayIdx = drawerPos >= 0 ? drawerPos + 1 : event._index;
     drawerTitle.innerHTML =
       '<span class="event-badge" style="background:' + color.bg + '; color:' + color.fg + '">' + escapeHtml(event.eventType || 'unknown') + '</span>' +
-      '<span style="color:var(--text-dim); font-size:11px; font-family:var(--font-mono)">#' + event._index + ' · ' + escapeHtml(subLabel) + '</span>';
+      reconBadge +
+      '<span style="color:var(--text-dim); font-size:11px; font-family:var(--font-mono)">#' + drawerDisplayIdx + ' · ' + escapeHtml(subLabel) + '</span>';
 
     // Reuse the same tab renderer used by event cards in the dashboard view
     // — Diff/Payload/Context/Raw and the side-by-side diff stay consistent.
@@ -2923,22 +3174,21 @@ const Timeline = (function () {
 
     // Fetch the prebuilt single-file dashboard (the same artifact the server
     // is currently serving). It already has CSS + Preact bundle inlined, so
-    // the snapshot is self-contained without any DOM cloning or stripping.
-    // Falling back to a clone of the current document only if the fetch
-    // fails (e.g., file:// load — though by definition the export only runs
-    // against a live server, so this is mostly defensive).
+    // the snapshot is self-contained without DOM cloning. Falls back to
+    // cloning the live document if the fetch fails (defensive — by
+    // construction the export only runs against a live server).
     let baseHtml: string | null = null;
     try {
       const res = await fetch('/event-log-dashboard.html', { cache: 'no-store' });
       if (res.ok) baseHtml = await res.text();
-    } catch (_) { /* fall back to live-clone path below */ }
-    let clone: HTMLElement;
+    } catch (_) { /* fall through to live-clone */ }
+    let clone;
     if (baseHtml) {
       const parser = new DOMParser();
       const doc = parser.parseFromString(baseHtml, 'text/html');
       clone = doc.documentElement;
     } else {
-      clone = document.documentElement.cloneNode(true) as HTMLElement;
+      clone = document.documentElement.cloneNode(true);
     }
 
     const events = state.events.slice();
@@ -2970,6 +3220,16 @@ const Timeline = (function () {
       '  border-radius: 6px; cursor: pointer; letter-spacing: 0.3px;',
       '}',
       '.snapshot-banner .explain-btn:hover { background: rgba(251,191,36,0.22); border-color: rgba(251,191,36,0.7); }',
+      // Body is height: 100vh + overflow: hidden in the live dashboard. The
+      // banner sits before the header and naturally pushes the layout below
+      // the viewport, clipping the bottom rows. Switch to a flex column so
+      // banner + header + layout compose vertically and the layout fills
+      // whatever remains of 100vh — works regardless of banner wrap height.
+      'body { display: flex; flex-direction: column; }',
+      '.snapshot-banner { flex: 0 0 auto; }',
+      '.header { flex: 0 0 auto; }',
+      '#layout { flex: 1 1 0; min-height: 0; height: auto !important; }',
+      '.layout.has-banner { height: auto !important; }',
       // Neuter live-only controls
       '#pauseBtn, #scrollBtn, #clearBtn, #pausedResumeBtn { display: none !important; }',
       // Kill the green "connected" status dot in the header — snapshot banner conveys mode.
@@ -3017,11 +3277,11 @@ const Timeline = (function () {
     body.insertBefore(banner, body.firstChild);
 
     // When we cloned the live document (fallback path), strip dynamic DOM
-    // that was rendered from runtime state — the baked __SNAPSHOT__ data
-    // makes the app re-render these with their listeners on boot. Cloning
-    // doesn't copy listeners, so leaving the live-rendered nodes in place
-    // would leave their interactions dead. Skipped when we used the
-    // prebuilt HTML, which has none of these dynamic nodes to begin with.
+    // that was rendered from runtime state — the baked __SNAPSHOT__ globals
+    // make the app re-render those nodes on boot with their listeners.
+    // Cloning doesn't copy listeners; leaving the live nodes in place leaves
+    // their interactions dead. Skipped when we used the prebuilt HTML
+    // (which has none of these dynamic nodes to begin with).
     if (!baseHtml) {
       const stripSelectors = [
         '#filterList [data-filter]:not([data-filter="all"])',
@@ -3034,17 +3294,17 @@ const Timeline = (function () {
       stripSelectors.forEach((sel) => {
         clone.querySelectorAll(sel).forEach((el) => el.remove());
       });
-      const cloneCacheEmpty = clone.querySelector('#cacheListEmpty') as HTMLElement | null;
+      const cloneCacheEmpty = clone.querySelector('#cacheListEmpty');
       if (cloneCacheEmpty) cloneCacheEmpty.style.display = '';
       const cloneAll = clone.querySelector('#filterList [data-filter="all"]');
       if (cloneAll) { cloneAll.classList.add('active'); const c = cloneAll.querySelector('.count'); if (c) c.textContent = '0'; }
       const cloneCountAll = clone.querySelector('#countAll');
       if (cloneCountAll) cloneCountAll.textContent = '0';
-      const cloneSessionsEmpty = clone.querySelector('#sessionsEmpty') as HTMLElement | null;
+      const cloneSessionsEmpty = clone.querySelector('#sessionsEmpty');
       if (cloneSessionsEmpty) cloneSessionsEmpty.style.display = '';
-      const cloneImportsSection = clone.querySelector('#importsSection') as HTMLElement | null;
+      const cloneImportsSection = clone.querySelector('#importsSection');
       if (cloneImportsSection) cloneImportsSection.style.display = 'none';
-      const cloneEmptyState = clone.querySelector('#emptyState') as HTMLElement | null;
+      const cloneEmptyState = clone.querySelector('#emptyState');
       if (cloneEmptyState) cloneEmptyState.style.display = '';
     }
 
@@ -3054,6 +3314,13 @@ const Timeline = (function () {
       '(function() {',
       '  window.__SNAPSHOT__ = true;',
       '  window.__SNAPSHOT_EVENTS__ = ' + JSON.stringify(events) + ';',
+      // Carry over the live realTelemetryDetected flag so reconstruction
+      // doesn\'t re-run on snapshot load. Storybook generates DIFFERENT
+      // eventIds for HTTP-sent telemetry vs the body it stores in the
+      // lastEvents cache — so the eventId-based dedup misses, and
+      // reconstruction would silently add ghost events for every entry
+      // in lastEvents that originally fired as real telemetry.
+      '  window.__SNAPSHOT_REAL_TELEMETRY_DETECTED__ = ' + JSON.stringify(state.realTelemetryDetected) + ';',
       '  window.__SNAPSHOT_CACHE_INFO__ = ' + JSON.stringify(cacheInfo) + ';',
       '  window.__SNAPSHOT_CACHE_ENTRIES__ = ' + JSON.stringify(cacheEntries) + ';',
       '  window.__SNAPSHOT_META__ = ' + JSON.stringify({
@@ -3093,9 +3360,9 @@ const Timeline = (function () {
     ].join('\n');
     // The bundled dashboard uses a deferred `<script type="module">` (Vite's
     // default) that runs after DOM parsing. Inserting the bootstrap as a
-    // regular synchronous `<script>` at the top of <head> guarantees it
-    // executes before the module — so __SNAPSHOT__ globals + fetch /
-    // EventSource stubs are in place before any app code runs.
+    // synchronous `<script>` at the top of <head> guarantees it executes
+    // before the module — so __SNAPSHOT__ globals + fetch / EventSource
+    // stubs are in place before any app code runs.
     const headEl = clone.querySelector('head');
     if (headEl) headEl.insertBefore(bootstrap, headEl.firstChild);
     else clone.insertBefore(bootstrap, clone.firstChild);
@@ -3510,6 +3777,11 @@ async function loadExisting() {
       updateImportMap(event);
       updateCacheMap(event);
     }
+    // Always backfill from the cache: synthesize cache:write events for
+    // every existing entry, and reconstruct the telemetry stream from
+    // `lastEvents`. The reconstruction stops itself the moment a real
+    // instrumented telemetry event arrives via SSE.
+    await backfillFromCache();
     if (state.events.length > 0) rerenderAll();
     Timeline.invalidate();
     updateCounters();

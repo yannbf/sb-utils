@@ -4,7 +4,14 @@
     {
       "name": "event-logger",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["libs/sb-utils/dist/bin.mjs", "event-logger", "--port", "6017"],
+      "runtimeArgs": [
+        "libs/sb-utils/dist/bin.mjs",
+        "event-logger",
+        "--port",
+        "6017",
+        "--project-root",
+        "libs/sb-utils/playground"
+      ],
       "port": 6017
     }
   ]
