@@ -228,61 +228,12 @@ function cacheKeyOf(event) {
   return (event.payload.namespace || '') + '/' + (event.payload.key || '');
 }
 
-// Wire up the "All operations" row buttons once. The handler is registered
-// on DOMContentLoaded so the SVG_EYE / SVG_TRASH constants and the DOM are
-// both available — the master row never gets re-rendered, only its state
-// is updated, so binding once is enough.
-function bindCacheAllRow() {
-  const allEye = document.getElementById('cacheAllEyeBtn');
-  const allTrash = document.getElementById('cacheAllTrashBtn');
-  if (allEye) allEye.innerHTML = SVG_EYE;
-  if (allTrash) allTrash.innerHTML = SVG_TRASH;
-  if (allEye) {
-    allEye.addEventListener('click', (e) => {
-      e.stopPropagation();
-      toggleCacheAllHidden();
-    });
-  }
-  if (allTrash) {
-    allTrash.addEventListener('click', (e) => {
-      e.stopPropagation();
-      deleteAllCacheEvents();
-    });
-  }
-  const allRow = document.querySelector('#cacheList [data-cache-key="__all__"]');
-  if (allRow) {
-    // Clicking the row label clears any active per-key filter so we're
-    // back to "all cache" — mirrors how "All events" works above.
-    allRow.querySelector('.label-row').addEventListener('click', () => {
-      state.activeCacheKey = null;
-      renderCacheKeysNow();
-      applyFiltersInPlace();
-      if (typeof Timeline !== 'undefined') Timeline.invalidate();
-    });
-  }
-}
-
-// Same treatment for the telemetry "All events" master row — eye/trash
-// affordances live alongside the count, just like sessions / imports.
-function bindEventsAllRow() {
-  const allEye = document.getElementById('eventsAllEyeBtn');
-  const allTrash = document.getElementById('eventsAllTrashBtn');
-  if (allEye) allEye.innerHTML = SVG_EYE;
-  if (allTrash) allTrash.innerHTML = SVG_TRASH;
-  if (allEye) {
-    allEye.addEventListener('click', (e) => {
-      e.stopPropagation();
-      toggleTelemetryAllHidden();
-    });
-  }
-  if (allTrash) {
-    allTrash.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (!confirm('Delete all telemetry events? Cache operations are kept.')) return;
-      deleteAllTelemetryEvents();
-    });
-  }
-}
+// "All operations" / "All events" master rows are now rendered by
+// components/Sidebar.tsx with their own Preact handlers. These bind
+// helpers are no-ops kept for the boot sequence (`window.__sbDashboardBind`
+// is invoked from main.tsx).
+function bindCacheAllRow() {}
+function bindEventsAllRow() {}
 
 if (document.readyState === 'loading') {
 
@@ -970,6 +921,7 @@ function rerenderAll() {
 }
 
 function applyFiltersInPlace() {
+  scheduleMirror(state);
   let anyVisible = false;
   const cards = container.querySelectorAll('.event-card');
   cards.forEach(card => {
@@ -1037,6 +989,10 @@ const SVG_TRASH = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" s
 const SVG_INFO = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
 
 function renderFiltersNow() {
+  // Sidebar EventTypes is now rendered by components/Sidebar.tsx. The
+  // legacy DOM under #filterList is left empty after the first render.
+  return;
+  // eslint-disable-next-line no-unreachable
   for (const [type, count] of Object.entries(state.typeCounts)) {
     let el = filterList.querySelector('[data-filter="' + type + '"]');
     if (!el) {
@@ -1095,6 +1051,9 @@ function renderFiltersNow() {
 }
 
 function renderSessionsNow() {
+  // Sessions list rendered by components/Sidebar.tsx now.
+  return;
+  // eslint-disable-next-line no-unreachable
   const entries = Object.entries(state.sessionMap).sort((a, b) => b[1].firstSeen - a[1].firstSeen);
   sessionsEmpty.style.display = entries.length === 0 ? '' : 'none';
 
@@ -1145,6 +1104,9 @@ function renderSessionsNow() {
 }
 
 function renderImportsNow() {
+  // Imports list rendered by components/Sidebar.tsx now.
+  return;
+  // eslint-disable-next-line no-unreachable
   const entries = Object.values(state.importMap).sort((a, b) => b.importedAt - a.importedAt);
   importsSection.style.display = entries.length === 0 ? 'none' : '';
   if (entries.length === 0) return;
@@ -1352,6 +1314,9 @@ function deleteEventsByImport(importId) {
 // Keyed by `namespace/key`. Mirrors sessions/imports: click to filter,
 // eye to hide, trash to delete all events for that key.
 function renderCacheKeysNow() {
+  // Cache Operations rendered by components/Sidebar.tsx now.
+  return;
+  // eslint-disable-next-line no-unreachable
   const entries = Object.values(state.cacheMap).sort(
     (a, b) => b.firstSeen - a.firstSeen
   );
@@ -3731,4 +3696,40 @@ if (typeof window !== 'undefined') {
   ;(window as any).toggleJson = toggleJson
   ;(window as any).copyEvent = copyEvent
   ;(window as any).copyEventCurl = copyEventCurl
+
+  // Bridge for Preact-rendered sidebar / header components: call into the
+  // legacy action functions which mutate `state` and trigger
+  // re-render+mirror. As components migrate, these calls are replaced with
+  // direct signal mutations and this bridge object can shrink.
+  ;(window as any).__sbDashActions = {
+    setFilter,
+    setSession: (sid: string | null) => {
+      state.activeSession = sid
+      scheduleSessionRender()
+      applyFiltersInPlace()
+    },
+    setActiveImport: (id: string | null) => {
+      state.activeImport = id
+      scheduleImportRender()
+      applyFiltersInPlace()
+    },
+    setActiveCacheKey: (key: string | null) => {
+      state.activeCacheKey = key
+      scheduleCacheRender()
+      applyFiltersInPlace()
+      if (typeof Timeline !== 'undefined') Timeline.invalidate()
+    },
+    toggleHiddenType,
+    toggleHiddenSession,
+    toggleHiddenImport,
+    toggleHiddenCacheKey,
+    toggleCacheAllHidden,
+    toggleTelemetryAllHidden,
+    deleteEventsByType,
+    deleteEventsBySession,
+    deleteEventsByImport,
+    deleteEventsByCacheKey,
+    deleteAllTelemetryEvents,
+    deleteAllCacheEvents,
+  }
 }
