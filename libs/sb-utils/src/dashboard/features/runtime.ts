@@ -24,6 +24,7 @@ import { setupTimeline as _setupTimeline } from './timeline'
 import { setupCacheView as _setupCacheView } from './cache-view'
 import { setupReconstruction as _setupReconstruction } from './reconstruction'
 import { exportHtmlSnapshot as _exportHtmlSnapshot } from './snapshot-export'
+import { setupEventStream as _setupEventStream } from './event-stream'
 import { renderJsonHtml as _renderJson, toggleJsonHtml as _toggleJson, renderCacheDiffHtml as _renderCacheDiff } from '../lib/legacy-html'
 import { deepDiffLeaves as _deepDiffLeaves } from '../lib/cache-diff'
 import { getColor as _getColor } from '../lib/colors'
@@ -193,87 +194,10 @@ if (document.readyState === 'loading') {
   bindEventsAllRow();
 }
 
-// ── SSE connection with reconnection recovery ────────
-let eventSource = null;
-
-function connect() {
-  eventSource = new EventSource('/sse');
-  eventSource.onmessage = (e) => {
-    const event = JSON.parse(e.data);
-    // Dedupe by eventId first (the canonical identity), then by _index
-    // (server-assigned ordinal — covers SSE replay after reconnect).
-    // Synthetic events use a high _index range so this check can't
-    // false-positive on small server-assigned indices.
-    if (event.eventId && state.events.some(ex => ex.eventId === event.eventId)) return;
-    if (event._index != null && state.events.some(ex => ex._index === event._index)) return;
-
-    // First time we see a real instrumented telemetry event (i.e. one
-    // that didn't originate from our cache-watch / cache-recon pipeline),
-    // shut off reconstruction. Real events take precedence — no point
-    // synthesizing duplicates from the same lastEvents writes.
-    if (!event._source && !state.realTelemetryDetected) {
-      state.realTelemetryDetected = true;
-    }
-
-    state.events.push(event);
-    updateTypeCounts(event);
-    updateSessionMap(event);
-    updateImportMap(event);
-    updateCacheMap(event);
-
-    if (state.paused) {
-      state.pausedWhileCount++;
-      pausedCountEl.textContent = state.pausedWhileCount;
-    } else {
-      renderNewEvent(event);
-    }
-    updateCounters();
-    if (typeof Timeline !== 'undefined') Timeline.invalidate();
-    // Cache events should refresh the snapshot panel if it's currently visible.
-    if (event._source === 'cache-watch' && typeof CacheView !== 'undefined') {
-      CacheView.onCacheEvent(event);
-    }
-    // Telemetry reconstruction: any cache:write to `lastEvents` is a
-    // signal that telemetry just fired. Synthesize the corresponding
-    // events into the timeline. The function self-cancels once a real
-    // instrumented telemetry event has been seen.
-    if (event._source === 'cache-watch') {
-      reconstructTelemetryFromCacheWrite(event);
-    }
-  };
-  eventSource.onopen = () => {
-    statusDot.className = 'status-dot';
-    statusDot.title = 'Connected';
-    recoverMissedEvents();
-  };
-  eventSource.onerror = () => {
-    statusDot.className = 'status-dot disconnected';
-    statusDot.title = 'Disconnected - retrying...';
-  };
-}
-
-async function recoverMissedEvents() {
-  try {
-    const res = await fetch('/event-log');
-    const serverEvents = await res.json();
-    let recovered = 0;
-    for (const event of serverEvents) {
-      if (event.eventId && state.events.some(ex => ex.eventId === event.eventId)) continue;
-      if (event._index != null && !state.events.some(ex => ex._index === event._index)) {
-        state.events.push(event);
-        updateTypeCounts(event);
-        updateSessionMap(event);
-        updateImportMap(event);
-        recovered++;
-      }
-    }
-    if (recovered > 0) {
-      state.events.sort((a, b) => (a._index || 0) - (b._index || 0));
-      if (!state.paused) rerenderAll();
-      updateCounters();
-    }
-  } catch { /* best-effort */ }
-}
+// ── SSE connection + on-load recovery ────────────────
+// Body moved to features/event-stream.ts. We call setupEventStream
+// further down (after Timeline / CacheView / reconstruction are wired)
+// so its helpers can reference them.
 
 function updateTypeCounts(event) {
   const t = event.eventType || 'unknown';
@@ -930,32 +854,23 @@ const CacheView = _setupCacheView(state, scheduleMirror);
   sortEventsByTime = recon.sortEventsByTime;
 }
 
-// ── Load existing events on page load ────────────────
-async function loadExisting() {
-  try {
-    const res = await fetch('/event-log');
-    const existing = await res.json();
-    for (const event of existing) {
-      state.events.push(event);
-      updateTypeCounts(event);
-      updateSessionMap(event);
-      updateImportMap(event);
-      updateCacheMap(event);
-    }
-    // Always backfill from the cache: synthesize cache:write events for
-    // every existing entry, and reconstruct the telemetry stream from
-    // `lastEvents`. The reconstruction stops itself the moment a real
-    // instrumented telemetry event arrives via SSE.
-    await backfillFromCache();
-    if (state.events.length > 0) rerenderAll();
-    Timeline.invalidate();
-    updateCounters();
-  } catch (e) {
-    console.error('Failed to load existing events:', e);
-  }
-}
-
-loadExisting().then(() => connect());
+// loadExisting + connect moved into features/event-stream.ts. The boot
+// sequence runs from setupEventStream below.
+_setupEventStream({
+  state,
+  updateTypeCounts,
+  updateSessionMap,
+  updateImportMap,
+  updateCacheMap,
+  rerenderAll,
+  updateCounters,
+  pausedCountElGet: () => pausedCountEl,
+  statusDotGet: () => statusDot,
+  reconstructTelemetryFromCacheWrite: (e: any) => reconstructTelemetryFromCacheWrite(e),
+  backfillFromCache: () => backfillFromCache(),
+  Timeline: () => Timeline,
+  CacheView: () => CacheView,
+});
 
 // Snapshot-mode runtime → moved to components/SnapshotBanner.tsx +
 // main.tsx (which sets body[data-snapshot] and the document title).
