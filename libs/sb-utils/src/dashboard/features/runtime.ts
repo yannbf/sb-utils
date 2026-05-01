@@ -21,7 +21,7 @@ import {
   openExplanationModal as _openExplanationModal,
 } from '../store/modal'
 import { setupTimeline as _setupTimeline } from './timeline'
-import { setupCacheView as _setupCacheView } from './cache-view'
+import { refreshCache as _refreshCache, refreshCacheEntries as _refreshCacheEntries } from '../store/cache'
 import { setupReconstruction as _setupReconstruction } from './reconstruction'
 import { exportHtmlSnapshot as _exportHtmlSnapshot } from './snapshot-export'
 import { setupEventStream as _setupEventStream } from './event-stream'
@@ -772,33 +772,19 @@ function isTypingTarget(el) {
 // isDrawerOpen, exportHtmlSnapshot }) used elsewhere in this file.
 const Timeline = _setupTimeline(state, applyFiltersInPlace, container);
 
-// ── View switching ───────────────────────────────────
-function setView(view) {
-  if (view !== 'dashboard' && view !== 'timeline' && view !== 'cache') view = 'dashboard';
-  state.view = view;
-  scheduleMirror(state);
-  try { localStorage.setItem('sbutils.eventlog.view', view); } catch (_) { /* ignore */ }
-  document.body.classList.toggle('view-timeline', view === 'timeline');
-  document.body.classList.toggle('view-dashboard', view === 'dashboard');
-  document.body.classList.toggle('view-cache', view === 'cache');
-  document.getElementById('eventContainer').style.display = view === 'dashboard' ? '' : 'none';
-  document.getElementById('timelineView').style.display = view === 'timeline' ? '' : 'none';
-  document.getElementById('cacheView').style.display = view === 'cache' ? '' : 'none';
-  document.querySelectorAll('#viewToggle button').forEach(b => {
-    b.classList.toggle('active', b.dataset.view === view);
-  });
-  if (view === 'timeline') Timeline.invalidate();
-  if (view === 'cache') CacheView.refresh();
-}
-
-
-// View toggle buttons handled by components/Header.tsx now.
+// View switching is owned by components/Header.tsx + features/actions.ts.
 
 // ── Cache view ───────────────────────────────────────
-// ── Cache view ───────────────────────────────────────
-// Moved to features/cache-view.ts. setupCacheView() returns the same
-// public API ({ refresh, onCacheEvent, setAllExpanded }).
-const CacheView = _setupCacheView(state, scheduleMirror);
+// CacheView is a Preact component (components/CacheView.tsx) reading
+// from store/cache.ts signals. The two hooks the rest of the runtime
+// needs are: a refresh trigger and a "saw a new cache event" notifier.
+const CacheView = {
+  refresh: () => void _refreshCache(),
+  onCacheEvent: (_e: any) => void _refreshCacheEntries(),
+  setAllExpanded: (_v: boolean) => {
+    /* The Preact CacheView reads expandAll signal directly. */
+  },
+};
 
 // Reconstruction wiring — needs Timeline (declared above) so it lives
 // here. The four function bindings declared earlier as `let` are

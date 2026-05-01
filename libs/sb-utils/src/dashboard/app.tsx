@@ -12,7 +12,7 @@ import { PausedBanner } from './components/PausedBanner'
 import { Sidebar } from './components/Sidebar'
 import { EventList } from './components/EventList'
 import { TimelineView } from './components/TimelineView'
-import { CacheViewShell } from './components/CacheViewShell'
+import { CacheView } from './components/CacheView'
 import { ToastContainer } from './components/Toast'
 import { SnapshotBanner } from './components/SnapshotBanner'
 
@@ -28,7 +28,7 @@ export function App() {
         <Sidebar />
         <EventList />
         <TimelineView />
-        <CacheViewShell />
+        <CacheView />
       </div>
       <ToastContainer />
     </>
