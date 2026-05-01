@@ -6,6 +6,8 @@
 
 import { escapeHtml as _escapeHtml, formatGapDuration as _formatGapDuration } from './lib/format'
 import { lcsLineDiff as _lcsLineDiff } from './lib/lcs-diff'
+import { scheduleMirror as _scheduleMirror } from './store/legacy-mirror'
+import { pushToast as _pushToast } from './store/signals'
 
 // Re-bind to the names the original script body uses, without touching the
 // (large) body that follows. This gives us the module split without
@@ -13,6 +15,7 @@ import { lcsLineDiff as _lcsLineDiff } from './lib/lcs-diff'
 const escapeHtml = _escapeHtml
 const lcsLineDiff = _lcsLineDiff
 const formatGapDurationGlobal = _formatGapDuration
+const scheduleMirror = _scheduleMirror
 
 // ── State ────────────────────────────────────────────
 const state = {
@@ -187,24 +190,28 @@ let importRafPending = false;
 let cacheRafPending = false;
 
 function scheduleFilterRender() {
+  scheduleMirror(state);
   if (filterRafPending) return;
   filterRafPending = true;
   requestAnimationFrame(() => { filterRafPending = false; renderFiltersNow(); });
 }
 
 function scheduleSessionRender() {
+  scheduleMirror(state);
   if (sessionRafPending) return;
   sessionRafPending = true;
   requestAnimationFrame(() => { sessionRafPending = false; renderSessionsNow(); });
 }
 
 function scheduleImportRender() {
+  scheduleMirror(state);
   if (importRafPending) return;
   importRafPending = true;
   requestAnimationFrame(() => { importRafPending = false; renderImportsNow(); });
 }
 
 function scheduleCacheRender() {
+  scheduleMirror(state);
   if (cacheRafPending) return;
   cacheRafPending = true;
   requestAnimationFrame(() => { cacheRafPending = false; renderCacheKeysNow(); });
@@ -1903,12 +1910,10 @@ function toggleJson(btn) {
   if (hint) hint.style.display = collapsed ? '' : 'none';
 }
 
+// Forward to the Preact-rendered ToastContainer; component reads from the
+// signal queue and renders/removes items.
 function showToast(msg) {
-  const toast = document.createElement('div');
-  toast.className = 'toast';
-  toast.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' + escapeHtml(msg);
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 2000);
+  _pushToast(msg);
 }
 
 // ── Pause / Resume ──────────────────────────────────
@@ -3395,6 +3400,7 @@ Timeline.init();
 function setView(view) {
   if (view !== 'dashboard' && view !== 'timeline' && view !== 'cache') view = 'dashboard';
   state.view = view;
+  scheduleMirror(state);
   try { localStorage.setItem('sbutils.eventlog.view', view); } catch (_) { /* ignore */ }
   document.body.classList.toggle('view-timeline', view === 'timeline');
   document.body.classList.toggle('view-dashboard', view === 'dashboard');

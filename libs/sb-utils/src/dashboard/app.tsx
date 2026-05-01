@@ -13,6 +13,7 @@ import { Sidebar } from './components/Sidebar'
 import { EventContainer } from './components/EventContainer'
 import { TimelineView } from './components/TimelineView'
 import { CacheViewShell } from './components/CacheViewShell'
+import { ToastContainer } from './components/Toast'
 
 export function App() {
   return (
@@ -27,6 +28,7 @@ export function App() {
         <TimelineView />
         <CacheViewShell />
       </div>
+      <ToastContainer />
     </>
   )
 }
