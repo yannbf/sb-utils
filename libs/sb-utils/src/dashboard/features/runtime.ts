@@ -1,21 +1,29 @@
 // @ts-nocheck
-// Legacy dashboard module — original inline <script> from event-log-dashboard.html.
-// Runs once on import; queries DOM by ID, attaches listeners, owns dashboard
-// state imperatively. Pure helpers have been moved out to `dashboard/lib/`;
-// the rest will follow as the surface area gets carved up.
+/**
+ * Imperative runtime — what's left of the original inline <script> after
+ * the rendering layer migrated to Preact components and the heavy
+ * features (Timeline, CacheView, reconstruction) moved into focused
+ * modules. Owns: the central `state` object, DOM refs, event ingestion
+ * via SSE, action functions exposed via `window.__sbDashActions`,
+ * Modal/snapshot wiring, and keyboard shortcuts. Side-effects only;
+ * called once from main.tsx after Preact has mounted.
+ *
+ * The remaining steps to fully replace this file with Preact components
+ * are tracked in IMPROVEMENTS.md.
+ */
 
-import { escapeHtml as _escapeHtml, formatGapDuration as _formatGapDuration } from './lib/format'
-import { lcsLineDiff as _lcsLineDiff } from './lib/lcs-diff'
-import { scheduleMirror as _scheduleMirror } from './store/legacy-mirror'
-import { pushToast as _pushToast } from './store/signals'
+import { escapeHtml as _escapeHtml, formatGapDuration as _formatGapDuration } from '../lib/format'
+import { lcsLineDiff as _lcsLineDiff } from '../lib/lcs-diff'
+import { scheduleMirror as _scheduleMirror } from '../store/legacy-mirror'
+import { pushToast as _pushToast } from '../store/signals'
 import {
   openSaveModal as _openSaveModal,
   openExplanationModal as _openExplanationModal,
-} from './store/modal'
-import { setupTimeline as _setupTimeline } from './features/timeline'
-import { setupCacheView as _setupCacheView } from './features/cache-view'
-import { setupReconstruction as _setupReconstruction } from './features/reconstruction'
-import { renderJson as _renderJson, toggleJson as _toggleJson } from './lib/json-render'
+} from '../store/modal'
+import { setupTimeline as _setupTimeline } from './timeline'
+import { setupCacheView as _setupCacheView } from './cache-view'
+import { setupReconstruction as _setupReconstruction } from './reconstruction'
+import { renderJson as _renderJson, toggleJson as _toggleJson } from '../lib/json-render'
 import {
   deepDiffLeaves as _deepDiffLeaves,
   renderCacheDiff as _renderCacheDiff,
@@ -24,8 +32,8 @@ import {
   pairAdjacentChanges as _pairAdjacentChanges,
   buildSxsRows as _buildSxsRows,
   renderSideBySideDiff as _renderSideBySideDiff,
-} from './lib/cache-diff'
-import { getColor as _getColor } from './lib/colors'
+} from '../lib/cache-diff'
+import { getColor as _getColor } from '../lib/colors'
 
 // Re-bind to the names the original script body uses, without touching the
 // (large) body that follows. This gives us the module split without
