@@ -75,6 +75,14 @@ function reconstructTelemetryFromCacheWriteInner(cacheEvent: CacheWriteEvent): v
   // not already present (by eventId) in events.value. Sort them by
   // their cache-recorded timestamp before assigning indices, so the
   // displayed `#N` follows chronology.
+  //
+  // Staleness filter mirrors the cache:write side: telemetry events
+  // baked into `lastEvents` from before the server started are
+  // hidden unless the user opted into "Show stale cache data". This
+  // makes reconstruction follow the same recency rule the rest of
+  // the cache UI does — an unset stale toggle means "only recent".
+  const cutoff = serverStartedAt.value
+  const stalePolicyApplies = !showStaleCache.value && cutoff != null
   const candidates: Array<{ body: any; timestamp: number }> = []
   const existing = events.value
   for (const eventType of Object.keys(next)) {
@@ -84,13 +92,12 @@ function reconstructTelemetryFromCacheWriteInner(cacheEvent: CacheWriteEvent): v
     if (prevEntry && JSON.stringify(prevEntry) === JSON.stringify(entry)) continue
     const body = entry.body
     if (body && body.eventId && existing.some((e) => e.eventId === body.eventId)) continue
-    candidates.push({
-      body,
-      timestamp:
-        typeof entry.timestamp === 'number'
-          ? entry.timestamp
-          : cacheEvent._receivedAt || Date.now(),
-    })
+    const timestamp =
+      typeof entry.timestamp === 'number'
+        ? entry.timestamp
+        : cacheEvent._receivedAt || Date.now()
+    if (stalePolicyApplies && timestamp < cutoff) continue
+    candidates.push({ body, timestamp })
   }
   candidates.sort((a, b) => a.timestamp - b.timestamp)
 
@@ -236,9 +243,15 @@ export async function backfillFromCache(): Promise<void> {
         (e) => e.key === 'lastEvents' && e.namespace === 'dev-server',
       )
       if (lastEvents && lastEvents.content && typeof lastEvents.content === 'object') {
+        // Pass the file's mtime as `_receivedAt` so any inner event
+        // missing a `timestamp` falls back to the actual file age,
+        // not Date.now(). Without this, stale lastEvents entries
+        // looked freshly-arrived to the staleness gate.
+        const fallbackTs =
+          typeof lastEvents.mtime === 'number' ? lastEvents.mtime : Date.now()
         reconstructTelemetryFromCacheWrite({
           _source: 'cache-watch',
-          _receivedAt: Date.now(),
+          _receivedAt: fallbackTs,
           payload: {
             key: 'lastEvents',
             namespace: 'dev-server',
@@ -282,10 +295,15 @@ export async function reconstructFromCacheNow(): Promise<void> {
     if (!lastEvents || !lastEvents.content || typeof lastEvents.content !== 'object') return
     // Use the inner (un-gated) form: this is an explicit user opt-in
     // so we must replay even if real telemetry has already been seen
-    // in this session. Dedup by eventId keeps it idempotent.
+    // in this session. Dedup by eventId keeps it idempotent. Use the
+    // file's mtime as the fallback _receivedAt so stale lastEvents
+    // entries don't appear to be freshly-arrived to the staleness
+    // gate (which compares timestamp against serverStartedAt).
+    const fallbackTs =
+      typeof lastEvents.mtime === 'number' ? lastEvents.mtime : Date.now()
     reconstructTelemetryFromCacheWriteInner({
       _source: 'cache-watch',
-      _receivedAt: Date.now(),
+      _receivedAt: fallbackTs,
       payload: {
         key: 'lastEvents',
         namespace: 'dev-server',

@@ -143,13 +143,18 @@ export function setShowStaleCache(on: boolean): void {
       bridges.invalidateTimeline()
     })
   } else {
-    // Drop synthetic stale cache events. Live cache writes (mtime
-    // >= startedAt) stay. Telemetry-from-cache reconstructions (their
-    // own _source 'cache-recon') are unaffected.
+    // Drop synthetic stale events. Live cache writes (mtime
+    // >= startedAt) stay. Reconstructed telemetry events that
+    // predate the session also drop — the toggle is meant to read as
+    // "show what existed BEFORE this session", and that includes
+    // both the cache:write entries and the telemetry replayed from
+    // their contents. Recent recon events stay, so live
+    // reconstruction (when reconstructFromCache is also on) is
+    // unaffected.
     const cutoff = serverStartedAt.value
     if (cutoff != null) {
       events.value = events.value.filter((e) => {
-        if (e._source !== 'cache-watch') return true
+        if (e._source !== 'cache-watch' && e._source !== 'cache-recon') return true
         return (e._receivedAt || 0) >= cutoff
       })
       bridges.invalidateTimeline()

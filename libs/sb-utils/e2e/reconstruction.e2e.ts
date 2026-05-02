@@ -128,21 +128,29 @@ test.describe('reconstruction toggle (opt-in via gear menu)', () => {
     await expect(page.locator('.event-recon-badge')).toHaveCount(0)
   })
 
-  test('flipping the gear toggle reconstructs telemetry immediately', async ({
+  test('flipping reconstruct ON only surfaces recent telemetry; needs stale toggle for old data', async ({
     page,
     eventLoggerWithCache,
   }) => {
+    // Reconstruction now respects the staleness gate: with stale=off
+    // (default), only telemetry events at-or-after the server's
+    // startedAt are reconstructed. The playground's lastEvents file is
+    // entirely pre-existing, so reconstruct alone yields zero events.
+    // Flipping stale also brings the older entries through.
     await page.goto(eventLoggerWithCache.url)
     await page.waitForTimeout(800)
     await expect(page.locator('.event-recon-badge')).toHaveCount(0)
 
-    // Open the gear popover and flip the reconstruct toggle on.
     await page.locator('#cacheOpsGearBtn').click()
-    await expect(page.locator('.cache-ops-menu')).toBeVisible()
-    await page.locator('.cache-ops-toggle').first().click()
+    await page.locator('.cache-ops-toggle').first().click() // reconstruct
     await expect(page.locator('.cache-ops-toggle').first()).toHaveAttribute('aria-checked', 'true')
+    // Stale is still off — playground's pre-existing lastEvents
+    // entries are skipped.
+    await expect(page.locator('.event-recon-badge')).toHaveCount(0)
 
-    // Recon events appear without a reload.
+    // Now flip stale on — the previously-skipped entries get
+    // reconstructed in the same flow.
+    await page.locator('.cache-ops-toggle').nth(1).click() // stale
     await expect(page.locator('.event-recon-badge').first()).toBeVisible({
       timeout: 5_000,
     })
@@ -173,17 +181,20 @@ test.describe('reconstruction toggle (opt-in via gear menu)', () => {
     eventLoggerWithCache,
   }) => {
     await page.goto(eventLoggerWithCache.url)
-    // Flip ON. Reconstruct toggle is the first row in the gear popover.
+    // Flip both reconstruct + stale ON so the playground's pre-existing
+    // lastEvents content is reconstructed.
     await page.locator('#cacheOpsGearBtn').click()
     const reconstructToggle = page.locator('.cache-ops-toggle').first()
+    const staleToggle = page.locator('.cache-ops-toggle').nth(1)
     await reconstructToggle.click()
+    await staleToggle.click()
     await expect(page.locator('.event-recon-badge').first()).toBeVisible({
       timeout: 5_000,
     })
     const reconCount = await page.locator('.event-recon-badge').count()
     expect(reconCount).toBeGreaterThan(0)
 
-    // Flip OFF — every reconstructed event should disappear.
+    // Flip reconstruct OFF — every reconstructed event should disappear.
     await reconstructToggle.click()
     await expect(reconstructToggle).toHaveAttribute('aria-checked', 'false')
     await expect(page.locator('.event-recon-badge')).toHaveCount(0)
@@ -236,6 +247,35 @@ test.describe('reconstruction toggle (opt-in via gear menu)', () => {
     await page.locator('.cache-ops-toggle').first().click() // reconstruct
     await expect(page.locator('#cacheOpsGearBtn')).not.toHaveClass(/attention/)
     await expect(page.locator('#cacheOpsGearBtn')).toHaveClass(/modified/)
+  })
+
+  test('toggling stale OFF after both were on drops stale cache:write AND stale cache-recon events', async ({
+    page,
+    eventLoggerWithCache,
+  }) => {
+    // Both on → reconstruction + stale cache visible.
+    await page.goto(eventLoggerWithCache.url)
+    await page.locator('#cacheOpsGearBtn').click()
+    await page.locator('.cache-ops-toggle').first().click() // reconstruct
+    await page.locator('.cache-ops-toggle').nth(1).click() // stale
+    await expect(page.locator('.event-recon-badge').first()).toBeVisible({
+      timeout: 5_000,
+    })
+    await expect(page.locator('#cacheAllCount')).not.toHaveText('0')
+    const initialRecon = await page.locator('.event-recon-badge').count()
+    expect(initialRecon).toBeGreaterThan(0)
+
+    // Flip stale off — should drop both stale cache:write events
+    // (cacheCount → 0) AND stale cache-recon events (no badges left).
+    await page.locator('.cache-ops-toggle').nth(1).click()
+    await expect(page.locator('#cacheAllCount')).toHaveText('0')
+    await expect(page.locator('.event-recon-badge')).toHaveCount(0)
+    // Reconstruct toggle stayed on — flipping stale on again brings
+    // the recon events back (round-trip test).
+    await page.locator('.cache-ops-toggle').nth(1).click()
+    await expect(page.locator('.event-recon-badge').first()).toBeVisible({
+      timeout: 5_000,
+    })
   })
 
   test('"Show stale cache data" toggle is hidden when no stale data exists', async ({
@@ -358,9 +398,12 @@ test.describe('reconstruction toggle (opt-in via gear menu)', () => {
     ).toHaveCount(1, { timeout: 5_000 })
     await expect(page.locator('.event-recon-badge')).toHaveCount(0)
 
-    // Now flip the toggle.
+    // Now flip both toggles — reconstruct + stale — so the
+    // playground's pre-existing lastEvents content is replayed even
+    // though a real event already landed first.
     await page.locator('#cacheOpsGearBtn').click()
-    await page.locator('.cache-ops-toggle').first().click()
+    await page.locator('.cache-ops-toggle').first().click() // reconstruct
+    await page.locator('.cache-ops-toggle').nth(1).click() // stale
 
     // Recon badges show up — playground's lastEvents was replayed
     // despite real telemetry having arrived first.
