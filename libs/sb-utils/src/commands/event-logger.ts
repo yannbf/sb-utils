@@ -454,10 +454,11 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
     let result = events as StoredEvent[]
     if (type) result = result.filter((e) => e.eventType === type)
     if (sessionId) result = result.filter((e) => e.sessionId === sessionId)
-    // Strip server-only bookkeeping so the export is portable, matching the
-    // dashboard's client-side `exportEvents()` behavior.
+    // Strip the per-server `_index` ordinal but keep `_receivedAt` so
+    // re-importing the file preserves event timing (without it, the
+    // timeline view collapses every dot onto the moment of import).
     const cleaned = result.map((e) => {
-      const { _index, _receivedAt, ...rest } = e as StoredEvent
+      const { _index, ...rest } = e as StoredEvent
       return rest
     })
     const payload = { version: 1, explanation, events: cleaned }

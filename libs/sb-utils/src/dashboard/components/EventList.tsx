@@ -6,23 +6,45 @@
  */
 
 import { useEffect, useRef } from 'preact/hooks'
+import { computed } from '@preact/signals'
 import { events, autoScroll, type StoredEvent } from '../store/signals'
 import { matchesFilters } from '../lib/filters'
 import { EventCard } from './EventCard'
 
-function SessionSeparator({ sessionId, filteredOut }: { sessionId: string; filteredOut: boolean }) {
+function SessionSeparator({ sessionId }: { sessionId: string }) {
   return (
-    <div
-      class={'session-separator' + (filteredOut ? ' filtered-out' : '')}
-      data-session-id={sessionId}
-    >
+    <div class="session-separator" data-session-id={sessionId}>
       <span class="session-label">Session {sessionId.slice(0, 8)}</span>
     </div>
   )
 }
 
+// Memoized visible-events pass: re-runs only when events.value or any
+// filter signal `matchesFilters` reads from changes. Without this,
+// every card re-render (toggling expand on a single card) would walk
+// the whole event list again.
+type VisibleRow = {
+  ev: StoredEvent
+  displayIdx: number
+  prevVisible: StoredEvent | null
+}
+
+const visibleEvents = computed<VisibleRow[]>(() => {
+  const out: VisibleRow[] = []
+  let last: StoredEvent | null = null
+  let displayIdx = 0
+  for (const ev of events.value) {
+    if (!matchesFilters(ev)) continue
+    displayIdx++
+    out.push({ ev, displayIdx, prevVisible: last })
+    last = ev
+  }
+  return out
+})
+
 export function EventList() {
-  const all = events.value
+  const totalCount = events.value.length
+  const visible = visibleEvents.value
 
   // Auto-scroll to bottom whenever new events arrive (and the toggle
   // is on). Two safeguards so the first paint stays at the top:
@@ -42,54 +64,33 @@ export function EventList() {
   useEffect(() => {
     const sinceMount = Date.now() - mountedAt.current
     if (sinceMount < SETTLE_MS) {
-      lastCount.current = all.length
+      lastCount.current = totalCount
       return
     }
     if (!autoScroll.value) {
-      lastCount.current = all.length
+      lastCount.current = totalCount
       return
     }
-    const added = all.length - lastCount.current
+    const added = totalCount - lastCount.current
     if (added > 0 && added <= LIVE_BATCH_MAX && containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight
     }
-    lastCount.current = all.length
+    lastCount.current = totalCount
   })
 
-  // Pre-compute the filter result once: each EventCard needs to know
-  // its position among the *visible* events (so #N renders 1, 2, 3
-  // even when cache-only events are hidden) plus the previous visible
-  // event in chronological order (so the +Xms delta isn't measured
-  // from an event the user can't see).
-  const visibleSet = new Set<number>()
-  let visibleCount = 0
-  let anyVisible = false
-  const visibleIdxOf = new Map<number, number>()
-  const prevVisibleOf = new Map<number, StoredEvent>()
-  let lastVisible: StoredEvent | null = null
-  for (const ev of all) {
-    const visible = matchesFilters(ev)
-    if (!visible) continue
-    anyVisible = true
-    visibleSet.add(ev._index)
-    visibleCount++
-    visibleIdxOf.set(ev._index, visibleCount)
-    if (lastVisible) prevVisibleOf.set(ev._index, lastVisible)
-    lastVisible = ev
-  }
-
   // Build the interleaved children: session separator before each first
-  // event of a session run, then the card.
+  // event of a session run, then the card. Only visible events render —
+  // filtered-out cards were `display:none` anyway so skipping them
+  // entirely saves a lot of VDOM work with 200+ events.
   const children: preact.JSX.Element[] = []
   let lastSession: string | null = null
-  for (const ev of all) {
-    const visible = visibleSet.has(ev._index)
+  for (const row of visible) {
+    const ev = row.ev
     if (ev.sessionId && ev.sessionId !== lastSession) {
       children.push(
         <SessionSeparator
           key={'sep-' + ev.sessionId + '-' + ev._index}
           sessionId={ev.sessionId}
-          filteredOut={!visible}
         />,
       )
       lastSession = ev.sessionId
@@ -98,14 +99,14 @@ export function EventList() {
       <EventCard
         key={ev._index}
         event={ev}
-        displayIdx={visibleIdxOf.get(ev._index)}
-        prevVisible={prevVisibleOf.get(ev._index) ?? null}
+        displayIdx={row.displayIdx}
+        prevVisible={row.prevVisible}
       />,
     )
   }
 
-  const isEmpty = all.length === 0
-  const showEmptyHint = isEmpty || !anyVisible
+  const isEmpty = totalCount === 0
+  const showEmptyHint = isEmpty || visible.length === 0
 
   return (
     <div class="main" id="eventContainer" ref={containerRef}>

@@ -58,30 +58,31 @@ function JsonNode({ value, depth }: { value: AnyJson; depth: number }) {
       >
         {collapsed ? '▶' : '▼'}
       </button>
-      {collapsed && (
+      {collapsed ? (
         <span class="json-collapsed-indicator">
           {' '}
           {entries.length} {isArray ? 'items' : 'keys'}{' '}
         </span>
+      ) : (
+        <span>
+          {'\n'}
+          {entries.map(([key, v], i) => (
+            <span key={String(key)}>
+              {indent}
+              {!isArray && (
+                <>
+                  <span class="json-key">"{String(key)}"</span>
+                  {': '}
+                </>
+              )}
+              <JsonNode value={v} depth={depth + 1} />
+              {i < entries.length - 1 ? ',' : ''}
+              {'\n'}
+            </span>
+          ))}
+          {closingIndent}
+        </span>
       )}
-      <span class={collapsed ? 'json-hidden' : undefined}>
-        {'\n'}
-        {entries.map(([key, v], i) => (
-          <span key={String(key)}>
-            {indent}
-            {!isArray && (
-              <>
-                <span class="json-key">"{String(key)}"</span>
-                {': '}
-              </>
-            )}
-            <JsonNode value={v} depth={depth + 1} />
-            {i < entries.length - 1 ? ',' : ''}
-            {'\n'}
-          </span>
-        ))}
-        {closingIndent}
-      </span>
       <span class="json-bracket">{close}</span>
     </>
   )

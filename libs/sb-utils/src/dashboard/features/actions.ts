@@ -295,8 +295,12 @@ async function doExportEvents(
     withExplanation: true,
   })
   if (!result) return
+  // Keep `_receivedAt` in the export — without it, re-importing the
+  // file would stamp every event with `Date.now()` and the timeline
+  // collapses every dot onto the import moment. `_index` is dropped:
+  // it's a server-local ordinal that gets re-assigned on import.
   const cleaned = events.value.map((e) => {
-    const { _index, _receivedAt, ...rest } = e
+    const { _index, ...rest } = e
     return rest
   })
   const payload = { version: 1, explanation: result.explanation, events: cleaned }

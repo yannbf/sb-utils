@@ -7,14 +7,12 @@
 
 import { useState } from 'preact/hooks'
 import {
-  events,
   expandAll,
   expandedCards,
   type StoredEvent,
 } from '../store/signals'
 import { getColor } from '../lib/colors'
 import { formatDelta } from '../lib/event-helpers'
-import { matchesFilters } from '../lib/filters'
 import { JsonView } from './JsonView'
 import { DiffView } from './DiffView'
 
@@ -69,8 +67,7 @@ export function EventCard({
   /**
    * Position among the visible (filter-matching) events, 1-based. The
    * #N tag in the card header shows this — so hiding cache events
-   * leaves telemetry numbered 1, 2, 3 instead of 1, 4, 6. Falls back
-   * to the full-list position when the parent didn't supply one.
+   * leaves telemetry numbered 1, 2, 3 instead of 1, 4, 6.
    */
   displayIdx?: number
   /**
@@ -81,15 +78,13 @@ export function EventCard({
 }) {
   // Card-level expanded state: a card is expanded if Expand-All is on OR
   // the user explicitly toggled it (tracked in expandedCards signal).
-  const idx = event._index != null ? event._index : events.value.indexOf(event)
+  const idx = event._index != null ? event._index : 0
   const idxStr = String(idx)
   const expanded = expandAll.value || expandedCards.value.has(idxStr)
-  const all = events.value
-  const pos = all.indexOf(event)
   // Never expose the raw _index in the UI: synthetic events use a
   // 1e9-range counter (kept opaque, just a stable id) which would
   // render as "#1000000007".
-  const shownIdx = displayIdx ?? (pos >= 0 ? pos + 1 : 0)
+  const shownIdx = displayIdx ?? 0
 
   const time = event._receivedAt ? new Date(event._receivedAt).toLocaleTimeString() : ''
   const color = getColor(event.eventType || 'unknown')
@@ -104,7 +99,6 @@ export function EventCard({
   const isReconstructed = event._source === 'cache-recon'
   const summary = summaryFor(event)
   const tabs = tabsFor(event)
-  const matched = matchesFilters(event)
 
   const [active, setActive] = useState(tabs[0]?.key ?? 'raw')
 
@@ -132,13 +126,11 @@ export function EventCard({
       class={
         'event-card' +
         (expanded ? ' expanded' : '') +
-        (matched ? '' : ' filtered-out') +
         (isCache ? ' cache-event' : '')
       }
       data-event-type={event.eventType || ''}
       data-session-id={event.sessionId || ''}
       data-index={String(idx)}
-      data-search-text={JSON.stringify(event).toLowerCase()}
       data-cache-event={isCache ? 'true' : undefined}
       data-source={isReconstructed ? 'cache-recon' : undefined}
     >
@@ -197,33 +189,28 @@ export function EventCard({
           </button>
         </div>
       </div>
-      <div class="event-body">
-        <div class="event-tabs">
-          {tabs.map((t) => (
-            <div
-              key={t.key}
-              class={'event-tab' + (active === t.key ? ' active' : '')}
-              data-tab={t.key}
-              onClick={(e) => {
-                e.stopPropagation()
-                setActive(t.key)
-              }}
-            >
-              {t.label}
-            </div>
-          ))}
-        </div>
-        {tabs.map((t) => (
-          <div
-            key={t.key}
-            class="event-tab-content"
-            data-tab-content={t.key}
-            style={active === t.key ? undefined : { display: 'none' }}
-          >
-            <TabPanel event={event} tabKey={t.key} />
+      {expanded && (
+        <div class="event-body">
+          <div class="event-tabs">
+            {tabs.map((t) => (
+              <div
+                key={t.key}
+                class={'event-tab' + (active === t.key ? ' active' : '')}
+                data-tab={t.key}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setActive(t.key)
+                }}
+              >
+                {t.label}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+          <div class="event-tab-content" data-tab-content={active}>
+            <TabPanel event={event} tabKey={active} />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

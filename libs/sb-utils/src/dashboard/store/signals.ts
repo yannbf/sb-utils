@@ -214,6 +214,22 @@ export const cacheMap = computed<Record<string, CacheKeyInfo>>(() => {
   return out
 })
 
+// Total counts of telemetry vs cache-watch events. Sidebar previously
+// re-ran `events.value.filter(...).length` on every render — over a
+// large event list with frequent re-renders that's wasted work.
+// Memoized here so it only recomputes when events.value changes.
+export const telemetryCount = computed(() => {
+  let n = 0
+  for (const e of events.value) if (e._source !== 'cache-watch') n++
+  return n
+})
+
+export const cacheCount = computed(() => {
+  let n = 0
+  for (const e of events.value) if (e._source === 'cache-watch') n++
+  return n
+})
+
 // ── Event ingestion ──────────────────────────────────────
 // Helpers used by features/event-stream.ts and features/reconstruction.ts
 // to write into the events signal without leaking signal mechanics into

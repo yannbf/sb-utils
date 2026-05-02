@@ -8,7 +8,6 @@
 
 import { useEffect, useRef, useState } from 'preact/hooks'
 import {
-  events,
   activeFilter,
   activeSession,
   activeImport,
@@ -26,6 +25,8 @@ import {
   sessionMap,
   cacheMap,
   imports,
+  telemetryCount,
+  cacheCount,
 } from '../store/signals'
 import { actions } from '../store/actions'
 import { getColor } from '../lib/colors'
@@ -58,7 +59,7 @@ const GearIcon = () => (
 // ── Event Types ──
 function EventTypesSection() {
   const counts = typeCounts.value
-  const total = events.value.filter((e) => e._source !== 'cache-watch').length
+  const total = telemetryCount.value
   const hidden = hiddenTypes.value
   const allHidden = telemetryAllHidden.value
   const isAllActive = activeFilter.value === 'all'
@@ -271,7 +272,7 @@ function CacheOpsSection() {
   const allHidden = cacheAllHidden.value
   const hidden = hiddenCacheKeys.value
   const active = activeCacheKey.value
-  const total = events.value.filter((e) => e._source === 'cache-watch').length
+  const total = cacheCount.value
   const keys = Object.keys(map).sort()
   const isAllActive = active === null
   const [menuOpen, setMenuOpen] = useState(false)
