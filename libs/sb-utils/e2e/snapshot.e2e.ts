@@ -116,4 +116,49 @@ test.describe('HTML snapshot export', () => {
 
     await ctx.close()
   })
+
+  test('snapshot banner "View explanation" opens the explanation modal', async ({
+    page,
+    eventLogger,
+    browser,
+  }) => {
+    await page.goto(eventLogger.url)
+    await eventLogger.postEvent({ eventType: 'boot', sessionId: 's1' })
+
+    await page.locator('#exportBtn').click()
+    await page.locator('[data-export="html"]').click()
+    await page.locator('#modalExplanationInput').fill('repro of telemetry-XYZ')
+    const downloadPromise = page.waitForEvent('download')
+    await page.locator('#modalSubmitBtn').click()
+    const download = await downloadPromise
+    const stream = await download.createReadStream()
+    const chunks: Buffer[] = []
+    for await (const c of stream) chunks.push(c as Buffer)
+    const html = Buffer.concat(chunks).toString('utf-8')
+
+    const dir = path.join(os.tmpdir(), 'sb-utils-e2e-explain-' + Date.now())
+    mkdirSync(dir, { recursive: true })
+    const snapPath = path.join(dir, 'snapshot.html')
+    writeFileSync(snapPath, html)
+
+    const ctx = await browser.newContext({})
+    const snap = await ctx.newPage()
+    await snap.goto('file://' + snapPath)
+    await expect.poll(() => snap.evaluate(() => (window as any).__SNAPSHOT__)).toBe(true)
+
+    // Banner should expose the explain button when an explanation was
+    // baked into the snapshot.
+    const explainBtn = snap.locator('.snapshot-banner .explain-btn')
+    await expect(explainBtn).toBeVisible()
+    await explainBtn.click()
+
+    // Modal opens with the baked explanation text.
+    await expect(snap.locator('#modalOverlay.active')).toBeVisible()
+    await expect(snap.locator('#modalBody')).toContainText('repro of telemetry-XYZ')
+    // Close button dismisses the modal.
+    await snap.locator('#modalCloseActionBtn').click()
+    await expect(snap.locator('#modalOverlay.active')).toHaveCount(0)
+
+    await ctx.close()
+  })
 })
