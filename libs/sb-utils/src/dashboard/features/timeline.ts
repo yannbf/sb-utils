@@ -1,15 +1,15 @@
-// @ts-nocheck — imperative canvas engine. The body has ~50 implicit-any
-// `let` declarations for canvas/context/drawer DOM refs that don't
-// translate cleanly to types without rewriting the engine. Annotating
-// each one would be busywork that doesn't catch real bugs (the engine
-// is exercised by the E2E suite). The next step toward full typing is
-// rewriting the canvas drawing as a Preact component with `useEffect`
-// (tracked in IMPROVEMENTS.md).
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
- * Timeline view — canvas-based pan/zoom + drawer. Mounted by the
+ * Timeline canvas engine — pan/zoom + minimap + tooltip. Mounted by the
  * <Timeline /> Preact component (components/Timeline.tsx) on first
  * render. Public API is { init, invalidate, fitAll, closeDrawer,
  * navigate, isDrawerOpen }.
+ *
+ * The DOM ref / canvas context locals are typed as `any` because they
+ * start as `null` and are reassigned in `init()` once the JSX has
+ * rendered. Strict-typing each as `HTMLCanvasElement | null` etc.
+ * would force pervasive `?` checks that don't catch real bugs (the
+ * engine is exercised by the E2E suite).
  */
 
 import { escapeHtml, formatGapDuration as _formatGapDurationLib } from '../lib/format'
@@ -34,7 +34,7 @@ const Timeline = (function () {
   const GAP_SEG_DISP_MS = 400;
   const MINIMAP_HANDLE_HIT = 7;
 
-  const st = {
+  const st: any = {
     viewStartDisp: 0,
     viewEndDisp: 0,
     followTail: true,
@@ -46,20 +46,19 @@ const Timeline = (function () {
     segments: null,
   };
 
-  let wrapEl, axisCanvas, contentCanvas, minimapCanvas, minimapSelectEl, mainEl, tooltipEl, jumpBtn;
-  // Drawer is a Preact component (components/TimelineDrawer.tsx).
-  // We keep a ref to the .tl-drawer element only for the
-  // focusSelectedEvent geometry calc (panning so the dot stays visible
-  // outside the drawer). The drawer's .open class is driven by the
-  // selectedTimelineEvent signal.
-  let drawerEl;
-  let zoomInfo, rangeInfo, liveInfo, emptyEl, fitBtn, collapseBtn;
-  let axisCtx, contentCtx, minimapCtx;
-  let dpr = 1;
-  let rafPending = false;
-  let hitMap = [];
-  // currentDrawerEvent is now driven by the selectedTimelineEvent signal.
-  const textWidthCache = new Map();
+  let wrapEl: any, axisCanvas: any, contentCanvas: any, minimapCanvas: any
+  let minimapSelectEl: any, mainEl: any, tooltipEl: any, jumpBtn: any
+  // Drawer is a Preact component (components/TimelineDrawer.tsx). The
+  // engine keeps a ref only for the focusSelectedEvent geometry calc
+  // (panning so the dot stays visible outside the drawer); the .open
+  // class is driven by the selectedTimelineEvent signal.
+  let drawerEl: any
+  let zoomInfo: any, rangeInfo: any, liveInfo: any, emptyEl: any, fitBtn: any, collapseBtn: any
+  let axisCtx: any, contentCtx: any, minimapCtx: any
+  let dpr = 1
+  let rafPending = false
+  let hitMap: any[] = []
+  const textWidthCache = new Map<string, number>()
 
   function init() {
     wrapEl = document.getElementById('timelineView');
@@ -132,7 +131,7 @@ const Timeline = (function () {
     // Synthetic cache lane — collects every cache:* pseudo-event into a
     // single lane labeled "Cache". Sits above the per-session lanes.
     const CACHE_LANE_ID = '__cache__';
-    let cacheLane = null;
+    let cacheLane: any = null;
     for (const e of state.events) {
       // Cache events feed the cache lane regardless of sessionId.
       if (e._source === 'cache-watch') {
@@ -176,16 +175,16 @@ const Timeline = (function () {
       st.segments = [{ srcStart: first, srcEnd: last, dispStart: 0, dispEnd: last - first, type: 'data' }];
       return;
     }
-    const stamps = [];
+    const stamps: number[] = [];
     for (const e of state.events) if (e._receivedAt) stamps.push(e._receivedAt);
     stamps.sort((a, b) => a - b);
-    const gaps = [];
+    const gaps: number[] = [];
     for (let i = 1; i < stamps.length; i++) gaps.push(stamps[i] - stamps[i - 1]);
     const sorted = gaps.slice().sort((a, b) => a - b);
     const median = sorted[Math.floor(sorted.length / 2)] || 0;
     const threshold = Math.max(3000, median * 8);
 
-    const segs = [];
+    const segs: any[] = [];
     let disp = 0;
     let segStart = stamps[0];
     for (let i = 1; i < stamps.length; i++) {
@@ -371,7 +370,7 @@ const Timeline = (function () {
     }
     if (sessions.length === 0 || sessions.every(s => s.events.length === 0)) {
       emptyEl.classList.add('has-action');
-      const parts = [];
+      const parts: string[] = [];
       if (state.activeFilter !== 'all') parts.push('type "' + state.activeFilter + '"');
       if (state.activeSession) parts.push('session ' + state.activeSession.slice(0, 8));
       if (state.hiddenTypes.size > 0) parts.push(state.hiddenTypes.size + ' hidden type' + (state.hiddenTypes.size !== 1 ? 's' : ''));
@@ -388,15 +387,15 @@ const Timeline = (function () {
       emptyEl.style.display = '';
       const btn = document.getElementById('tlEmptyClear');
       if (btn) btn.addEventListener('click', () => {
+        // The state shim writes to signals; reset filter signals to
+        // their defaults. EventList / Sidebar / Timeline all re-render.
         state.activeFilter = 'all';
         state.activeSession = null;
         state.searchQuery = '';
-        state.hiddenTypes.clear();
-        state.hiddenSessions.clear();
-        const searchInputEl = document.getElementById('searchInput');
+        state.hiddenTypes = new Set();
+        state.hiddenSessions = new Set();
+        const searchInputEl = document.getElementById('searchInput') as HTMLInputElement | null;
         if (searchInputEl) searchInputEl.value = '';
-        renderFiltersNow();
-        renderSessionsNow();
         applyFiltersInPlace();
       });
       return;
@@ -416,7 +415,7 @@ const Timeline = (function () {
       const endSrc = dispToSrc(st.viewEndDisp);
       rangeInfo.innerHTML =
         'Range: <b>' + formatClockTime(startSrc, true) + ' – ' + formatClockTime(endSrc, true) + '</b>' +
-        ' <span style="color:var(--text-dim)">(+' + formatRelTime(startSrc, first) + ' – +' + formatRelTime(endSrc, first) + ')</span>';
+        ' <span style="color:var(--text-dim)">(+' + formatRelTime(startSrc, first, false) + ' – +' + formatRelTime(endSrc, first, false) + ')</span>';
     } else {
       rangeInfo.innerHTML = 'Range: <b>—</b>';
     }
@@ -534,7 +533,7 @@ const Timeline = (function () {
       // Cache lane is never dimmed by an activeSession filter — they're orthogonal.
       const dimSession = lane.kind !== 'cache' && state.activeSession && state.activeSession !== lane.sid;
       const sessionAlpha = dimSession ? 0.3 : 1;
-      const laneHits = [];
+      const laneHits: any[] = [];
       let lastLabelRight = -Infinity;
 
       for (const e of lane.events) {
@@ -691,11 +690,11 @@ const Timeline = (function () {
     const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
     return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
   }
-  function getTextWidth(text) {
-    let w = textWidthCache.get(text);
-    if (w != null) return w;
+  function getTextWidth(text: string): number {
+    const cached = textWidthCache.get(text);
+    if (cached != null) return cached;
     contentCtx.font = '10px ui-monospace, SFMono-Regular, Menlo, monospace';
-    w = contentCtx.measureText(text).width;
+    const w = contentCtx.measureText(text).width as number;
     textWidthCache.set(text, w);
     return w;
   }
@@ -708,14 +707,15 @@ const Timeline = (function () {
     return true;
   }
 
-  function findEventAt(clientX, clientY) {
+  function findEventAt(clientX: number, clientY: number): any {
     const rect = contentCanvas.getBoundingClientRect();
     const x = clientX - rect.left;
     const y = clientY - rect.top;
     if (x < LABEL_COL_W) return null;
     for (const lane of hitMap) {
       if (y < lane.yTop || y > lane.yBottom) continue;
-      let best = null, bestD = 10;
+      let best: any = null;
+      let bestD = 10;
       for (const h of lane.hits) {
         const d = Math.hypot(h.x - x, h.y - y);
         if (d < bestD) { bestD = d; best = h; }
@@ -778,11 +778,10 @@ const Timeline = (function () {
       // Cache lane click jumps to the Cache view rather than acting as a
       // session filter — sessions don't apply to it.
       if (lane.sid === '__cache__') {
-        setView('cache');
+        state.view = 'cache';
         return;
       }
       state.activeSession = state.activeSession === lane.sid ? null : lane.sid;
-      renderSessionsNow();
       applyFiltersInPlace();
       invalidate();
     }
@@ -954,7 +953,7 @@ const Timeline = (function () {
       '<div class="tt-badge" style="background:' + color.bg + '; color:' + color.fg + '">' + escapeHtml(event.eventType || 'unknown') + '</div>' +
       '<div class="tt-row"><span>session</span><span class="val">' + (event.sessionId ? event.sessionId.slice(0, 8) : '—') + '</span></div>' +
       '<div class="tt-row"><span>time</span><span class="val">' + formatClockTime(event._receivedAt, true) + '</span></div>' +
-      '<div class="tt-row"><span>elapsed</span><span class="val">+' + formatRelTime(event._receivedAt, first) + '</span></div>' +
+      '<div class="tt-row"><span>elapsed</span><span class="val">+' + formatRelTime(event._receivedAt, first, false) + '</span></div>' +
       '<div class="tt-row"><span>index</span><span class="val">#' + event._index + '</span></div>' +
       '<div class="tt-hint">click for details →</div>';
     tooltipEl.style.display = 'block';

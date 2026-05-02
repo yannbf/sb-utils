@@ -41,8 +41,9 @@
     "test": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
+    "pretest:e2e": "pnpm run build",
     "run": "jiti src/bin.ts",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p src/dashboard/tsconfig.json",
     "prepublishOnly": "pnpm run build"
   },
   "dependencies": {

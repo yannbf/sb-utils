@@ -239,6 +239,7 @@ export function resetAll() {
   activeSession.value = null
   activeImport.value = null
   activeCacheKey.value = null
-  imports.value = []
+  // imports is a computed signal — it'll empty on its own once events
+  // is cleared above.
   realTelemetryDetected.value = false
 }

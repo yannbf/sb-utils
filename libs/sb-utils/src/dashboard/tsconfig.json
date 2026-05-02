@@ -9,6 +9,12 @@
     "strict": true,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
+    // The Timeline canvas engine has many lambda parameters (drawing
+    // callbacks, hit-testers, axis tick formatters) where annotating
+    // each one as `: any` would be visual noise. The valuable strict
+    // checks (strictNullChecks, strictFunctionTypes, …) stay on; only
+    // implicit-any is relaxed to avoid that busywork.
+    "noImplicitAny": false,
     "esModuleInterop": true,
     "isolatedModules": true,
     "skipLibCheck": true,
