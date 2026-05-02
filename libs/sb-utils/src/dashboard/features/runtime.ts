@@ -1,19 +1,15 @@
 /**
- * Runtime orchestrator. Wires the imperative dashboard runtime onto the
+ * Runtime orchestrator — wires the dashboard runtime onto the
  * Preact-rendered shell:
  *
  * - SSE event stream + on-load recovery (features/event-stream).
  * - Cache reconstruction + backfill triggers (features/reconstruction).
  * - Action bridges so signal-driven actions can poke the still-imperative
- *   Timeline canvas + Cache view fetcher.
+ *   Timeline canvas (.invalidate) + cache fetcher.
  * - Global keyboard shortcuts.
- * - Two `window` exposes for the Timeline drawer's HTML-string markup
- *   (toggleCard for the drawer's tab clicks; __sbToggleJson for the
- *   collapsible JSON tree). These go away when the drawer migrates to
- *   Preact JSX.
  *
- * No legacy `state` object lives here anymore — every component / module
- * reads and writes signals directly. The mirror layer is gone.
+ * Everything else reads and writes signals directly — no legacy state,
+ * no mirror layer, no window exposes for inline `onclick` markup.
  */
 
 import { setupEventStream } from './event-stream'
@@ -21,27 +17,7 @@ import { wireRuntimeBridges } from './actions'
 import { setupKeyboardShortcuts } from './keyboard'
 import { timelineApi } from '../components/Timeline'
 import { refreshCache, refreshCacheEntries } from '../store/cache'
-import { toggleJsonHtml } from '../lib/legacy-html'
-import { events, paused, pausedWhileCount, expandAll, expandedCards } from '../store/signals'
-
-// ── Browser-side action bridges for inline `onclick` markup ─────────
-// The Timeline drawer still produces HTML-string event cards (with
-// inline `onclick="toggleCard(this.parentElement)"` and
-// `onclick="__sbToggleJson(this)"`). Until the drawer migrates to JSX
-// these globals must exist.
-;(window as any).toggleCard = (cardEl: HTMLElement) => {
-  const idx = cardEl.dataset.index
-  if (!idx) return
-  const next = new Set(expandedCards.value)
-  // Keep the inline onclick semantics: toggle the .expanded class
-  // imperatively AND mirror to signal so any Preact-rendered cards
-  // with the same index also flip.
-  cardEl.classList.toggle('expanded')
-  if (cardEl.classList.contains('expanded')) next.add(idx)
-  else next.delete(idx)
-  expandedCards.value = next
-}
-;(window as any).__sbToggleJson = (btn: HTMLElement) => toggleJsonHtml(btn)
+import { events, paused, pausedWhileCount, expandAll } from '../store/signals'
 
 // ── Action bridges (imperative hooks the action functions need) ─────
 wireRuntimeBridges({

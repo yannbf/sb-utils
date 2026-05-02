@@ -13,62 +13,17 @@
  */
 
 import { escapeHtml, formatGapDuration as _formatGapDurationLib } from '../lib/format'
-import { lcsLineDiff } from '../lib/lcs-diff'
 import { getColor } from '../lib/colors'
-import { renderJsonHtml, renderCacheDiffHtml } from '../lib/legacy-html'
 import { matchesFilters as _matchesFilters } from '../lib/filters'
-import { openSaveModal, openExplanationModal } from '../store/modal'
-import { pushToast } from '../store/signals'
+import { selectedTimelineEvent } from '../store/signals'
 
 export function setupTimeline(state: any, applyFiltersInPlace: () => void, container: HTMLElement) {
   const formatGapDurationGlobal = _formatGapDurationLib
-  const showToast = pushToast
   const matchesFilters = (e: any) => _matchesFilters(e)
-  const renderJson = renderJsonHtml
-  const renderCacheDiff = renderCacheDiffHtml
   const cacheKeyOf = (event: any): string | null => {
     if (!event || event._source !== 'cache-watch' || !event.payload) return null
     return (event.payload.namespace || '') + '/' + (event.payload.key || '')
   }
-  const buildEventTabs = (event: any, idPrefix: string) => {
-    const isCacheEvent = event._source === 'cache-watch'
-    const sections: Array<{ key: string; label: string }> = []
-    if (isCacheEvent) sections.push({ key: 'diff', label: 'Diff' })
-    if (event.payload && Object.keys(event.payload).length > 0) sections.push({ key: 'payload', label: 'Payload' })
-    if (event.metadata && Object.keys(event.metadata).length > 0) sections.push({ key: 'metadata', label: 'Metadata' })
-    if (event.context && Object.keys(event.context).length > 0) sections.push({ key: 'context', label: 'Context' })
-    sections.push({ key: 'raw', label: 'Raw' })
-    const tabsHtml = sections.map((s, i) =>
-      '<div class="event-tab' + (i === 0 ? ' active' : '') + '" data-tab="' + s.key + '">' + s.label + '</div>'
-    ).join('')
-    const contentHtml = sections.map((s, i) => {
-      let inner: string
-      if (s.key === 'diff') inner = renderCacheDiff(event.payload)
-      else {
-        const data = s.key === 'raw' ? event : (event as any)[s.key]
-        inner = '<div class="json-view">' + renderJson(data, 0, idPrefix + '_' + s.key) + '</div>'
-      }
-      return '<div class="event-tab-content" data-tab-content="' + s.key + '"' +
-        (i !== 0 ? ' style="display:none"' : '') + '>' + inner + '</div>'
-    }).join('')
-    function attach(containerEl: any, opts2?: any) {
-      opts2 = opts2 || {}
-      containerEl.querySelectorAll('.event-tab').forEach((tab: any) => {
-        tab.addEventListener('click', (e: any) => {
-          if (opts2.stopPropagation) e.stopPropagation()
-          const tabKey = tab.dataset.tab
-          containerEl.querySelectorAll('.event-tab').forEach((t: any) => t.classList.remove('active'))
-          containerEl.querySelectorAll('.event-tab-content').forEach((c: any) => (c.style.display = 'none'))
-          tab.classList.add('active')
-          const target = containerEl.querySelector('[data-tab-content="' + tabKey + '"]')
-          if (target) target.style.display = ''
-        })
-      })
-    }
-    return { tabsHtml, contentHtml, attach }
-  }
-  // Helper: dataRange used by exportHtmlSnapshot. The IIFE below redefines
-  // it locally — use the local one for snapshot consistency.
 
 const Timeline = (function () {
   const LANE_H = 44;
@@ -92,13 +47,18 @@ const Timeline = (function () {
   };
 
   let wrapEl, axisCanvas, contentCanvas, minimapCanvas, minimapSelectEl, mainEl, tooltipEl, jumpBtn;
-  let drawerEl, drawerTitle, drawerBody, drawerClose, drawerPrev, drawerNext, drawerPos;
+  // Drawer is a Preact component (components/TimelineDrawer.tsx).
+  // We keep a ref to the .tl-drawer element only for the
+  // focusSelectedEvent geometry calc (panning so the dot stays visible
+  // outside the drawer). The drawer's .open class is driven by the
+  // selectedTimelineEvent signal.
+  let drawerEl;
   let zoomInfo, rangeInfo, liveInfo, emptyEl, fitBtn, collapseBtn;
   let axisCtx, contentCtx, minimapCtx;
   let dpr = 1;
   let rafPending = false;
   let hitMap = [];
-  let currentDrawerEvent = null;
+  // currentDrawerEvent is now driven by the selectedTimelineEvent signal.
   const textWidthCache = new Map();
 
   function init() {
@@ -111,12 +71,6 @@ const Timeline = (function () {
     tooltipEl = document.getElementById('tlTooltip');
     jumpBtn = document.getElementById('tlJumpBtn');
     drawerEl = document.getElementById('tlDrawer');
-    drawerTitle = document.getElementById('tlDrawerTitle');
-    drawerBody = document.getElementById('tlDrawerBody');
-    drawerClose = document.getElementById('tlDrawerClose');
-    drawerPrev = document.getElementById('tlDrawerPrev');
-    drawerNext = document.getElementById('tlDrawerNext');
-    drawerPos = document.getElementById('tlDrawerPos');
     zoomInfo = document.getElementById('tlZoomInfo');
     rangeInfo = document.getElementById('tlRangeInfo');
     liveInfo = document.getElementById('tlLive');
@@ -157,9 +111,7 @@ const Timeline = (function () {
 
     fitBtn.addEventListener('click', fitAll);
     jumpBtn.addEventListener('click', () => { st.followTail = true; fitAll(); });
-    drawerClose.addEventListener('click', closeDrawer);
-    drawerPrev.addEventListener('click', () => navigateDrawer(-1));
-    drawerNext.addEventListener('click', () => navigateDrawer(1));
+    // Drawer prev/next/close buttons are owned by TimelineDrawer.tsx.
     collapseBtn.addEventListener('click', toggleCollapseGaps);
   }
 
@@ -1040,38 +992,11 @@ const Timeline = (function () {
   }
 
   function openDrawer(event) {
-    const color = getColor(event.eventType);
-    // Title shows the event-type badge, the index, and a session/cache-key
-    // hint depending on which kind of event it is — cache events don't have
-    // a sessionId, so we surface the namespace/key instead.
-    const isCacheEvent = event._source === 'cache-watch';
-    const isReconstructed = event._source === 'cache-recon';
-    const subLabel = isCacheEvent
-      ? cacheKeyOf(event) || 'cache'
-      : (event.sessionId ? event.sessionId.slice(0, 8) : '—');
-    const reconBadge = isReconstructed
-      ? '<span class="event-recon-badge" title="Reconstructed from a lastEvents cache write — STORYBOOK_TELEMETRY_URL was not set">' +
-          '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15A9 9 0 1 1 5.64 5.64L23 10"/></svg>' +
-          'cache' +
-        '</span>'
-      : '';
-    const drawerPos = state.events.indexOf(event);
-    const drawerDisplayIdx = drawerPos >= 0 ? drawerPos + 1 : event._index;
-    drawerTitle.innerHTML =
-      '<span class="event-badge" style="background:' + color.bg + '; color:' + color.fg + '">' + escapeHtml(event.eventType || 'unknown') + '</span>' +
-      reconBadge +
-      '<span style="color:var(--text-dim); font-size:11px; font-family:var(--font-mono)">#' + drawerDisplayIdx + ' · ' + escapeHtml(subLabel) + '</span>';
-
-    // Reuse the same tab renderer used by event cards in the dashboard view
-    // — Diff/Payload/Context/Raw and the side-by-side diff stay consistent.
-    const tabs = buildEventTabs(event, 'tl_' + event._index);
-    drawerBody.innerHTML = '<div class="event-tabs">' + tabs.tabsHtml + '</div>' + tabs.contentHtml;
-    tabs.attach(drawerBody);
-
-    currentDrawerEvent = event;
+    // Drawer rendering is owned by components/TimelineDrawer.tsx —
+    // we just publish the selection. The drawer reads selectedTimelineEvent
+    // and renders its content reactively.
+    selectedTimelineEvent.value = event;
     st.selectedIdx = event._index;
-    updateDrawerNav();
-    drawerEl.classList.add('open');
     focusSelectedEvent(event);
     invalidate();
   }
@@ -1082,7 +1007,11 @@ const Timeline = (function () {
     if (!event) return;
     const canvasW = contentCanvas.clientWidth || 0;
     if (canvasW <= 0) return;
-    const drawerW = drawerEl.classList.contains('open') ? (drawerEl.clientWidth || 0) : 0;
+    // The drawer is the only thing on the right edge that can occlude
+    // the canvas. Read its actual width when open so the centering math
+    // accounts for it.
+    const drawerW =
+      drawerEl && drawerEl.classList.contains('open') ? drawerEl.clientWidth || 0 : 0;
     const pad = 24;
     const visibleLeft = LABEL_COL_W + pad;
     const visibleRight = canvasW - drawerW - pad;
@@ -1101,36 +1030,22 @@ const Timeline = (function () {
     st.followTail = false;
   }
 
-  function updateDrawerNav() {
-    if (!currentDrawerEvent) {
-      drawerPrev.disabled = true;
-      drawerNext.disabled = true;
-      drawerPos.textContent = '';
-      return;
-    }
-    const list = navigableEventsFor(currentDrawerEvent);
-    const pos = list.findIndex(e => e._index === currentDrawerEvent._index);
-    drawerPrev.disabled = pos <= 0;
-    drawerNext.disabled = pos === -1 || pos >= list.length - 1;
-    drawerPos.textContent = pos === -1 ? '' : ((pos + 1) + ' / ' + list.length);
-    // Tooltip wording reflects what we're navigating through.
-    const navLabel = currentDrawerEvent._source === 'cache-watch' ? 'cache operation' : 'session';
-    drawerPrev.title = 'Previous ' + navLabel + ' (←)';
-    drawerNext.title = 'Next ' + navLabel + ' (→)';
-  }
-
+  // Drawer prev/next/close UX is owned by TimelineDrawer.tsx (it reads
+  // selectedTimelineEvent and writes to it for navigate / close). The
+  // canvas only needs to react to selection changes — see the effect
+  // in components/Timeline.tsx that re-runs invalidate when the
+  // signal changes.
   function navigateDrawer(dir) {
-    if (!currentDrawerEvent) return;
-    const list = navigableEventsFor(currentDrawerEvent);
-    const pos = list.findIndex(e => e._index === currentDrawerEvent._index);
+    const cur = selectedTimelineEvent.value;
+    if (!cur) return;
+    const list = navigableEventsFor(cur);
+    const pos = list.findIndex(e => e._index === cur._index);
     const target = list[pos + dir];
-    if (!target) return;
-    openDrawer(target);
+    if (target) openDrawer(target);
   }
 
   function closeDrawer() {
-    drawerEl.classList.remove('open');
-    currentDrawerEvent = null;
+    selectedTimelineEvent.value = null;
     st.selectedIdx = null;
     invalidate();
   }
@@ -1156,7 +1071,7 @@ const Timeline = (function () {
     fitAll,
     closeDrawer,
     navigate: navigateDrawer,
-    isDrawerOpen: () => drawerEl && drawerEl.classList.contains('open'),
+    isDrawerOpen: () => selectedTimelineEvent.value !== null,
   };
 })();
 

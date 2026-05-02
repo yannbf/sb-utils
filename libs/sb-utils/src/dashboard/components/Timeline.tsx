@@ -18,6 +18,7 @@ import { signal } from '@preact/signals'
 import { useEffect } from 'preact/hooks'
 import { setupTimeline } from '../features/timeline'
 import * as S from '../store/signals'
+import { TimelineDrawer } from './TimelineDrawer'
 
 export type TimelineApi = {
   init: () => void
@@ -89,28 +90,7 @@ export function Timeline() {
         Jump to now →
       </button>
 
-      <aside class="tl-drawer" id="tlDrawer">
-        <div class="tl-drawer-header">
-          <div class="tl-drawer-title" id="tlDrawerTitle" />
-          <div class="tl-drawer-nav">
-            <button type="button" class="tl-drawer-btn" id="tlDrawerPrev" title="Previous event in session (←)" aria-label="Previous event">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-            </button>
-            <span class="tl-drawer-pos" id="tlDrawerPos" />
-            <button type="button" class="tl-drawer-btn" id="tlDrawerNext" title="Next event in session (→)" aria-label="Next event">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </button>
-            <button type="button" class="tl-drawer-close" id="tlDrawerClose" title="Close (Esc)">
-              ✕
-            </button>
-          </div>
-        </div>
-        <div class="tl-drawer-body" id="tlDrawerBody" />
-      </aside>
+      <TimelineDrawer />
 
       <div class="tl-empty" id="tlEmpty">
         <div class="empty-icon">

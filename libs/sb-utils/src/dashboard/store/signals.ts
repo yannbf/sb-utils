@@ -201,6 +201,19 @@ export function sortEventsByTime(): void {
   events.value = sorted
 }
 
+/**
+ * Currently-selected event in the Timeline drawer (null = drawer closed).
+ * The Timeline canvas writes here when a dot is clicked; the drawer
+ * component reads here to render. Navigation (prev/next) updates this.
+ */
+export const selectedTimelineEvent = signal<StoredEvent | null>(null)
+
+/**
+ * SSE connection status — read by the Header's status dot.
+ */
+export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
+export const connectionStatus = signal<ConnectionStatus>('connecting')
+
 // Synthetic events (cache reconstruction + cache-create from backfill)
 // use a high _index range that the server's eventCounter (which starts
 // at 0 and increments by ~1 per event) will never realistically reach.
