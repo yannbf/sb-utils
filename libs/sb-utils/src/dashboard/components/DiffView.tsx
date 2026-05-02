@@ -21,6 +21,26 @@ export function DiffView({ payload }: { payload: CachePayload }) {
   const data = buildCacheDiff(payload)
   if (data.empty) return <div class="diff-view-empty">{data.message}</div>
 
+  if (data.mode === 'create') {
+    return (
+      <div class="sxs-diff sxs-diff-create">
+        <div class="sxs-header">
+          <div class="sxs-header-cell sxs-header-cell-single">
+            {data.headerRight}{' '}
+            <span class="sxs-stat sxs-stat-added">+{data.added}</span>
+          </div>
+        </div>
+        <div class="sxs-body">
+          {data.rows.map((row, i) =>
+            row.kind === 'op' ? (
+              <DiffRowCreate key={i} op={row.op} />
+            ) : null,
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div class="sxs-diff">
       <div class="sxs-header">
@@ -46,6 +66,19 @@ export function DiffView({ payload }: { payload: CachePayload }) {
             />
           ),
         )}
+      </div>
+    </div>
+  )
+}
+
+function DiffRowCreate({ op }: { op: SxsOp }) {
+  if (op.op !== 'add') return null
+  return (
+    <div class="sxs-row-create add">
+      <div class="sxs-gutter add-gutter">{op.ri}</div>
+      <div class="sxs-cell add-cell">
+        <span class="sxs-marker">+</span>
+        <Cell text={op.right} />
       </div>
     </div>
   )

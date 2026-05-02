@@ -30,11 +30,16 @@ import {
   cacheAllHidden,
   telemetryAllHidden,
   realTelemetryDetected,
+  reconstructFromCache,
+  showStaleCache,
+  serverStartedAt,
   pushToast,
   type View,
   type StoredEvent,
 } from '../store/signals'
 import { exportHtmlSnapshot as _exportHtmlSnapshot } from './snapshot-export'
+import { reconstructFromCacheNow, backfillFromCache } from './reconstruction'
+import { writePref } from '../lib/session-storage'
 
 // ── Imperative bridges (filled at boot from runtime.ts) ────────────
 type Bridges = {
@@ -101,6 +106,68 @@ export function toggleHiddenCacheKey(key: string): void {
 export function toggleCacheAllHidden(): void {
   cacheAllHidden.value = !cacheAllHidden.value
   bridges.invalidateTimeline()
+}
+
+/**
+ * Toggle telemetry reconstruction from the dev-server `lastEvents` cache.
+ * Persists the choice to localStorage so it survives reload.
+ *
+ * Flipping ON: un-hides cache (so the operations behind the synthesized
+ * telemetry are visible), then immediately materializes any telemetry
+ * the cache already holds.
+ *
+ * Flipping OFF: drops every previously-reconstructed event from the
+ * dashboard. Without this, the user can't actually un-see the
+ * reconstructed entries — they'd just stop receiving NEW ones, which
+ * is surprising.
+ */
+/**
+ * Toggle "show stale cache data". Off by default — entries with mtime
+ * < the server's startedAt timestamp are dropped at backfill time so a
+ * fresh `event-logger` run starts with a clean slate. Flipping ON
+ * re-runs the backfill so the previously-skipped pre-existing entries
+ * appear; flipping OFF removes them again.
+ */
+export function setShowStaleCache(on: boolean): void {
+  if (showStaleCache.value === on) return
+  showStaleCache.value = on
+  writePref('showStaleCache', on ? '1' : '0')
+  if (on) {
+    void backfillFromCache().then(async () => {
+      // backfillFromCache calls the LIVE-path reconstruction (gated
+      // by `realTelemetryDetected` — won't run if a real event has
+      // arrived). Force the explicit on-toggle path too, so the
+      // user's "make stale data visible" intent doesn't silently
+      // skip telemetry reconstruction when both toggles are on.
+      if (reconstructFromCache.value) await reconstructFromCacheNow()
+      bridges.invalidateTimeline()
+    })
+  } else {
+    // Drop synthetic stale cache events. Live cache writes (mtime
+    // >= startedAt) stay. Telemetry-from-cache reconstructions (their
+    // own _source 'cache-recon') are unaffected.
+    const cutoff = serverStartedAt.value
+    if (cutoff != null) {
+      events.value = events.value.filter((e) => {
+        if (e._source !== 'cache-watch') return true
+        return (e._receivedAt || 0) >= cutoff
+      })
+      bridges.invalidateTimeline()
+    }
+  }
+}
+
+export function setReconstructFromCache(on: boolean): void {
+  if (reconstructFromCache.value === on) return
+  reconstructFromCache.value = on
+  writePref('reconstruct', on ? '1' : '0')
+  if (on) {
+    if (cacheAllHidden.value) cacheAllHidden.value = false
+    void reconstructFromCacheNow().then(() => bridges.invalidateTimeline())
+  } else {
+    events.value = events.value.filter((e) => e._source !== 'cache-recon')
+    bridges.invalidateTimeline()
+  }
 }
 export function toggleTelemetryAllHidden(): void {
   telemetryAllHidden.value = !telemetryAllHidden.value
@@ -187,11 +254,9 @@ export function setSearchQuery(q: string): void {
 export function setView(v: View): void {
   if (v !== 'dashboard' && v !== 'timeline' && v !== 'cache') v = 'dashboard'
   view.value = v
-  try {
-    localStorage.setItem('sbutils.eventlog.view', v)
-  } catch {
-    /* ignore */
-  }
+  // Persisted in sessionStorage and namespaced by the server's
+  // startedAt — see lib/session-storage.ts. A new CLI run resets it.
+  writePref('view', v)
   document.body.classList.toggle('view-timeline', v === 'timeline')
   document.body.classList.toggle('view-dashboard', v === 'dashboard')
   document.body.classList.toggle('view-cache', v === 'cache')

@@ -13,7 +13,7 @@ import {
   type StoredEvent,
 } from '../store/signals'
 import { getColor } from '../lib/colors'
-import { formatDelta, getPreviousEventTime } from '../lib/event-helpers'
+import { formatDelta } from '../lib/event-helpers'
 import { matchesFilters } from '../lib/filters'
 import { JsonView } from './JsonView'
 import { DiffView } from './DiffView'
@@ -60,7 +60,25 @@ function TabPanel({ event, tabKey }: { event: StoredEvent; tabKey: string }) {
   return <JsonView value={data} />
 }
 
-export function EventCard({ event }: { event: StoredEvent }) {
+export function EventCard({
+  event,
+  displayIdx,
+  prevVisible,
+}: {
+  event: StoredEvent
+  /**
+   * Position among the visible (filter-matching) events, 1-based. The
+   * #N tag in the card header shows this — so hiding cache events
+   * leaves telemetry numbered 1, 2, 3 instead of 1, 4, 6. Falls back
+   * to the full-list position when the parent didn't supply one.
+   */
+  displayIdx?: number
+  /**
+   * The previous visible event in chronological order, used to render
+   * the +Xms delta. Null = this is the first visible event.
+   */
+  prevVisible?: StoredEvent | null
+}) {
   // Card-level expanded state: a card is expanded if Expand-All is on OR
   // the user explicitly toggled it (tracked in expandedCards signal).
   const idx = event._index != null ? event._index : events.value.indexOf(event)
@@ -68,12 +86,18 @@ export function EventCard({ event }: { event: StoredEvent }) {
   const expanded = expandAll.value || expandedCards.value.has(idxStr)
   const all = events.value
   const pos = all.indexOf(event)
-  const displayIdx = pos >= 0 ? pos + 1 : idx
+  // Never expose the raw _index in the UI: synthetic events use a
+  // 1e9-range counter (kept opaque, just a stable id) which would
+  // render as "#1000000007".
+  const shownIdx = displayIdx ?? (pos >= 0 ? pos + 1 : 0)
 
   const time = event._receivedAt ? new Date(event._receivedAt).toLocaleTimeString() : ''
   const color = getColor(event.eventType || 'unknown')
   const sessionShort = event.sessionId ? event.sessionId.slice(0, 8) : ''
-  const deltaMs = getPreviousEventTime(event, all)
+  const deltaMs =
+    prevVisible && prevVisible._receivedAt && event._receivedAt
+      ? event._receivedAt - prevVisible._receivedAt
+      : null
   const deltaStr = deltaMs != null ? formatDelta(deltaMs) : ''
 
   const isCache = event._source === 'cache-watch'
@@ -124,7 +148,7 @@ export function EventCard({ event }: { event: StoredEvent }) {
             <path d="M9 18l6-6-6-6" />
           </svg>
         </span>
-        <span class="event-index">#{displayIdx}</span>
+        <span class="event-index">#{shownIdx}</span>
         <span
           class="event-badge"
           style={{ background: color.bg, color: color.fg }}
@@ -137,11 +161,12 @@ export function EventCard({ event }: { event: StoredEvent }) {
             class="event-recon-badge"
             title="Reconstructed from a lastEvents cache write — STORYBOOK_TELEMETRY_URL was not set"
           >
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <polyline points="23 4 23 10 17 10" />
-              <path d="M20.49 15A9 9 0 1 1 5.64 5.64L23 10" />
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <ellipse cx="12" cy="5" rx="9" ry="3" />
+              <path d="M3 5v6c0 1.66 4.03 3 9 3s9-1.34 9-3V5" />
+              <path d="M3 11v6c0 1.66 4.03 3 9 3s9-1.34 9-3v-6" />
             </svg>
-            cache
+            from cache
           </span>
         )}
         {sessionShort && <span class="event-session">{sessionShort}</span>}

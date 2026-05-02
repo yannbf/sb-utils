@@ -12,10 +12,18 @@
  * engine is exercised by the E2E suite).
  */
 
+import { effect } from '@preact/signals'
 import { escapeHtml, formatGapDuration as _formatGapDurationLib } from '../lib/format'
 import { getColor } from '../lib/colors'
 import { matchesFilters as _matchesFilters } from '../lib/filters'
 import { selectedTimelineEvent } from '../store/signals'
+import {
+  computeDataRange,
+  buildSegments as _buildSegments,
+  chooseTickInterval as _chooseTickInterval,
+  centerOnDot,
+  shouldPanToFocus,
+} from '../lib/timeline-math'
 
 export function setupTimeline(state: any, applyFiltersInPlace: () => void, container: HTMLElement) {
   const formatGapDurationGlobal = _formatGapDurationLib
@@ -48,6 +56,7 @@ const Timeline = (function () {
 
   let wrapEl: any, axisCanvas: any, contentCanvas: any, minimapCanvas: any
   let minimapSelectEl: any, mainEl: any, tooltipEl: any, jumpBtn: any
+  let contentSelectEl: any
   // Drawer is a Preact component (components/TimelineDrawer.tsx). The
   // engine keeps a ref only for the focusSelectedEvent geometry calc
   // (panning so the dot stays visible outside the drawer); the .open
@@ -66,6 +75,7 @@ const Timeline = (function () {
     contentCanvas = document.getElementById('tlContentCanvas');
     minimapCanvas = document.getElementById('tlMinimapCanvas');
     minimapSelectEl = document.getElementById('tlMinimapSelect');
+    contentSelectEl = document.getElementById('tlContentSelect');
     mainEl = document.getElementById('tlMain');
     tooltipEl = document.getElementById('tlTooltip');
     jumpBtn = document.getElementById('tlJumpBtn');
@@ -112,18 +122,27 @@ const Timeline = (function () {
     jumpBtn.addEventListener('click', () => { st.followTail = true; fitAll(); });
     // Drawer prev/next/close buttons are owned by TimelineDrawer.tsx.
     collapseBtn.addEventListener('click', toggleCollapseGaps);
+
+    // React to drawer-driven selection changes (prev/next navigation in
+    // <TimelineDrawer />): pan the canvas so the new dot is visible and
+    // keep st.selectedIdx in sync. Canvas-driven selections via
+    // openDrawer() also flow through this — the focusSelectedEvent
+    // bail-out for already-visible dots makes that a no-op.
+    effect(() => {
+      const sel = selectedTimelineEvent.value;
+      if (state.view !== 'timeline') return;
+      if (!sel) {
+        if (st.selectedIdx !== null) { st.selectedIdx = null; invalidate(); }
+        return;
+      }
+      st.selectedIdx = sel._index;
+      focusSelectedEvent(sel);
+      invalidate();
+    });
   }
 
   function dataRange() {
-    let first = Infinity, last = -Infinity;
-    for (const e of state.events) {
-      if (!e._receivedAt) continue;
-      if (e._receivedAt < first) first = e._receivedAt;
-      if (e._receivedAt > last) last = e._receivedAt;
-    }
-    if (!isFinite(first)) { const now = Date.now(); return [now - 60000, now]; }
-    if (last - first < 1000) last = first + 1000;
-    return [first, last];
+    return computeDataRange(state.events);
   }
 
   function visibleSessions() {
@@ -135,6 +154,8 @@ const Timeline = (function () {
     for (const e of state.events) {
       // Cache events feed the cache lane regardless of sessionId.
       if (e._source === 'cache-watch') {
+        // Master "All operations" eye toggle hides every cache dot.
+        if (state.cacheAllHidden) continue;
         const ck = cacheKeyOf(e);
         if (ck && state.hiddenCacheKeys.has(ck)) continue;
         if (!cacheLane) {
@@ -151,6 +172,8 @@ const Timeline = (function () {
         if (!state.hiddenTypes.has(e.eventType)) cacheLane.events.push(e);
         continue;
       }
+      // Master "All events" eye toggle hides every telemetry dot.
+      if (state.telemetryAllHidden) continue;
       if (!e.sessionId) continue;
       if (state.hiddenSessions.has(e.sessionId)) continue;
       let entry = map.get(e.sessionId);
@@ -166,40 +189,24 @@ const Timeline = (function () {
     return cacheLane ? [cacheLane, ...sessionLanes] : sessionLanes;
   }
 
-  // Build piecewise time-mapping segments.
-  // When collapseGaps is on, any inter-event gap larger than gapThresholdMs
-  // is compressed to GAP_SEG_DISP_MS in display-space.
+  // Build piecewise time-mapping segments via the pure helper. When
+  // there are no events the helper returns []; we backfill with the
+  // synthetic 1s window from dataRange() so callers don't need to
+  // special-case empty.
   function rebuildSegments() {
-    const [first, last] = dataRange();
-    if (!st.collapseGaps || state.events.length < 2) {
+    if (state.events.length === 0) {
+      const [first, last] = dataRange();
       st.segments = [{ srcStart: first, srcEnd: last, dispStart: 0, dispEnd: last - first, type: 'data' }];
       return;
     }
     const stamps: number[] = [];
     for (const e of state.events) if (e._receivedAt) stamps.push(e._receivedAt);
-    stamps.sort((a, b) => a - b);
-    const gaps: number[] = [];
-    for (let i = 1; i < stamps.length; i++) gaps.push(stamps[i] - stamps[i - 1]);
-    const sorted = gaps.slice().sort((a, b) => a - b);
-    const median = sorted[Math.floor(sorted.length / 2)] || 0;
-    const threshold = Math.max(3000, median * 8);
-
-    const segs: any[] = [];
-    let disp = 0;
-    let segStart = stamps[0];
-    for (let i = 1; i < stamps.length; i++) {
-      const gap = stamps[i] - stamps[i - 1];
-      if (gap > threshold) {
-        const dataLen = stamps[i - 1] - segStart;
-        segs.push({ srcStart: segStart, srcEnd: stamps[i - 1], dispStart: disp, dispEnd: disp + dataLen, type: 'data' });
-        disp += dataLen;
-        segs.push({ srcStart: stamps[i - 1], srcEnd: stamps[i], dispStart: disp, dispEnd: disp + GAP_SEG_DISP_MS, type: 'gap', srcLen: gap });
-        disp += GAP_SEG_DISP_MS;
-        segStart = stamps[i];
-      }
+    const segs = _buildSegments(stamps, { collapseGaps: st.collapseGaps, gapSegDispMs: GAP_SEG_DISP_MS });
+    if (segs.length === 0) {
+      const [first, last] = dataRange();
+      st.segments = [{ srcStart: first, srcEnd: last, dispStart: 0, dispEnd: last - first, type: 'data' }];
+      return;
     }
-    const dataLen = stamps[stamps.length - 1] - segStart;
-    segs.push({ srcStart: segStart, srcEnd: stamps[stamps.length - 1], dispStart: disp, dispEnd: disp + dataLen, type: 'data' });
     st.segments = segs;
   }
 
@@ -267,12 +274,8 @@ const Timeline = (function () {
     return dispToSrc(xToDisp(x, width));
   }
 
-  function chooseTickInterval(rangeMs, pxPerTick, totalPx) {
-    const candidates = [1000, 2000, 5000, 10000, 15000, 30000, 60000, 120000, 300000, 600000, 1800000, 3600000];
-    const targetTicks = Math.max(4, Math.floor(totalPx / pxPerTick));
-    const ideal = rangeMs / targetTicks;
-    for (const c of candidates) if (c >= ideal) return c;
-    return candidates[candidates.length - 1];
+  function chooseTickInterval(rangeMs: number, pxPerTick: number, totalPx: number) {
+    return _chooseTickInterval(rangeMs, pxPerTick, totalPx);
   }
 
   function formatRelTime(ms, firstMs, withMs) {
@@ -660,8 +663,11 @@ const Timeline = (function () {
       if (state.hiddenTypes.has(e.eventType)) continue;
       if (e.sessionId && state.hiddenSessions.has(e.sessionId)) continue;
       if (e._source === 'cache-watch') {
+        if (state.cacheAllHidden) continue;
         const ck = cacheKeyOf(e);
         if (ck && state.hiddenCacheKeys.has(ck)) continue;
+      } else {
+        if (state.telemetryAllHidden) continue;
       }
       const x = ((e._receivedAt - first) / range) * w;
       minimapCtx.fillStyle = hexToRgba(getColor(e.eventType).fg, 0.55);
@@ -735,6 +741,12 @@ const Timeline = (function () {
   }
 
   function onContentMove(e) {
+    if (st.contentBoxSelect) {
+      const rect = contentCanvas.getBoundingClientRect();
+      st.contentBoxSelect.currentX = Math.max(LABEL_COL_W, Math.min(rect.width, e.clientX - rect.left));
+      updateContentSelectOverlay();
+      return;
+    }
     if (st.panDrag) {
       const dx = e.clientX - st.panDrag.x;
       const w = contentCanvas.clientWidth;
@@ -745,6 +757,15 @@ const Timeline = (function () {
       st.followTail = false;
       invalidate();
       return;
+    }
+    // Shift held while hovering the canvas → show crosshair to hint
+    // box-select. Reverts to default in onContentLeave.
+    if (e.shiftKey) {
+      const rect = contentCanvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      contentCanvas.style.cursor = x >= LABEL_COL_W ? 'crosshair' : '';
+    } else {
+      contentCanvas.style.cursor = '';
     }
     const hit = findEventAt(e.clientX, e.clientY);
     const lane = findLaneLabelAt(e.clientX, e.clientY);
@@ -764,6 +785,18 @@ const Timeline = (function () {
   }
   function onContentDown(e) {
     if (e.button !== 0) return;
+    const rect = contentCanvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    // Shift+drag inside the content area starts a time-range
+    // box-select. Releasing with a non-trivial width zooms the main
+    // view to that range — same UX as shift+drag on the minimap.
+    if (e.shiftKey && x >= LABEL_COL_W) {
+      e.preventDefault();
+      st.contentBoxSelect = { startX: x, currentX: x };
+      updateContentSelectOverlay();
+      contentCanvas.style.cursor = 'crosshair';
+      return;
+    }
     const hit = findEventAt(e.clientX, e.clientY);
     const lane = findLaneLabelAt(e.clientX, e.clientY);
     if (hit || lane) return;
@@ -775,12 +808,10 @@ const Timeline = (function () {
     if (hit) { openDrawer(hit.event); return; }
     const lane = findLaneLabelAt(e.clientX, e.clientY);
     if (lane) {
-      // Cache lane click jumps to the Cache view rather than acting as a
-      // session filter — sessions don't apply to it.
-      if (lane.sid === '__cache__') {
-        state.view = 'cache';
-        return;
-      }
+      // Cache lane has no session-filter equivalent — clicking its label
+      // is a no-op. The dedicated Cache view tab in the header is the
+      // only entry point into cache view.
+      if (lane.sid === '__cache__') return;
       state.activeSession = state.activeSession === lane.sid ? null : lane.sid;
       applyFiltersInPlace();
       invalidate();
@@ -808,6 +839,23 @@ const Timeline = (function () {
     invalidate();
   }
   function onWindowUp() {
+    if (st.contentBoxSelect) {
+      const sel = st.contentBoxSelect;
+      const w = contentCanvas.clientWidth;
+      const x1 = Math.max(LABEL_COL_W, Math.min(sel.startX, sel.currentX));
+      const x2 = Math.min(w, Math.max(sel.startX, sel.currentX));
+      if (x2 - x1 >= 6) {
+        const startDisp = xToDisp(x1, w);
+        const endDisp = xToDisp(x2, w);
+        st.viewStartDisp = startDisp;
+        st.viewEndDisp = endDisp;
+        st.followTail = false;
+        invalidate();
+      }
+      st.contentBoxSelect = null;
+      updateContentSelectOverlay();
+      contentCanvas.style.cursor = '';
+    }
     if (st.panDrag) {
       st.panDrag = null;
       contentCanvas.classList.remove('grabbing');
@@ -920,6 +968,22 @@ const Timeline = (function () {
     minimapCanvas.style.cursor = mode === 'pan' ? 'grabbing' : 'ew-resize';
   }
 
+  function updateContentSelectOverlay() {
+    const sel = st.contentBoxSelect;
+    if (!sel) {
+      if (contentSelectEl) contentSelectEl.classList.remove('active');
+      return;
+    }
+    const x1 = Math.min(sel.startX, sel.currentX);
+    const x2 = Math.max(sel.startX, sel.currentX);
+    const top = mainEl ? mainEl.scrollTop : 0;
+    contentSelectEl.style.left = x1 + 'px';
+    contentSelectEl.style.width = Math.max(0, x2 - x1) + 'px';
+    contentSelectEl.style.top = top + 'px';
+    contentSelectEl.style.height = (mainEl ? mainEl.clientHeight : contentCanvas.clientHeight) + 'px';
+    contentSelectEl.classList.add('active');
+  }
+
   function updateMinimapSelectOverlay() {
     const d = st.minimapDrag;
     if (!d || d.mode !== 'box-select') {
@@ -1002,7 +1066,7 @@ const Timeline = (function () {
 
   // Pan (and if needed, zoom out) so the selected dot is visible in the portion
   // of the canvas not covered by the drawer.
-  function focusSelectedEvent(event) {
+  function focusSelectedEvent(event: any) {
     if (!event) return;
     const canvasW = contentCanvas.clientWidth || 0;
     if (canvasW <= 0) return;
@@ -1011,21 +1075,22 @@ const Timeline = (function () {
     // accounts for it.
     const drawerW =
       drawerEl && drawerEl.classList.contains('open') ? drawerEl.clientWidth || 0 : 0;
-    const pad = 24;
-    const visibleLeft = LABEL_COL_W + pad;
-    const visibleRight = canvasW - drawerW - pad;
-    if (visibleRight <= visibleLeft) return;
     const dotDisp = srcToDisp(event._receivedAt);
     const viewRange = st.viewEndDisp - st.viewStartDisp;
     const contentW = canvasW - LABEL_COL_W;
     const dotX = LABEL_COL_W + ((dotDisp - st.viewStartDisp) / viewRange) * contentW;
-    if (dotX >= visibleLeft && dotX <= visibleRight) return;
-    // Center dot inside the visible region.
-    const visibleCenter = (visibleLeft + visibleRight) / 2;
-    const dispPerPx = viewRange / contentW;
-    const desiredStart = dotDisp - (visibleCenter - LABEL_COL_W) * dispPerPx;
-    st.viewStartDisp = desiredStart;
-    st.viewEndDisp = desiredStart + viewRange;
+    if (!shouldPanToFocus({ dotX, canvasW, drawerW, labelColW: LABEL_COL_W })) return;
+    const next = centerOnDot({
+      dotDisp,
+      viewStartDisp: st.viewStartDisp,
+      viewEndDisp: st.viewEndDisp,
+      canvasW,
+      drawerW,
+      labelColW: LABEL_COL_W,
+    });
+    if (!next) return;
+    st.viewStartDisp = next.viewStartDisp;
+    st.viewEndDisp = next.viewEndDisp;
     st.followTail = false;
   }
 

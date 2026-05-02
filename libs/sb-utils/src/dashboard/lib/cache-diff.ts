@@ -195,6 +195,12 @@ export type DiffData = {
   added: number
   removed: number
   empty: false
+  /**
+   * 'create' renders right-only as a "new file" view (no left column,
+   * everything green). 'delete' renders left-only as a "removed file"
+   * view. 'change' is the standard side-by-side.
+   */
+  mode: 'create' | 'delete' | 'change'
 }
 export type DiffEmpty = { empty: true; message: string }
 
@@ -208,17 +214,20 @@ export function buildCacheDiff(
   let rightLines: string[]
   let headerLeft: string
   let headerRight: string
+  let mode: 'create' | 'delete' | 'change'
 
   if (op === 'create') {
     leftLines = []
     rightLines = jsonLines(next)
-    headerLeft = 'Before (empty)'
-    headerRight = 'Created'
+    headerLeft = ''
+    headerRight = 'New file'
+    mode = 'create'
   } else if (op === 'delete') {
     leftLines = jsonLines(prev)
     rightLines = []
     headerLeft = 'Deleted'
     headerRight = 'After (gone)'
+    mode = 'delete'
   } else {
     if (JSON.stringify(prev) === JSON.stringify(next)) {
       return { empty: true, message: 'No detected changes between the previous and current value.' }
@@ -227,6 +236,7 @@ export function buildCacheDiff(
     rightLines = jsonLines(next)
     headerLeft = 'Before'
     headerRight = 'After'
+    mode = 'change'
   }
 
   const ops = pairAdjacentChanges(lcsLineDiff(leftLines, rightLines))
@@ -242,5 +252,5 @@ export function buildCacheDiff(
       removed++
     }
   }
-  return { headerLeft, headerRight, rows, added, removed, empty: false }
+  return { headerLeft, headerRight, rows, added, removed, empty: false, mode }
 }

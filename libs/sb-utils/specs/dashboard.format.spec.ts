@@ -38,4 +38,11 @@ describe('formatGapDuration', () => {
     expect(formatGapDuration(3_600_000)).toBe('1.0h')
     expect(formatGapDuration(5_400_000)).toBe('1.5h')
   })
+
+  it('rounds fractional sub-second values to whole milliseconds', () => {
+    // Reconstructed events can carry a fractional mtime, e.g.
+    // 6.651611328125 — must not render that to the user.
+    expect(formatGapDuration(6.651611328125)).toBe('7ms')
+    expect(formatGapDuration(0.4)).toBe('0ms')
+  })
 })

@@ -117,6 +117,57 @@ test.describe('HTML snapshot export', () => {
     await ctx.close()
   })
 
+  test('snapshot ignores any sessionStorage preferences from the viewing machine', async ({
+    page,
+    eventLogger,
+    browser,
+  }) => {
+    // Generate a snapshot.
+    await page.goto(eventLogger.url)
+    await eventLogger.postEvent({ eventType: 'boot', sessionId: 's1' })
+    await page.locator('#exportBtn').click()
+    await page.locator('[data-export="html"]').click()
+    const downloadPromise = page.waitForEvent('download')
+    await page.locator('#modalSubmitBtn').click()
+    const download = await downloadPromise
+    const stream = await download.createReadStream()
+    const chunks: Buffer[] = []
+    for await (const c of stream) chunks.push(c as Buffer)
+    const html = Buffer.concat(chunks).toString('utf-8')
+
+    const dir = path.join(os.tmpdir(), 'sb-utils-e2e-ls-' + Date.now())
+    mkdirSync(dir, { recursive: true })
+    const snapPath = path.join(dir, 'snapshot.html')
+    writeFileSync(snapPath, html)
+
+    // Open in a fresh context. Pre-seed both localStorage AND
+    // sessionStorage with values that would change UI state if the
+    // snapshot honored them — neither is supposed to bleed through.
+    const ctx = await browser.newContext({})
+    const snap = await ctx.newPage()
+    await snap.addInitScript(() => {
+      try {
+        localStorage.setItem('sbutils.eventlog.view', 'cache')
+        localStorage.setItem('sbutils.eventlog.reconstruct', '1')
+        sessionStorage.setItem('sbutils.eventlog.view', 'cache')
+        sessionStorage.setItem('sbutils.eventlog.reconstruct', '1')
+      } catch {
+        /* noop */
+      }
+    })
+    await snap.goto('file://' + snapPath)
+    await expect.poll(() => snap.evaluate(() => (window as any).__SNAPSHOT__)).toBe(true)
+
+    // View remained on dashboard despite the viewer's "cache" preference.
+    await expect(snap.locator('#eventContainer')).toBeVisible()
+    await expect(snap.locator('#cacheView')).toBeHidden()
+    // Reconstruct toggle stayed off despite the viewer's "1" preference —
+    // no cache-recon source attribute on any rendered card.
+    await expect(snap.locator('[data-source="cache-recon"]')).toHaveCount(0)
+
+    await ctx.close()
+  })
+
   test('snapshot banner "View explanation" opens the explanation modal', async ({
     page,
     eventLogger,

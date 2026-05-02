@@ -17,7 +17,16 @@ import { wireRuntimeBridges } from './actions'
 import { setupKeyboardShortcuts } from './keyboard'
 import { timelineApi } from '../components/Timeline'
 import { refreshCache, refreshCacheEntries } from '../store/cache'
-import { events, paused, pausedWhileCount, expandAll } from '../store/signals'
+import {
+  events,
+  paused,
+  pausedWhileCount,
+  expandAll,
+  reconstructFromCache,
+  showStaleCache,
+  serverStartedAt,
+} from '../store/signals'
+import { rotateSessionIfChanged, readPref } from '../lib/session-storage'
 
 // ── Action bridges (imperative hooks the action functions need) ─────
 wireRuntimeBridges({
@@ -28,22 +37,52 @@ wireRuntimeBridges({
 // ── Keyboard shortcuts ──────────────────────────────────────────────
 setupKeyboardShortcuts(() => timelineApi.value)
 
-// ── Live event stream (SSE + boot recovery) ─────────────────────────
-setupEventStream()
+// User preferences live in sessionStorage, namespaced by the server's
+// startedAt timestamp (see lib/session-storage.ts). A new CLI run wipes
+// them automatically — the user explicitly didn't want a session to
+// inherit prefs from a previous server process.
+//
+// Snapshots are exported HTML files, often opened on a different
+// machine — letting them inherit the dev machine's preferences would
+// bleed local UI state into someone else's view. The session-storage
+// module no-ops in snapshot mode.
+const isSnapshot = !!(window as any).__SNAPSHOT__
 
-// Restore previously selected view on reload — the action bridge sets
-// localStorage on every view switch, but the initial signal value is
-// 'dashboard'. Read once at boot to honor the user's last choice.
-try {
-  const saved = localStorage.getItem('sbutils.eventlog.view')
-  if (saved === 'timeline' || saved === 'cache' || saved === 'dashboard') {
-    // Lazy import to avoid the whole actions module loading before
-    // the boot sequence has wired the bridges.
-    void import('./actions').then(({ setView }) => setView(saved))
+// Restore prefs BEFORE the event stream boots so backfillFromCache
+// (kicked off inside setupEventStream) sees the right showStaleCache /
+// reconstructFromCache values. We need /config to settle first so the
+// session-id rotation can wipe stale entries from a previous run; do
+// it synchronously via a top-level await on a one-shot promise the
+// async boot below resolves into.
+async function bootRuntime() {
+  if (!isSnapshot) {
+    try {
+      const r = await fetch('/config')
+      if (r.ok) {
+        const cfg = await r.json()
+        if (typeof cfg?.startedAt === 'number') {
+          serverStartedAt.value = cfg.startedAt
+          rotateSessionIfChanged(cfg.startedAt)
+        }
+      }
+    } catch {
+      /* /config unreachable — boot with defaults */
+    }
+    if (readPref('reconstruct') === '1') reconstructFromCache.value = true
+    if (readPref('showStaleCache') === '1') showStaleCache.value = true
   }
-} catch {
-  /* localStorage may be unavailable in private mode */
+
+  // ── Live event stream (SSE + boot recovery) ───────────────────────
+  setupEventStream()
+
+  if (!isSnapshot) {
+    const saved = readPref('view')
+    if (saved === 'timeline' || saved === 'cache' || saved === 'dashboard') {
+      void import('./actions').then(({ setView }) => setView(saved))
+    }
+  }
 }
+void bootRuntime()
 
 // In snapshot mode we already know the live cache state (it was baked
 // into __SNAPSHOT_CACHE_INFO__/__SNAPSHOT_CACHE_ENTRIES__ and the

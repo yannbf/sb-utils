@@ -11,6 +11,9 @@
 import {
   events,
   realTelemetryDetected,
+  reconstructFromCache,
+  showStaleCache,
+  serverStartedAt,
   paused,
   pausedWhileCount,
   appendEvent,
@@ -33,8 +36,27 @@ type CacheWriteEvent = {
   }
 }
 
+/**
+ * Live-path entry: called by the SSE watcher every time a cache:write
+ * event fires. Self-cancels once a real instrumented telemetry event
+ * has arrived, so we don't double-report the same data through two
+ * channels. The user-facing `reconstructFromCache` toggle gates this
+ * entirely.
+ */
 export function reconstructTelemetryFromCacheWrite(cacheEvent: CacheWriteEvent): void {
+  if (!reconstructFromCache.value) return
   if (realTelemetryDetected.value) return
+  reconstructTelemetryFromCacheWriteInner(cacheEvent)
+}
+
+/**
+ * Inner implementation with no live-cancel gate. Used both by the live
+ * SSE path (above) and the on-toggle "replay everything in cache now"
+ * path (`reconstructFromCacheNow` below) — the latter is an explicit
+ * user opt-in so it must NOT respect realTelemetryDetected. Dedup by
+ * eventId still keeps it idempotent.
+ */
+function reconstructTelemetryFromCacheWriteInner(cacheEvent: CacheWriteEvent): void {
   if (!cacheEvent || !cacheEvent.payload) return
   const p = cacheEvent.payload
   // Only the lastEvents key under dev-server is the telemetry log.
@@ -88,6 +110,11 @@ export function reconstructTelemetryFromCacheWrite(cacheEvent: CacheWriteEvent):
  * shows up in the timeline / Cache Operations sidebar with the right
  * timestamp. Used by the on-load backfill — we lose nothing since we
  * also have the live watcher running for subsequent changes.
+ *
+ * Stale entries (mtime < server startedAt) are skipped unless the user
+ * has flipped the `Show stale cache data` gear toggle. Without this
+ * the dashboard would dump every pre-existing cache file as a
+ * synthetic op on every boot, drowning the live operations.
  */
 export function ingestSyntheticCacheCreate(
   entry: any,
@@ -96,6 +123,8 @@ export function ingestSyntheticCacheCreate(
 ): void {
   if (!entry || !entry.key) return
   const ts = typeof entry.mtime === 'number' ? entry.mtime : Date.now()
+  const started = serverStartedAt.value
+  if (!showStaleCache.value && started != null && ts < started) return
   // Dedupe: don't re-synthesize a cache event for a (file, mtime) we've
   // already represented. A baked snapshot's `update` write at the
   // current mtime means we've already shown this state; adding a
@@ -133,15 +162,31 @@ export function ingestSyntheticCacheCreate(
 
 /**
  * On page load: fetch every existing cache entry, materialize them as
- * `cache:write op=create` events, and reconstruct the telemetry stream
- * from `lastEvents`. Best-effort — silent failure just means the
- * dashboard boots empty.
+ * `cache:write op=create` events (skipping stale ones unless the
+ * user has opted in), and reconstruct the telemetry stream from
+ * `lastEvents` (likewise opt-in). Best-effort — silent failure just
+ * means the dashboard boots empty.
+ *
+ * Fetches /config in parallel with /cache/entries so the staleness
+ * cutoff is known before we start ingesting; ingestSyntheticCacheCreate
+ * reads `serverStartedAt.value` directly.
  */
 export async function backfillFromCache(): Promise<void> {
   try {
-    const res = await fetch('/cache/entries')
-    if (!res.ok) return
-    const data = await res.json()
+    const [cacheRes, configRes] = await Promise.all([
+      fetch('/cache/entries'),
+      serverStartedAt.value == null ? fetch('/config') : Promise.resolve(null),
+    ])
+    if (configRes && configRes.ok) {
+      try {
+        const cfg = await configRes.json()
+        if (typeof cfg?.startedAt === 'number') serverStartedAt.value = cfg.startedAt
+      } catch {
+        /* ignore */
+      }
+    }
+    if (!cacheRes.ok) return
+    const data = await cacheRes.json()
     const entries: any[] = data && Array.isArray(data.entries) ? data.entries : []
     if (entries.length === 0) return
 
@@ -150,6 +195,9 @@ export async function backfillFromCache(): Promise<void> {
       ingestSyntheticCacheCreate(entry, data.cacheRoot, data.projectRoot)
     }
 
+    // reconstructTelemetryFromCacheWrite gates itself on the
+    // user-facing `reconstructFromCache` signal, so this is a no-op
+    // unless the user has opted in via the Cache Operations gear menu.
     if (!realTelemetryDetected.value) {
       const lastEvents = entries.find(
         (e) => e.key === 'lastEvents' && e.namespace === 'dev-server',
@@ -177,3 +225,45 @@ export async function backfillFromCache(): Promise<void> {
 }
 
 export const cacheKeyOf = _cacheKeyOf
+
+/**
+ * Fetch the current cache state and reconstruct telemetry from
+ * `lastEvents` *now*. Used when the user flips the
+ * "Reconstruct telemetry from cache" toggle on after boot — the
+ * normal backfill path already ran (with reconstruction gated off),
+ * so this re-runs just the reconstruction step.
+ *
+ * Idempotent: relies on the eventId dedup inside
+ * reconstructTelemetryFromCacheWrite, so repeat toggling won't
+ * duplicate events.
+ */
+export async function reconstructFromCacheNow(): Promise<void> {
+  try {
+    const res = await fetch('/cache/entries')
+    if (!res.ok) return
+    const data = await res.json()
+    const entries: any[] = data && Array.isArray(data.entries) ? data.entries : []
+    const lastEvents = entries.find(
+      (e) => e.key === 'lastEvents' && e.namespace === 'dev-server',
+    )
+    if (!lastEvents || !lastEvents.content || typeof lastEvents.content !== 'object') return
+    // Use the inner (un-gated) form: this is an explicit user opt-in
+    // so we must replay even if real telemetry has already been seen
+    // in this session. Dedup by eventId keeps it idempotent.
+    reconstructTelemetryFromCacheWriteInner({
+      _source: 'cache-watch',
+      _receivedAt: Date.now(),
+      payload: {
+        key: 'lastEvents',
+        namespace: 'dev-server',
+        operation: 'update',
+        previousContent: {},
+        content: lastEvents.content,
+      },
+    })
+    sortEventsByTime()
+    timelineApi.value?.invalidate()
+  } catch {
+    /* best-effort */
+  }
+}

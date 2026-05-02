@@ -88,11 +88,12 @@ describe('buildCacheDiff', () => {
     expect(buildCacheDiff(null)).toMatchObject({ empty: true })
   })
 
-  it('handles create operation as all additions', () => {
+  it('handles create operation as a "new file" — right-only, all additions', () => {
     const r = buildCacheDiff({ operation: 'create', content: { a: 1 } })
     if (r.empty) throw new Error('expected diff data')
-    expect(r.headerLeft).toBe('Before (empty)')
-    expect(r.headerRight).toBe('Created')
+    expect(r.mode).toBe('create')
+    expect(r.headerLeft).toBe('')
+    expect(r.headerRight).toBe('New file')
     expect(r.removed).toBe(0)
     expect(r.added).toBeGreaterThan(0)
   })

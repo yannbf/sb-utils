@@ -10,6 +10,8 @@ import { useEffect, useState, useMemo } from 'preact/hooks'
 import { events, selectedTimelineEvent, type StoredEvent } from '../store/signals'
 import { getColor } from '../lib/colors'
 import { cacheKeyOf } from '../lib/event-helpers'
+import { matchesFilters } from '../lib/filters'
+import { navigableEventsFor } from '../lib/timeline-math'
 import { JsonView } from './JsonView'
 import { DiffView } from './DiffView'
 
@@ -24,23 +26,6 @@ function tabsFor(ev: StoredEvent): Tab[] {
   if (ev.context && Object.keys(ev.context).length > 0) tabs.push({ key: 'context', label: 'Context' })
   tabs.push({ key: 'raw', label: 'Raw' })
   return tabs
-}
-
-function navigableEventsFor(ev: StoredEvent, all: StoredEvent[]): StoredEvent[] {
-  if (!ev) return []
-  if (ev._source === 'cache-watch') {
-    return all
-      .filter((e) => e._source === 'cache-watch')
-      .slice()
-      .sort((a, b) => (a._receivedAt || 0) - (b._receivedAt || 0))
-  }
-  if (ev.sessionId) {
-    return all
-      .filter((e) => e.sessionId === ev.sessionId)
-      .slice()
-      .sort((a, b) => (a._receivedAt || 0) - (b._receivedAt || 0))
-  }
-  return []
 }
 
 export function TimelineDrawer() {
@@ -84,10 +69,22 @@ export function TimelineDrawer() {
         ? ev.sessionId.slice(0, 8)
         : '—'
     : ''
+  // Visible-only index: reflect ordering among events that pass the
+  // current filters, so #N matches the dashboard cards. If the
+  // selected event is itself filtered out (uncommon), fall back to its
+  // 1-based position in the full list — never the raw _index, which
+  // for synthetic events is a 1e9-range counter and would render as
+  // "#1000000007" in the UI.
   const drawerDisplayIdx = ev
     ? (() => {
+        let n = 0
+        for (const e of all) {
+          if (!matchesFilters(e)) continue
+          n++
+          if (e === ev) return n
+        }
         const p = all.indexOf(ev)
-        return p >= 0 ? p + 1 : ev._index
+        return p >= 0 ? p + 1 : 0
       })()
     : 0
 
@@ -95,32 +92,35 @@ export function TimelineDrawer() {
 
   return (
     <aside class={'tl-drawer' + (open ? ' open' : '')} id="tlDrawer">
+      {ev && (
+        <span class="tl-drawer-meta">
+          <span class="tl-drawer-meta-id" aria-hidden="true">
+            #{drawerDisplayIdx} · {subLabel}
+          </span>
+          {isReconstructed && (
+            <span
+              class="event-recon-badge"
+              title="Reconstructed from a lastEvents cache write — STORYBOOK_TELEMETRY_URL was not set"
+            >
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <ellipse cx="12" cy="5" rx="9" ry="3" />
+                <path d="M3 5v6c0 1.66 4.03 3 9 3s9-1.34 9-3V5" />
+                <path d="M3 11v6c0 1.66 4.03 3 9 3s9-1.34 9-3v-6" />
+              </svg>
+              from cache
+            </span>
+          )}
+        </span>
+      )}
       <div class="tl-drawer-header">
         <div class="tl-drawer-title" id="tlDrawerTitle">
           {ev && (
-            <>
-              <span
-                class="event-badge"
-                style={{ background: color.bg, color: color.fg }}
-              >
-                {ev.eventType || 'unknown'}
-              </span>
-              {isReconstructed && (
-                <span
-                  class="event-recon-badge"
-                  title="Reconstructed from a lastEvents cache write — STORYBOOK_TELEMETRY_URL was not set"
-                >
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <polyline points="23 4 23 10 17 10" />
-                    <path d="M20.49 15A9 9 0 1 1 5.64 5.64L23 10" />
-                  </svg>
-                  cache
-                </span>
-              )}
-              <span style={{ color: 'var(--text-dim)', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>
-                #{drawerDisplayIdx} · {subLabel}
-              </span>
-            </>
+            <span
+              class="event-badge"
+              style={{ background: color.bg, color: color.fg }}
+            >
+              {ev.eventType || 'unknown'}
+            </span>
           )}
         </div>
         <div class="tl-drawer-nav">

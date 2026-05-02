@@ -78,6 +78,7 @@ export function Timeline() {
 
       <div class="tl-main" id="tlMain">
         <canvas class="tl-content-canvas" id="tlContentCanvas" />
+        <div class="tl-content-select" id="tlContentSelect" />
       </div>
 
       <div class="tl-minimap-wrap">

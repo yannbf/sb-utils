@@ -45,11 +45,38 @@ export const hiddenTypes = signal<Set<string>>(new Set())
 export const hiddenSessions = signal<Set<string>>(new Set())
 export const hiddenImports = signal<Set<string>>(new Set())
 export const hiddenCacheKeys = signal<Set<string>>(new Set())
+// Cache events are visible by default. Pre-existing entries from
+// before the server booted are filtered out at ingestion time (see
+// `showStaleCache` below) so they don't drown the live operations the
+// user actually cares about — meaning there's no need to hide cache
+// wholesale anymore.
 export const cacheAllHidden = signal(false)
 export const telemetryAllHidden = signal(false)
 
+/**
+ * Show cache entries with mtime < server startedAt. Off by default —
+ * a fresh `event-logger` run shouldn't dump every pre-existing cache
+ * file as a synthetic `cache:write` op the user has to scroll past.
+ * Toggling this on backfills the previously-skipped entries.
+ */
+export const showStaleCache = signal(false)
+
+/**
+ * Wall-clock time the event-logger process booted, fetched from
+ * `/config`. Cache entries with mtime < this are considered stale.
+ * Null until /config has been read; cache backfill waits for it.
+ */
+export const serverStartedAt = signal<number | null>(null)
+
 // ── Reconstruction flag ──────────────────────────────────
 export const realTelemetryDetected = signal(false)
+
+// User-facing toggle for telemetry reconstruction from the dev-server
+// `lastEvents` cache. Off by default — Storybook only writes to the
+// cache as a fallback when STORYBOOK_TELEMETRY_URL isn't set, and most
+// users don't want a cache-write to manifest as synthetic telemetry.
+// The Cache Operations gear menu in the sidebar surfaces this toggle.
+export const reconstructFromCache = signal(false)
 
 // ── Toasts ───────────────────────────────────────────────
 export type Toast = { id: number; text: string }

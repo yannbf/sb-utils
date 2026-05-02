@@ -68,4 +68,38 @@ test.describe('sidebar filtering', () => {
     await allRow.locator('#eventsAllEyeBtn').click()
     await expect(page.locator('#eventContainer .event-card:not(.filtered-out)')).toHaveCount(0)
   })
+
+  test('event index reflects visible-only ordering when cache is hidden', async ({
+    page,
+    eventLogger,
+  }) => {
+    // Posting cache + telemetry events together, then hiding cache,
+    // should number the visible (telemetry-only) cards as #1, #2, #3 —
+    // not #1 #4 #6 with gaps for the hidden ones.
+    await page.goto(eventLogger.url)
+    await eventLogger.postEvent({
+      eventType: 'cache:write',
+      _source: 'cache-watch',
+      payload: { namespace: 'ns', key: 'k1', operation: 'create', content: { v: 1 } },
+    } as any)
+    await eventLogger.postEvent({ eventType: 'boot', sessionId: 's1' })
+    await eventLogger.postEvent({
+      eventType: 'cache:write',
+      _source: 'cache-watch',
+      payload: { namespace: 'ns', key: 'k2', operation: 'create', content: { v: 2 } },
+    } as any)
+    await eventLogger.postEvent({ eventType: 'dev', sessionId: 's1' })
+    await eventLogger.postEvent({ eventType: 'error', sessionId: 's1' })
+
+    // Hide cache via the master "All operations" eye toggle.
+    const cacheRow = page.locator('[data-cache-key="__all__"]')
+    await cacheRow.hover()
+    await page.locator('#cacheAllEyeBtn').click()
+
+    const visibleCards = page.locator('#eventContainer .event-card:not(.filtered-out)')
+    await expect(visibleCards).toHaveCount(3)
+
+    const indices = await visibleCards.locator('.event-index').allTextContents()
+    expect(indices).toEqual(['#1', '#2', '#3'])
+  })
 })

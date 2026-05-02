@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useRef } from 'preact/hooks'
-import { events, autoScroll } from '../store/signals'
+import { events, autoScroll, type StoredEvent } from '../store/signals'
 import { matchesFilters } from '../lib/filters'
 import { EventCard } from './EventCard'
 
@@ -25,30 +25,65 @@ export function EventList() {
   const all = events.value
 
   // Auto-scroll to bottom whenever new events arrive (and the toggle
-  // is on). Tracks the previous count via a ref so we only scroll on
-  // growth, never on filter changes.
+  // is on). Two safeguards so the first paint stays at the top:
+  //   1. A short settle window after mount (boot recovery + cache
+  //      backfill + SSE recovery all dump batches in this window —
+  //      jumping to the bottom would hide the chronologically first
+  //      event).
+  //   2. Only tail when the batch added since last render is small
+  //      (live events arrive one at a time; a batch of 5+ at once is
+  //      almost always a recovery / import / backfill, not live tail).
   const containerRef = useRef<HTMLDivElement>(null)
   const lastCount = useRef(0)
+  const mountedAt = useRef(0)
+  if (mountedAt.current === 0) mountedAt.current = Date.now()
+  const SETTLE_MS = 1500
+  const LIVE_BATCH_MAX = 5
   useEffect(() => {
+    const sinceMount = Date.now() - mountedAt.current
+    if (sinceMount < SETTLE_MS) {
+      lastCount.current = all.length
+      return
+    }
     if (!autoScroll.value) {
       lastCount.current = all.length
       return
     }
-    if (all.length > lastCount.current && containerRef.current) {
+    const added = all.length - lastCount.current
+    if (added > 0 && added <= LIVE_BATCH_MAX && containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight
     }
     lastCount.current = all.length
   })
 
-  // Build the interleaved children: session separator before each first
-  // event of a session run, then the card. matchesFilters reads filter
-  // signals directly so this component re-renders when filters change.
-  const children: preact.JSX.Element[] = []
-  let lastSession: string | null = null
+  // Pre-compute the filter result once: each EventCard needs to know
+  // its position among the *visible* events (so #N renders 1, 2, 3
+  // even when cache-only events are hidden) plus the previous visible
+  // event in chronological order (so the +Xms delta isn't measured
+  // from an event the user can't see).
+  const visibleSet = new Set<number>()
+  let visibleCount = 0
   let anyVisible = false
+  const visibleIdxOf = new Map<number, number>()
+  const prevVisibleOf = new Map<number, StoredEvent>()
+  let lastVisible: StoredEvent | null = null
   for (const ev of all) {
     const visible = matchesFilters(ev)
-    if (visible) anyVisible = true
+    if (!visible) continue
+    anyVisible = true
+    visibleSet.add(ev._index)
+    visibleCount++
+    visibleIdxOf.set(ev._index, visibleCount)
+    if (lastVisible) prevVisibleOf.set(ev._index, lastVisible)
+    lastVisible = ev
+  }
+
+  // Build the interleaved children: session separator before each first
+  // event of a session run, then the card.
+  const children: preact.JSX.Element[] = []
+  let lastSession: string | null = null
+  for (const ev of all) {
+    const visible = visibleSet.has(ev._index)
     if (ev.sessionId && ev.sessionId !== lastSession) {
       children.push(
         <SessionSeparator
@@ -59,7 +94,14 @@ export function EventList() {
       )
       lastSession = ev.sessionId
     }
-    children.push(<EventCard key={ev._index} event={ev} />)
+    children.push(
+      <EventCard
+        key={ev._index}
+        event={ev}
+        displayIdx={visibleIdxOf.get(ev._index)}
+        prevVisible={prevVisibleOf.get(ev._index) ?? null}
+      />,
+    )
   }
 
   const isEmpty = all.length === 0

@@ -74,4 +74,31 @@ test.describe('timeline view', () => {
     await expect(page.locator('#eventContainer')).toBeVisible()
     await expect(page.locator('#timelineView')).toBeHidden()
   })
+
+  test('clicking a session lane label toggles activeSession; clicking it again clears it', async ({
+    page,
+    eventLogger,
+  }) => {
+    // Verifies the lane-click handler still works for normal session lanes.
+    // The cache-lane no-op path is exercised by the unit tests in
+    // specs/dashboard.timeline-math.spec.ts (and can't be set up here
+    // without a real cache-watch event source).
+    await page.goto(eventLogger.url)
+    await eventLogger.postEvent({ eventType: 'boot', sessionId: 'ssA' })
+    await eventLogger.postEvent({ eventType: 'dev', sessionId: 'ssB' })
+    await page.locator('[data-view="timeline"]').click()
+    await expect(page.locator('#timelineView')).toBeVisible()
+
+    const canvas = page.locator('#tlContentCanvas')
+    const box = await canvas.boundingBox()
+    if (!box) throw new Error('canvas not laid out')
+    // Two session lanes exist (sorted by first-seen). Click the first
+    // lane label (left of LABEL_COL_W=130).
+    await page.mouse.click(box.x + 40, box.y + 22)
+
+    // Sidebar reflects the activeSession via .active class.
+    await expect(
+      page.locator('#sessionList .filter-item.active'),
+    ).toHaveCount(1)
+  })
 })

@@ -72,6 +72,11 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
   const events: StoredEvent[] = []
   const sseClients = new Set<SSEClient>()
   let eventCounter = 0
+  // Wall-clock time the server booted. Exposed via /config so the
+  // dashboard can mark cache entries with mtime < startedAt as "stale"
+  // (pre-existing artifacts from before this debug session) and hide
+  // them by default.
+  const startedAt = Date.now()
 
   type ImportBatch = {
     id: string
@@ -283,6 +288,7 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
   app.get('/config', (c) =>
     c.json({
       cacheEnabledByDefault: !options.noCache,
+      startedAt,
     })
   )
 

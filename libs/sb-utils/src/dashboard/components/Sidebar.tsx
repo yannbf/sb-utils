@@ -6,6 +6,7 @@
  * the imperative core is gone.
  */
 
+import { useEffect, useRef, useState } from 'preact/hooks'
 import {
   events,
   activeFilter,
@@ -18,6 +19,8 @@ import {
   hiddenCacheKeys,
   cacheAllHidden,
   telemetryAllHidden,
+  reconstructFromCache,
+  showStaleCache,
   typeCounts,
   sessionMap,
   cacheMap,
@@ -44,6 +47,12 @@ const TrashIcon = () => (
     <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
   </svg>
 )
+const GearIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="3" />
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+  </svg>
+)
 
 // ── Event Types ──
 function EventTypesSection() {
@@ -65,8 +74,9 @@ function EventTypesSection() {
         <div
           class={'filter-item' + (isAllActive ? ' active' : '') + (allHidden ? ' hidden-item' : '')}
           data-filter="all"
+          onClick={() => actions().setFilter('all')}
         >
-          <div class="label-row" onClick={() => actions().setFilter('all')}>
+          <div class="label-row">
             <span>All events</span>
           </div>
           <div class="item-actions">
@@ -110,8 +120,9 @@ function EventTypesSection() {
                 'filter-item' + (isActive ? ' active' : '') + (isHidden ? ' hidden-item' : '')
               }
               data-filter={type}
+              onClick={() => actions().setFilter(type)}
             >
-              <div class="label-row" onClick={() => actions().setFilter(type)}>
+              <div class="label-row">
                 <span class="dot" style={{ background: color.fg }} />
                 <span>{type}</span>
               </div>
@@ -146,6 +157,97 @@ function EventTypesSection() {
   )
 }
 
+// Small popover anchored to the gear button. Closes on outside click
+// or Escape. Holds the per-section toggles that aren't worth a top-level
+// row in the sidebar.
+//
+// Uses position: fixed with computed coords so it can render outside
+// the sidebar's overflow:auto clip — without that, a 260px-wide menu
+// hanging off a 230px sidebar gets cut.
+function CacheOpsMenu({
+  anchor,
+  onClose,
+}: {
+  anchor: HTMLElement
+  onClose: () => void
+}) {
+  const reconstruct = reconstructFromCache.value
+  const stale = showStaleCache.value
+  const ref = useRef<HTMLDivElement>(null)
+  const rect = anchor.getBoundingClientRect()
+  // Left-align the menu's left edge with the anchor (gear) and open
+  // downward. Falls back to right-aligning if the menu would overflow
+  // the right viewport edge.
+  const MENU_W = 280
+  const left = Math.min(rect.left, window.innerWidth - MENU_W - 8)
+  const top = rect.bottom + 6
+
+  useEffect(() => {
+    const onDoc = (e: MouseEvent) => {
+      if (!ref.current) return
+      if (ref.current.contains(e.target as Node)) return
+      if (anchor.contains(e.target as Node)) return
+      onClose()
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('mousedown', onDoc)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDoc)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [onClose, anchor])
+
+  return (
+    <div
+      class="cache-ops-menu"
+      ref={ref}
+      role="menu"
+      aria-label="Cache options"
+      style={{ left: `${Math.max(8, left)}px`, top: `${top}px`, width: `${MENU_W}px` }}
+    >
+      <label class="cache-ops-menu-row">
+        <span class="cache-ops-menu-label">
+          <span class="cache-ops-menu-title">Reconstruct telemetry from cache</span>
+          <span class="cache-ops-menu-hint">
+            Replays Storybook's <code>lastEvents</code> cache as synthetic
+            telemetry until real events arrive.
+          </span>
+        </span>
+        <button
+          type="button"
+          class={'cache-ops-toggle' + (reconstruct ? ' on' : '')}
+          role="switch"
+          aria-checked={reconstruct}
+          onClick={() => actions().setReconstructFromCache(!reconstruct)}
+        >
+          <span class="cache-ops-toggle-knob" />
+        </button>
+      </label>
+      <label class="cache-ops-menu-row">
+        <span class="cache-ops-menu-label">
+          <span class="cache-ops-menu-title">Show stale cache data</span>
+          <span class="cache-ops-menu-hint">
+            Cache entries written before this session started are hidden
+            by default. Toggle on to surface pre-existing files.
+          </span>
+        </span>
+        <button
+          type="button"
+          class={'cache-ops-toggle' + (stale ? ' on' : '')}
+          role="switch"
+          aria-checked={stale}
+          onClick={() => actions().setShowStaleCache(!stale)}
+        >
+          <span class="cache-ops-toggle-knob" />
+        </button>
+      </label>
+    </div>
+  )
+}
+
 // ── Cache Operations ──
 function CacheOpsSection() {
   const map = cacheMap.value
@@ -155,16 +257,48 @@ function CacheOpsSection() {
   const total = events.value.filter((e) => e._source === 'cache-watch').length
   const keys = Object.keys(map).sort()
   const isAllActive = active === null
+  const [menuOpen, setMenuOpen] = useState(false)
+  const gearRef = useRef<HTMLButtonElement>(null)
+  // Show a small badge on the gear icon when any cache-options toggle
+  // is on, so it's visually obvious from the sidebar at a glance that
+  // the cache pipeline is in a non-default state.
+  const hasModified = reconstructFromCache.value || showStaleCache.value
 
   return (
     <div class="sidebar-section">
-      <div class="sidebar-section-title">Cache Operations</div>
+      <div class="sidebar-section-title cache-ops-title">
+        <span>Cache Operations</span>
+        <button
+          type="button"
+          ref={gearRef}
+          class={'cache-ops-gear' + (menuOpen ? ' open' : '') + (hasModified ? ' modified' : '')}
+          id="cacheOpsGearBtn"
+          title={
+            hasModified
+              ? 'Cache options (modified from defaults)'
+              : 'Cache options'
+          }
+          aria-label="Cache options"
+          aria-expanded={menuOpen}
+          onClick={(e) => {
+            e.stopPropagation()
+            setMenuOpen((v) => !v)
+          }}
+        >
+          <GearIcon />
+          {hasModified && <span class="cache-ops-gear-dot" aria-hidden="true" />}
+        </button>
+        {menuOpen && gearRef.current && (
+          <CacheOpsMenu anchor={gearRef.current} onClose={() => setMenuOpen(false)} />
+        )}
+      </div>
       <div id="cacheList">
         <div
           class={'filter-item' + (isAllActive ? ' active' : '') + (allHidden ? ' hidden-item' : '')}
           data-cache-key="__all__"
+          onClick={() => actions().setActiveCacheKey(null)}
         >
-          <div class="label-row" onClick={() => actions().setActiveCacheKey(null)}>
+          <div class="label-row">
             <span>All operations</span>
           </div>
           <div class="item-actions">
@@ -195,56 +329,51 @@ function CacheOpsSection() {
             {total}
           </span>
         </div>
-        {keys.length === 0 ? (
-          <div class="sessions-empty" id="cacheListEmpty">
-            No cache operations yet
-          </div>
-        ) : (
-          keys.map((key) => {
-            const info = map[key]
-            const isActive = active === key
-            const isHidden = hidden.has(key)
-            return (
-              <div
-                key={key}
-                class={
-                  'filter-item' +
-                  (isActive ? ' active' : '') +
-                  (isHidden ? ' hidden-item' : '')
-                }
-                data-cache-key={key}
-              >
-                <div class="label-row" onClick={() => actions().setActiveCacheKey(key)}>
-                  <span>{key}</span>
-                </div>
-                {info.lastOp && <div class="filter-item-sub">{info.lastOp}</div>}
-                <div class="item-actions">
-                  <button
-                    class="item-action danger trash-btn"
-                    title="Delete events for this cache key"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      actions().deleteEventsByCacheKey(key)
-                    }}
-                  >
-                    <TrashIcon />
-                  </button>
-                  <button
-                    class="item-action eye-btn"
-                    title={isHidden ? 'Show this cache key' : 'Hide this cache key'}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      actions().toggleHiddenCacheKey(key)
-                    }}
-                  >
-                    {isHidden ? <EyeOffIcon /> : <EyeIcon />}
-                  </button>
-                </div>
-                <span class="count">{info.count}</span>
+        {keys.map((key) => {
+          const info = map[key]
+          const isActive = active === key
+          const isHidden = hidden.has(key)
+          return (
+            <div
+              key={key}
+              class={
+                'filter-item' +
+                (isActive ? ' active' : '') +
+                (isHidden ? ' hidden-item' : '')
+              }
+              data-cache-key={key}
+              onClick={() => actions().setActiveCacheKey(key)}
+            >
+              <div class="label-row">
+                <span>{key}</span>
               </div>
-            )
-          })
-        )}
+              {info.lastOp && <div class="filter-item-sub">{info.lastOp}</div>}
+              <div class="item-actions">
+                <button
+                  class="item-action danger trash-btn"
+                  title="Delete events for this cache key"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    actions().deleteEventsByCacheKey(key)
+                  }}
+                >
+                  <TrashIcon />
+                </button>
+                <button
+                  class="item-action eye-btn"
+                  title={isHidden ? 'Show this cache key' : 'Hide this cache key'}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    actions().toggleHiddenCacheKey(key)
+                  }}
+                >
+                  {isHidden ? <EyeOffIcon /> : <EyeIcon />}
+                </button>
+              </div>
+              <span class="count">{info.count}</span>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
@@ -279,11 +408,9 @@ function SessionsSection() {
                   (isHidden ? ' hidden-item' : '')
                 }
                 data-session={sid}
+                onClick={() => actions().setSession(isActive ? null : sid)}
               >
-                <div
-                  class="label-row"
-                  onClick={() => actions().setSession(isActive ? null : sid)}
-                >
+                <div class="label-row">
                   <span>{label}</span>
                 </div>
                 <div class="item-actions">
@@ -345,11 +472,9 @@ function ImportsSection() {
                 'filter-item' + (isActive ? ' active' : '') + (isHidden ? ' hidden-item' : '')
               }
               data-import={b.id}
+              onClick={() => actions().setActiveImport(isActive ? null : b.id)}
             >
-              <div
-                class="label-row"
-                onClick={() => actions().setActiveImport(isActive ? null : b.id)}
-              >
+              <div class="label-row">
                 <span>{b.name}</span>
               </div>
               <div class="item-actions">

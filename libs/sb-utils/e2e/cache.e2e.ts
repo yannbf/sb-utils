@@ -45,9 +45,21 @@ test.describe('cache view', () => {
     page,
     eventLoggerWithCache,
   }) => {
+    // Stale cache is hidden by default — flip the toggle on so the
+    // playground's pre-existing cache files materialize as cache:write
+    // events and bump the master count. Two-step boot so the
+    // session-id rotation can stamp first, then we write the pref and
+    // reload to pick it up.
     await page.goto(eventLoggerWithCache.url)
-    // Backfill produces at least one cache:write per entry — we just need
-    // the master "All operations" count to update.
+    await page.waitForFunction(
+      () => sessionStorage.getItem('sbutils.eventlog.session') != null,
+      undefined,
+      { timeout: 5_000 },
+    )
+    await page.evaluate(() => {
+      sessionStorage.setItem('sbutils.eventlog.showStaleCache', '1')
+    })
+    await page.reload()
     await expect(page.locator('#cacheAllCount')).not.toHaveText('0', {
       timeout: 5_000,
     })
