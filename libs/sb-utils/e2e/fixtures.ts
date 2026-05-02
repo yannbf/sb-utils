@@ -47,7 +47,7 @@ export type EventLoggerHandle = {
 
 type Fixtures = {
   eventLogger: EventLoggerHandle
-  /** Variant: spawned with --project-root pointing at libs/sb-utils/playground. */
+  /** Variant: spawned with --project-root pointing at libs/sb-utils/mocks. */
   eventLoggerWithCache: EventLoggerHandle
 }
 
@@ -59,8 +59,8 @@ async function spawnLogger(extraArgs: string[] = []): Promise<EventLoggerHandle>
     {
       // Spawn from /tmp so the CLI's cache auto-resolution doesn't latch
       // onto a stray Storybook cache under the repo (sb-utils itself, or
-      // the playground). Tests that *want* a real cache pass an explicit
-      // --project-root via `eventLoggerWithCache`.
+      // the mocks fixture). Tests that *want* a real cache pass an
+      // explicit --project-root via `eventLoggerWithCache`.
       cwd: '/tmp',
       stdio: ['ignore', 'pipe', 'pipe'],
     },
@@ -103,7 +103,7 @@ export const test = base.extend<Fixtures>({
   eventLoggerWithCache: async ({}, use) => {
     const handle = await spawnLogger([
       '--project-root',
-      path.join(REPO_ROOT, 'playground'),
+      path.join(REPO_ROOT, 'mocks'),
     ])
     try {
       await use(handle)

@@ -1,1 +1,0 @@
-import '/Users/yannbraga/Dev/mealdrop/node_modules/@chromatic-com/storybook/dist/manager.mjs';

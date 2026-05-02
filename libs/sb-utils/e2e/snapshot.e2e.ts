@@ -122,7 +122,7 @@ test.describe('HTML snapshot export', () => {
     eventLoggerWithCache,
     browser,
   }) => {
-    // Use the playground project so the cache has pre-existing
+    // Use the mocks fixture so the cache has pre-existing
     // (stale) entries. Export a snapshot WITHOUT toggling
     // showStaleCache — the snapshot should bake the live startedAt
     // so the viewer sees the same default-hidden behavior.
@@ -161,7 +161,7 @@ test.describe('HTML snapshot export', () => {
     await snap.goto('file://' + snapPath)
     await expect.poll(() => snap.evaluate(() => (window as any).__SNAPSHOT__)).toBe(true)
 
-    // Stale cache entries from the playground are NOT visible by default.
+    // Stale cache entries from the mocks fixture are NOT visible by default.
     await expect(snap.locator('#cacheAllCount')).toHaveText('0')
 
     await ctx.close()
@@ -172,7 +172,7 @@ test.describe('HTML snapshot export', () => {
     eventLoggerWithCache,
     browser,
   }) => {
-    // Export a snapshot from the playground (stale entries exist) WITHOUT
+    // Export a snapshot from the mocks fixture (stale entries exist) WITHOUT
     // toggling anything. The viewer should see the same yellow
     // attention badge the exporter saw — the staleCacheCount signal
     // is populated from the stubbed /cache/entries response.

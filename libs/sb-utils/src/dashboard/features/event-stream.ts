@@ -57,22 +57,15 @@ async function recoverMissedEvents(): Promise<void> {
   try {
     const res = await fetch('/event-log')
     const serverEvents = (await res.json()) as StoredEvent[]
-    const all = events.value
-    const ids = seenEventIds(all)
-    const idxs = seenIndices(all)
-    const additions: StoredEvent[] = []
-    for (const event of serverEvents) {
-      if (event.eventId && ids.has(event.eventId)) continue
-      if (event._index != null && !idxs.has(event._index)) {
-        additions.push(event)
-      }
-    }
-    if (additions.length > 0) {
-      const merged = [...all, ...additions].sort(
-        (a, b) => (a._index || 0) - (b._index || 0),
-      )
-      setEvents(merged)
-    }
+    // Route through the same enqueue path the SSE onmessage uses so
+    // dedup considers BOTH the committed store and any in-flight
+    // pending batch. Without this, a /event-log fetch that resolves
+    // while SSE-delivered events are still buffered for the next rAF
+    // would re-add them as duplicates (tests sending three quick
+    // postEvent() calls right after page load were the canary —
+    // recoverMissedEvents fires on `onopen` and races the SSE
+    // onmessage rAF coalesce).
+    for (const event of serverEvents) enqueueIncoming(event)
   } catch {
     /* best-effort */
   }
@@ -117,6 +110,17 @@ function flushPending(): void {
   _pending = []
   _pendingIds.clear()
   _pendingIdx.clear()
+
+  // The recoverMissedEvents fetch and SSE onmessage can race —
+  // recoverMissedEvents iterates server events in `_index` order, but
+  // an SSE onmessage that fires while that fetch is in flight queues
+  // its event first. Sort the batch back into `_index` order so the
+  // committed events are chronological. Synthetic events (cache-recon,
+  // import) use the 1e9-range counter so they sort after live events,
+  // which matches their "after-the-fact" semantics.
+  if (batch.length > 1) {
+    batch.sort((a, b) => (a._index ?? 0) - (b._index ?? 0))
+  }
 
   // First real instrumented event → shut off reconstruction.
   if (!realTelemetryDetected.value) {

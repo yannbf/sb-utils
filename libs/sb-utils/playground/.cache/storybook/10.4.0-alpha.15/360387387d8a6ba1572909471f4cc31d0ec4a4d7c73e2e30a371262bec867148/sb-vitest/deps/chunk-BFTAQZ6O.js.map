@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["../../../../../../storybook/dist/_browser-chunks/chunk-KJHJLCBK.js"],
-  "sourcesContent": ["// src/highlight/constants.ts\nvar ADDON_ID = \"storybook/highlight\", HIGHLIGHT = `${ADDON_ID}/add`, REMOVE_HIGHLIGHT = `${ADDON_ID}/remove`, RESET_HIGHLIGHT = `${ADDON_ID}/reset`, SCROLL_INTO_VIEW = `${ADDON_ID}/scroll-into-view`, MAX_Z_INDEX = 2147483647, MIN_TOUCH_AREA_SIZE = 28;\n\nexport {\n  HIGHLIGHT,\n  REMOVE_HIGHLIGHT,\n  RESET_HIGHLIGHT,\n  SCROLL_INTO_VIEW,\n  MAX_Z_INDEX,\n  MIN_TOUCH_AREA_SIZE\n};\n"],
-  "mappings": ";AACA,IAAI,WAAW;AAAf,IAAsC,YAAY,GAAG,QAAQ;AAA7D,IAAqE,mBAAmB,GAAG,QAAQ;AAAnG,IAA8G,kBAAkB,GAAG,QAAQ;AAA3I,IAAqJ,mBAAmB,GAAG,QAAQ;AAAnL,IAAwM,cAAc;AAAtN,IAAkO,sBAAsB;",
-  "names": []
-}

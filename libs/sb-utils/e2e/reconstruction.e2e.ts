@@ -37,7 +37,7 @@ test.describe('telemetry reconstruction from cache', () => {
     await page.reload()
   }
 
-  test('reconstructs events from playground cache and shows the recon badge', async ({
+  test('reconstructs events from mocks cache and shows the recon badge', async ({
     page,
     eventLoggerWithCache,
   }) => {
@@ -134,7 +134,7 @@ test.describe('reconstruction toggle (opt-in via gear menu)', () => {
   }) => {
     // Reconstruction now respects the staleness gate: with stale=off
     // (default), only telemetry events at-or-after the server's
-    // startedAt are reconstructed. The playground's lastEvents file is
+    // startedAt are reconstructed. The mocks' lastEvents file is
     // entirely pre-existing, so reconstruct alone yields zero events.
     // Flipping stale also brings the older entries through.
     await page.goto(eventLoggerWithCache.url)
@@ -144,7 +144,7 @@ test.describe('reconstruction toggle (opt-in via gear menu)', () => {
     await page.locator('#cacheOpsGearBtn').click()
     await page.locator('.cache-ops-toggle').first().click() // reconstruct
     await expect(page.locator('.cache-ops-toggle').first()).toHaveAttribute('aria-checked', 'true')
-    // Stale is still off — playground's pre-existing lastEvents
+    // Stale is still off — mocks' pre-existing lastEvents
     // entries are skipped.
     await expect(page.locator('.event-recon-badge')).toHaveCount(0)
 
@@ -181,7 +181,7 @@ test.describe('reconstruction toggle (opt-in via gear menu)', () => {
     eventLoggerWithCache,
   }) => {
     await page.goto(eventLoggerWithCache.url)
-    // Flip both reconstruct + stale ON so the playground's pre-existing
+    // Flip both reconstruct + stale ON so the mocks' pre-existing
     // lastEvents content is reconstructed.
     await page.locator('#cacheOpsGearBtn').click()
     const reconstructToggle = page.locator('.cache-ops-toggle').first()
@@ -206,7 +206,7 @@ test.describe('reconstruction toggle (opt-in via gear menu)', () => {
   }) => {
     // eventLogger fixture has no project root, so no cache — that
     // isolates this test from the yellow "stale data" badge variant
-    // (which fires when the playground's cache is in scope).
+    // (which fires when the mocks' cache is in scope).
     await page.goto(eventLogger.url)
     await expect(page.locator('#cacheOpsGearBtn .cache-ops-gear-dot')).toHaveCount(0)
     await expect(page.locator('#cacheOpsGearBtn')).not.toHaveClass(/modified/)
@@ -226,7 +226,7 @@ test.describe('reconstruction toggle (opt-in via gear menu)', () => {
     page,
     eventLoggerWithCache,
   }) => {
-    // The playground has pre-existing cache files (stale by
+    // The mocks fixture has pre-existing cache files (stale by
     // definition for a fresh server). Default boot: no toggle on,
     // stale data exists → yellow attention badge.
     await page.goto(eventLoggerWithCache.url)
@@ -355,7 +355,7 @@ test.describe('reconstruction toggle (opt-in via gear menu)', () => {
     page,
     eventLoggerWithCache,
   }) => {
-    // The playground's cache files were written long before the test
+    // The mocks' cache files were written long before the test
     // server booted, so they're stale by definition. With the default
     // off they don't appear in the Cache Operations sidebar. Toggling
     // the second gear option on backfills them.
@@ -399,13 +399,13 @@ test.describe('reconstruction toggle (opt-in via gear menu)', () => {
     await expect(page.locator('.event-recon-badge')).toHaveCount(0)
 
     // Now flip both toggles — reconstruct + stale — so the
-    // playground's pre-existing lastEvents content is replayed even
+    // mocks' pre-existing lastEvents content is replayed even
     // though a real event already landed first.
     await page.locator('#cacheOpsGearBtn').click()
     await page.locator('.cache-ops-toggle').first().click() // reconstruct
     await page.locator('.cache-ops-toggle').nth(1).click() // stale
 
-    // Recon badges show up — playground's lastEvents was replayed
+    // Recon badges show up — mocks' lastEvents was replayed
     // despite real telemetry having arrived first.
     await expect(page.locator('.event-recon-badge').first()).toBeVisible({
       timeout: 5_000,

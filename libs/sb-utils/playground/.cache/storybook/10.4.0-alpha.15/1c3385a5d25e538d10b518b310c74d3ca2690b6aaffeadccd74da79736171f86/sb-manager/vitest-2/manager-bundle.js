@@ -1,1 +1,0 @@
-import '/Users/yannbraga/Dev/mealdrop/node_modules/@storybook/addon-vitest/dist/manager.js';

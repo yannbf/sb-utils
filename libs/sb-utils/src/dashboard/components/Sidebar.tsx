@@ -6,7 +6,7 @@
  * the imperative core is gone.
  */
 
-import { useEffect, useRef, useState } from 'preact/hooks'
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import {
   activeFilter,
   activeSession,
@@ -188,7 +188,35 @@ function CacheOpsMenu({
   // the right viewport edge.
   const MENU_W = 280
   const left = Math.min(rect.left, window.innerWidth - MENU_W - 8)
-  const top = rect.bottom + 6
+  // Start the menu just below the anchor; useLayoutEffect below will
+  // flip it above (and/or clamp it inside the viewport) once we know
+  // its rendered height. This matters when the sidebar is tall enough
+  // to push the gear button down so the menu would otherwise hang off
+  // the bottom of the screen — happens with cache fixtures that emit
+  // many event types.
+  const initialTop = rect.bottom + 6
+  const [top, setTop] = useState(initialTop)
+
+  useLayoutEffect(() => {
+    if (!ref.current) return
+    const menuH = ref.current.getBoundingClientRect().height
+    const VIEWPORT_PAD = 8
+    const fitsBelow = rect.bottom + 6 + menuH <= window.innerHeight - VIEWPORT_PAD
+    if (fitsBelow) {
+      setTop(rect.bottom + 6)
+      return
+    }
+    // Try opening above the anchor.
+    const above = rect.top - 6 - menuH
+    if (above >= VIEWPORT_PAD) {
+      setTop(above)
+      return
+    }
+    // Neither side fits — clamp inside the viewport so the toggles
+    // stay clickable. Worst case we cover the gear, which is fine
+    // since the user is already interacting with the menu.
+    setTop(Math.max(VIEWPORT_PAD, window.innerHeight - menuH - VIEWPORT_PAD))
+  }, [rect.bottom, rect.top])
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {

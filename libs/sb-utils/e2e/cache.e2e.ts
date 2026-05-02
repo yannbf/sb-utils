@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures'
 
 /**
- * Cache view — uses the playground project's pre-existing Storybook cache
+ * Cache view — uses the mocks fixture's pre-existing Storybook cache
  * for entries, and the watcher emits cache events live to the dashboard.
  */
 test.describe('cache view', () => {
@@ -37,8 +37,8 @@ test.describe('cache view', () => {
     await page.goto(eventLoggerWithCache.url)
     await page.locator('[data-view="cache"]').click()
     await expect(page.locator('#cacheRootStatus')).toContainText('Active')
-    await expect(page.locator('#cacheRootPath')).toContainText('playground')
-    await expect(page.locator('#cacheRootVersion')).toContainText('sb 10.3.5')
+    await expect(page.locator('#cacheRootPath')).toContainText('mocks')
+    await expect(page.locator('#cacheRootVersion')).toContainText('sb 10.4.0-alpha.15')
   })
 
   test('cache events from the watcher show up in the Cache Operations sidebar', async ({
@@ -46,7 +46,7 @@ test.describe('cache view', () => {
     eventLoggerWithCache,
   }) => {
     // Stale cache is hidden by default — flip the toggle on so the
-    // playground's pre-existing cache files materialize as cache:write
+    // mocks fixture's pre-existing cache files materialize as cache:write
     // events and bump the master count. Two-step boot so the
     // session-id rotation can stamp first, then we write the pref and
     // reload to pick it up.
