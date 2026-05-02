@@ -10,6 +10,7 @@
 
 import {
   events,
+  view,
   realTelemetryDetected,
   reconstructFromCache,
   showStaleCache,
@@ -23,6 +24,7 @@ import {
 } from '../store/signals'
 import { cacheKeyOf as _cacheKeyOf } from '../lib/event-helpers'
 import { timelineApi } from '../components/Timeline'
+import { rotateSessionIfChanged } from '../lib/session-storage'
 
 type CacheWriteEvent = {
   _source?: string
@@ -180,7 +182,21 @@ export async function backfillFromCache(): Promise<void> {
     if (configRes && configRes.ok) {
       try {
         const cfg = await configRes.json()
-        if (typeof cfg?.startedAt === 'number') serverStartedAt.value = cfg.startedAt
+        if (typeof cfg?.startedAt === 'number') {
+          serverStartedAt.value = cfg.startedAt
+          // Central session-rotation point: if the server's startedAt
+          // doesn't match the sessionStorage stamp from a previous run,
+          // wipe the persisted prefs AND reset the signals that were
+          // optimistically applied at boot time. The runtime can't do
+          // this itself anymore — it now skips the /config fetch on the
+          // critical path so multi-tab refreshes don't queue.
+          const wiped = rotateSessionIfChanged(cfg.startedAt)
+          if (wiped) {
+            reconstructFromCache.value = false
+            showStaleCache.value = false
+            view.value = 'dashboard'
+          }
+        }
       } catch {
         /* ignore */
       }

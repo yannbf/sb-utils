@@ -48,41 +48,33 @@ setupKeyboardShortcuts(() => timelineApi.value)
 // module no-ops in snapshot mode.
 const isSnapshot = !!(window as any).__SNAPSHOT__
 
-// Restore prefs BEFORE the event stream boots so backfillFromCache
-// (kicked off inside setupEventStream) sees the right showStaleCache /
-// reconstructFromCache values. We need /config to settle first so the
-// session-id rotation can wipe stale entries from a previous run; do
-// it synchronously via a top-level await on a one-shot promise the
-// async boot below resolves into.
-async function bootRuntime() {
-  if (!isSnapshot) {
-    try {
-      const r = await fetch('/config')
-      if (r.ok) {
-        const cfg = await r.json()
-        if (typeof cfg?.startedAt === 'number') {
-          serverStartedAt.value = cfg.startedAt
-          rotateSessionIfChanged(cfg.startedAt)
-        }
-      }
-    } catch {
-      /* /config unreachable — boot with defaults */
-    }
-    if (readPref('reconstruct') === '1') reconstructFromCache.value = true
-    if (readPref('showStaleCache') === '1') showStaleCache.value = true
-  }
+// Boot order:
+//   1. Apply persisted prefs synchronously and start the SSE stream.
+//   2. /config is fetched in parallel by backfillFromCache (it already
+//      runs that fetch alongside /cache/entries). When it lands, the
+//      session-id rotation runs centrally there — if startedAt
+//      doesn't match the previously-stored session, sessionStorage is
+//      wiped and the affected signals are reset.
+//
+// This avoids a head-of-line block on /config: under multi-tab load
+// browsers cap HTTP/1.1 to ~6 concurrent connections per origin, and
+// each open tab holds a long-lived SSE stream. A synchronous /config
+// fetch before SSE used to queue boot behind the other tabs' streams,
+// making refreshes hang. Now boot only needs the new tab's own SSE
+// slot to open; everything else streams through naturally.
+if (!isSnapshot) {
+  if (readPref('reconstruct') === '1') reconstructFromCache.value = true
+  if (readPref('showStaleCache') === '1') showStaleCache.value = true
+}
+// ── Live event stream (SSE + boot recovery) ─────────────────────────
+setupEventStream()
 
-  // ── Live event stream (SSE + boot recovery) ───────────────────────
-  setupEventStream()
-
-  if (!isSnapshot) {
-    const saved = readPref('view')
-    if (saved === 'timeline' || saved === 'cache' || saved === 'dashboard') {
-      void import('./actions').then(({ setView }) => setView(saved))
-    }
+if (!isSnapshot) {
+  const saved = readPref('view')
+  if (saved === 'timeline' || saved === 'cache' || saved === 'dashboard') {
+    void import('./actions').then(({ setView }) => setView(saved))
   }
 }
-void bootRuntime()
 
 // In snapshot mode we already know the live cache state (it was baked
 // into __SNAPSHOT_CACHE_INFO__/__SNAPSHOT_CACHE_ENTRIES__ and the

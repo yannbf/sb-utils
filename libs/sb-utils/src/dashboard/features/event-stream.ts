@@ -25,6 +25,21 @@ import { timelineApi } from '../components/Timeline'
 
 function connect() {
   const eventSource = new EventSource('/sse')
+  // Close the SSE socket eagerly when the tab unloads so the server
+  // (and the browser's per-origin connection pool) can free the slot
+  // immediately. Without this, refresh-under-multiple-tabs can stack
+  // connections waiting on GC and starve the new tab's boot fetches —
+  // browsers cap HTTP/1.1 to ~6 per origin.
+  const cleanup = () => {
+    try {
+      eventSource.close()
+    } catch {
+      /* ignore */
+    }
+  }
+  window.addEventListener('pagehide', cleanup)
+  window.addEventListener('beforeunload', cleanup)
+
   eventSource.onmessage = (e) => {
     const event = JSON.parse(e.data) as StoredEvent
     // Dedup by eventId (canonical), then by _index (server ordinal —
