@@ -54,15 +54,24 @@ type WatchHandle = {
  * functional (with caveats) on modern Linux. We don't pull in chokidar yet
  * — if Linux reliability becomes an issue we can swap the impl behind this
  * same surface.
+ *
+ * `emitColdStart`: when true, emits a synthetic `create` change for every
+ * file the watcher sees during cold-start seed. Boot-time attach passes
+ * `false` (existing entries are pre-existing, treated as "stale" by the
+ * dashboard's gate). Mid-session discovery / project-root change passes
+ * `true` so the user sees the cache's contents as they're discovered —
+ * the entries are genuinely new from the user's perspective.
  */
 export function watchCache(
   getLocation: () => CacheLocation,
-  onChange: (change: CacheChange) => void
+  onChange: (change: CacheChange) => void,
+  options: { emitColdStart?: boolean } = {}
 ): WatchHandle {
   const location = getLocation()
   if (location.status !== 'found' || !location.cacheRoot) {
     return { close: () => {} }
   }
+  const emitColdStart = options.emitColdStart ?? false
 
   // Snapshot existing content so we can compute diffs on update and surface
   // previousContent on delete. Keyed by absolute file path.
@@ -97,7 +106,20 @@ export function watchCache(
         if (!f.startsWith('storybook-')) continue
         const file = path.join(nsPath, f)
         const entry = readEntryFile(file, ns)
-        if (entry) snapshot.set(file, entry)
+        if (!entry) continue
+        snapshot.set(file, entry)
+        if (emitColdStart) {
+          onChange({
+            operation: 'create',
+            key: entry.key,
+            namespace: entry.namespace,
+            file: entry.file,
+            content: entry.content,
+            previousContent: null,
+            diff: null,
+            timestamp: entry.mtime,
+          })
+        }
       }
     }
   } catch {

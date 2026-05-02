@@ -220,15 +220,60 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
     broadcastEvent(stored)
   }
 
-  function startCacheWatcher() {
+  function startCacheWatcher(opts: { emitColdStart?: boolean } = {}) {
     if (cacheWatchHandle) {
       cacheWatchHandle.close()
       cacheWatchHandle = null
     }
     if (options.noCacheWatch) return
-    cacheWatchHandle = watchCache(() => cacheLocation, ingestCacheChange)
+    cacheWatchHandle = watchCache(() => cacheLocation, ingestCacheChange, opts)
   }
+  // Boot-time attach: don't emit cold-start. Existing entries are
+  // pre-session by definition; the dashboard's "Show stale cache
+  // data" toggle handles the opt-in.
   startCacheWatcher()
+
+  // Cache-discovery poll. If the cache wasn't found when the server
+  // booted (e.g. user started event-logger before storybook created
+  // its cache directory), re-resolve every 2s. Once it materializes,
+  // update the active location and reattach the watcher so subsequent
+  // live writes flow through. Stops itself once found, and re-arms
+  // automatically if the user switches project roots back to a
+  // location without a cache.
+  let cacheDiscoveryTimer: NodeJS.Timeout | null = null
+  function startCacheDiscovery() {
+    if (cacheDiscoveryTimer) return
+    if (cacheLocation.status === 'found') return
+    if (options.noCache || options.noCacheWatch) return
+    cacheDiscoveryTimer = setInterval(() => {
+      const next = resolveCacheLocation({
+        projectRoot: cacheLocation.projectRoot ?? null,
+      })
+      if (next.status === 'found') {
+        cacheLocation = next
+        // Mid-session discovery: emit cold-start events so the
+        // dashboard sees the just-appeared entries as legitimate
+        // discoveries, not "stale data". Their mtimes will be
+        // post-startedAt (since the directory itself didn't exist
+        // before now), so the dashboard's staleness gate keeps them
+        // visible by default.
+        startCacheWatcher({ emitColdStart: true })
+        if (cacheDiscoveryTimer) {
+          clearInterval(cacheDiscoveryTimer)
+          cacheDiscoveryTimer = null
+        }
+        if (!quiet) {
+          log.info(
+            blue('cache') +
+              ' detected at ' +
+              grey(next.cacheRoot ?? '(unknown)')
+          )
+        }
+      }
+    }, 2000)
+    if (cacheDiscoveryTimer.unref) cacheDiscoveryTimer.unref()
+  }
+  startCacheDiscovery()
 
   // Load and cache the prebuilt dashboard HTML at startup. Vite + the
   // singlefile plugin emit dist/event-log-dashboard.html with all CSS + JS
@@ -276,8 +321,21 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
       setProjectRoot: (newRoot) => {
         cacheLocation = resolveCacheLocation({ projectRoot: newRoot })
         // Re-seed the watcher against the new root so subsequent writes
-        // appear in the timeline immediately.
-        startCacheWatcher()
+        // appear in the timeline immediately. User explicitly pointed
+        // us here, so emit cold-start events to surface the new
+        // root's existing contents — the dashboard's staleness gate
+        // still hides any genuinely-stale (pre-session) entries.
+        startCacheWatcher({ emitColdStart: true })
+        // If the new root doesn't have a cache yet, re-arm discovery
+        // so the watcher attaches automatically when storybook
+        // creates it later. Likewise, stop discovery if it does have
+        // one — the watcher is already attached.
+        if (cacheLocation.status === 'found' && cacheDiscoveryTimer) {
+          clearInterval(cacheDiscoveryTimer)
+          cacheDiscoveryTimer = null
+        } else if (cacheLocation.status !== 'found') {
+          startCacheDiscovery()
+        }
         return cacheLocation
       },
     })
