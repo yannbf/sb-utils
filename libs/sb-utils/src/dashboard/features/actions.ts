@@ -22,11 +22,9 @@ import {
   activeFilter,
   activeSession,
   activeImport,
-  activeCacheKey,
   hiddenTypes,
   hiddenSessions,
   hiddenImports,
-  hiddenCacheKeys,
   cacheAllHidden,
   telemetryAllHidden,
   realTelemetryDetected,
@@ -35,7 +33,6 @@ import {
   serverStartedAt,
   pushToast,
   type View,
-  type StoredEvent,
 } from '../store/signals'
 import { exportHtmlSnapshot as _exportHtmlSnapshot } from './snapshot-export'
 import { reconstructFromCacheNow, backfillFromCache } from './reconstruction'
@@ -72,11 +69,6 @@ export function setActiveImport(id: string | null): void {
   bridges.invalidateTimeline()
 }
 
-export function setActiveCacheKey(key: string | null): void {
-  activeCacheKey.value = key
-  bridges.invalidateTimeline()
-}
-
 const toggleSet = (
   sig: { value: Set<string> },
   key: string,
@@ -97,10 +89,6 @@ export function toggleHiddenSession(sid: string): void {
 }
 export function toggleHiddenImport(id: string): void {
   toggleSet(hiddenImports, id)
-  bridges.invalidateTimeline()
-}
-export function toggleHiddenCacheKey(key: string): void {
-  toggleSet(hiddenCacheKeys, key)
   bridges.invalidateTimeline()
 }
 export function toggleCacheAllHidden(): void {
@@ -210,18 +198,6 @@ export function deleteEventsByImport(id: string): void {
   bridges.invalidateTimeline()
 }
 
-export function deleteEventsByCacheKey(key: string): void {
-  const eq = (e: StoredEvent) => {
-    if (e._source !== 'cache-watch' || !e.payload) return false
-    const p = e.payload as Record<string, unknown>
-    return (p.namespace || '') + '/' + (p.key || '') === key
-  }
-  events.value = events.value.filter((e) => !eq(e))
-  hiddenCacheKeys.value = setMinus(hiddenCacheKeys.value, [key])
-  if (activeCacheKey.value === key) activeCacheKey.value = null
-  bridges.invalidateTimeline()
-}
-
 export function deleteAllTelemetryEvents(): void {
   events.value = events.value.filter((e) => e._source === 'cache-watch')
   hiddenTypes.value = new Set()
@@ -230,14 +206,6 @@ export function deleteAllTelemetryEvents(): void {
   if (activeFilter.value !== 'all') activeFilter.value = 'all'
   activeSession.value = null
   activeImport.value = null
-  bridges.invalidateTimeline()
-}
-
-export function deleteAllCacheEvents(): void {
-  events.value = events.value.filter((e) => e._source !== 'cache-watch')
-  hiddenCacheKeys.value = new Set()
-  cacheAllHidden.value = true
-  activeCacheKey.value = null
   bridges.invalidateTimeline()
 }
 
@@ -334,13 +302,11 @@ export async function clearAll(): Promise<void> {
   hiddenTypes.value = new Set()
   hiddenSessions.value = new Set()
   hiddenImports.value = new Set()
-  hiddenCacheKeys.value = new Set()
   cacheAllHidden.value = true
   telemetryAllHidden.value = false
   activeFilter.value = 'all'
   activeSession.value = null
   activeImport.value = null
-  activeCacheKey.value = null
   realTelemetryDetected.value = false
   // imports is a computed signal derived from events — it'll empty on its own.
   bridges.invalidateTimeline()

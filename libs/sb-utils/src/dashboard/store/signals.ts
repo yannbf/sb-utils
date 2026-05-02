@@ -40,11 +40,9 @@ export const searchQuery = signal('')
 export const activeFilter = signal<string>('all')
 export const activeSession = signal<string | null>(null)
 export const activeImport = signal<string | null>(null)
-export const activeCacheKey = signal<string | null>(null)
 export const hiddenTypes = signal<Set<string>>(new Set())
 export const hiddenSessions = signal<Set<string>>(new Set())
 export const hiddenImports = signal<Set<string>>(new Set())
-export const hiddenCacheKeys = signal<Set<string>>(new Set())
 // Cache events are HIDDEN by default. The sidebar surfaces a single
 // "Show cache operations" toggle that flips this flag — the user opts
 // in when they want cache:write/cache:delete events in the dashboard,
@@ -185,50 +183,12 @@ export const sessionMap = computed<Record<string, SessionInfo>>(() => {
   return out
 })
 
-export type CacheKeyInfo = {
-  key: string
-  namespace?: string
-  logicalKey?: string
-  count: number
-  firstSeen: number
-  lastOp?: string
-}
-
-export const cacheMap = computed<Record<string, CacheKeyInfo>>(() => {
-  const out: Record<string, CacheKeyInfo> = {}
-  for (const e of events.value) {
-    if (e._source !== 'cache-watch') continue
-    const p = (e.payload || {}) as Record<string, unknown>
-    const key = String(p.namespace || '') + '/' + String(p.key || '')
-    const ts = e._receivedAt || Date.now()
-    if (!out[key]) {
-      out[key] = {
-        key,
-        namespace: p.namespace as string | undefined,
-        logicalKey: p.key as string | undefined,
-        count: 0,
-        firstSeen: ts,
-      }
-    }
-    out[key].count++
-    out[key].lastOp = (p.operation as string | undefined) ?? out[key].lastOp
-  }
-  return out
-})
-
-// Total counts of telemetry vs cache-watch events. Sidebar previously
-// re-ran `events.value.filter(...).length` on every render — over a
-// large event list with frequent re-renders that's wasted work.
-// Memoized here so it only recomputes when events.value changes.
+// Total count of telemetry events (everything except `cache-watch`).
+// The Sidebar's "Event Types" section reads this for the "All events"
+// row count. Memoized so it only recomputes when events.value changes.
 export const telemetryCount = computed(() => {
   let n = 0
   for (const e of events.value) if (e._source !== 'cache-watch') n++
-  return n
-})
-
-export const cacheCount = computed(() => {
-  let n = 0
-  for (const e of events.value) if (e._source === 'cache-watch') n++
   return n
 })
 
@@ -286,13 +246,11 @@ export function resetAll() {
   hiddenTypes.value = new Set()
   hiddenSessions.value = new Set()
   hiddenImports.value = new Set()
-  hiddenCacheKeys.value = new Set()
   cacheAllHidden.value = true
   telemetryAllHidden.value = false
   activeFilter.value = 'all'
   activeSession.value = null
   activeImport.value = null
-  activeCacheKey.value = null
   // imports is a computed signal — it'll empty on its own once events
   // is cleared above.
   realTelemetryDetected.value = false

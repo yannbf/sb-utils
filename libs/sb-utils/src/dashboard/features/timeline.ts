@@ -28,10 +28,6 @@ import {
 export function setupTimeline(state: any, applyFiltersInPlace: () => void, container: HTMLElement) {
   const formatGapDurationGlobal = _formatGapDurationLib
   const matchesFilters = (e: any) => _matchesFilters(e)
-  const cacheKeyOf = (event: any): string | null => {
-    if (!event || event._source !== 'cache-watch' || !event.payload) return null
-    return (event.payload.namespace || '') + '/' + (event.payload.key || '')
-  }
 
 const Timeline = (function () {
   const LANE_H = 44;
@@ -154,10 +150,8 @@ const Timeline = (function () {
     for (const e of state.events) {
       // Cache events feed the cache lane regardless of sessionId.
       if (e._source === 'cache-watch') {
-        // Master "All operations" eye toggle hides every cache dot.
+        // "Show cache operations" toggle hides every cache dot.
         if (state.cacheAllHidden) continue;
-        const ck = cacheKeyOf(e);
-        if (ck && state.hiddenCacheKeys.has(ck)) continue;
         if (!cacheLane) {
           cacheLane = {
             sid: CACHE_LANE_ID,
@@ -664,8 +658,6 @@ const Timeline = (function () {
       if (e.sessionId && state.hiddenSessions.has(e.sessionId)) continue;
       if (e._source === 'cache-watch') {
         if (state.cacheAllHidden) continue;
-        const ck = cacheKeyOf(e);
-        if (ck && state.hiddenCacheKeys.has(ck)) continue;
       } else {
         if (state.telemetryAllHidden) continue;
       }

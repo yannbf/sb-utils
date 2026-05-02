@@ -23,7 +23,6 @@ import {
   nextReconstructIndex,
   type StoredEvent,
 } from '../store/signals'
-import { cacheKeyOf as _cacheKeyOf } from '../lib/event-helpers'
 import { timelineApi } from '../components/Timeline'
 import { rotateSessionIfChanged } from '../lib/session-storage'
 
@@ -269,8 +268,6 @@ export async function backfillFromCache(): Promise<void> {
     /* best-effort */
   }
 }
-
-export const cacheKeyOf = _cacheKeyOf
 
 /**
  * Fetch the current cache state and reconstruct telemetry from

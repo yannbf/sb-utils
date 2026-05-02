@@ -8,7 +8,6 @@ import {
   events,
   typeCounts,
   sessionMap,
-  cacheMap,
   imports,
   resetAll,
   type StoredEvent,
@@ -62,46 +61,6 @@ describe('sessionMap', () => {
       ev({ sessionId: 'sess-a', _receivedAt: 2000 }),
     ]
     expect(sessionMap.value['sess-a'].firstSeen).toBe(1000)
-  })
-})
-
-describe('cacheMap', () => {
-  it('keys cache events by `<namespace>/<key>`', () => {
-    events.value = [
-      ev({
-        eventType: 'cache:write',
-        _source: 'cache-watch',
-        payload: { namespace: 'dev-server', key: 'lastEvents', operation: 'update' } as any,
-      }),
-      ev({
-        eventType: 'cache:write',
-        _source: 'cache-watch',
-        payload: { namespace: 'checklist', key: 'state', operation: 'create' } as any,
-      }),
-    ]
-    expect(Object.keys(cacheMap.value).sort()).toEqual(['checklist/state', 'dev-server/lastEvents'])
-  })
-
-  it('skips non-cache events', () => {
-    events.value = [ev({ eventType: 'boot' })]
-    expect(cacheMap.value).toEqual({})
-  })
-
-  it('captures the most recent operation per key', () => {
-    events.value = [
-      ev({
-        eventType: 'cache:write',
-        _source: 'cache-watch',
-        payload: { namespace: 'ns', key: 'k', operation: 'create' } as any,
-      }),
-      ev({
-        eventType: 'cache:write',
-        _source: 'cache-watch',
-        payload: { namespace: 'ns', key: 'k', operation: 'update' } as any,
-      }),
-    ]
-    expect(cacheMap.value['ns/k'].count).toBe(2)
-    expect(cacheMap.value['ns/k'].lastOp).toBe('update')
   })
 })
 

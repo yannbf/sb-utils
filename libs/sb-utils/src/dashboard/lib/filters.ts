@@ -9,11 +9,9 @@ import {
   activeFilter,
   activeSession,
   activeImport,
-  activeCacheKey,
   hiddenTypes,
   hiddenSessions,
   hiddenImports,
-  hiddenCacheKeys,
   cacheAllHidden,
   telemetryAllHidden,
   showStaleCache,
@@ -21,15 +19,14 @@ import {
   searchQuery,
   type StoredEvent,
 } from '../store/signals'
-import { cacheKeyOf } from './event-helpers'
 
 export function matchesFilters(event: StoredEvent): boolean {
   if (hiddenTypes.value.has(event.eventType)) return false
   if (event.sessionId && hiddenSessions.value.has(event.sessionId)) return false
 
-  // Cache events filter independently from telemetry — the master
-  // toggles ("All operations" / "All events") let users isolate one
-  // stream without touching the other.
+  // Cache events filter independently from telemetry — the
+  // "Show cache operations" / "All events" master toggles let users
+  // isolate one stream without touching the other.
   if (event._source === 'cache-watch') {
     if (cacheAllHidden.value) return false
     // Hide baked stale entries (mtime < server startedAt) unless the
@@ -46,9 +43,6 @@ export function matchesFilters(event: StoredEvent): boolean {
     ) {
       return false
     }
-    const ck = cacheKeyOf(event)
-    if (ck && hiddenCacheKeys.value.has(ck)) return false
-    if (activeCacheKey.value && ck !== activeCacheKey.value) return false
   } else {
     if (telemetryAllHidden.value) return false
   }
