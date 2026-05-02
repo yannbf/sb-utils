@@ -10,7 +10,12 @@
  * No banner HTML is injected here.
  */
 
-import { events, realTelemetryDetected, pushToast } from '../store/signals'
+import {
+  events,
+  realTelemetryDetected,
+  serverStartedAt,
+  pushToast,
+} from '../store/signals'
 import { openSaveModal } from '../store/modal'
 
 export async function exportHtmlSnapshot(): Promise<void> {
@@ -78,11 +83,18 @@ export async function exportHtmlSnapshot(): Promise<void> {
   // Bake snapshot globals + fetch / EventSource stubs as a synchronous
   // `<script>` at the top of <head>. Vite's bundle is a deferred
   // `<script type="module">` so this runs first by definition.
+  const bakedStartedAt = serverStartedAt.value
   const bootstrap = document.createElement('script')
   bootstrap.textContent = [
     '(function() {',
     '  window.__SNAPSHOT__ = true;',
     '  window.__SNAPSHOT_EVENTS__ = ' + JSON.stringify(eventsArr) + ';',
+    // Bake the original server's startedAt so the snapshot's
+    // staleness filter still works. Without this, the stubbed /config
+    // returned no startedAt and ingestSyntheticCacheCreate's
+    // `started != null` gate was always false — every cache entry
+    // got ingested, defeating the "Show stale cache data" default.
+    '  window.__SNAPSHOT_STARTED_AT__ = ' + JSON.stringify(bakedStartedAt) + ';',
     // Carry the realTelemetryDetected flag so reconstruction doesn't
     // re-run on snapshot load. Storybook generates DIFFERENT eventIds
     // for HTTP-sent telemetry vs the body it stores in the lastEvents
@@ -119,7 +131,9 @@ export async function exportHtmlSnapshot(): Promise<void> {
     '      return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } }));',
     '    }',
     '    if (method === "GET" && /\\/config(\\?|$)/.test(url)) {',
-    '      return Promise.resolve(new Response(JSON.stringify({ cacheEnabledByDefault: true, snapshot: true }), { status: 200, headers: { "Content-Type": "application/json" } }));',
+    '      var cfg = { cacheEnabledByDefault: true, snapshot: true };',
+    '      if (typeof window.__SNAPSHOT_STARTED_AT__ === "number") cfg.startedAt = window.__SNAPSHOT_STARTED_AT__;',
+    '      return Promise.resolve(new Response(JSON.stringify(cfg), { status: 200, headers: { "Content-Type": "application/json" } }));',
     '    }',
     '    return Promise.resolve(new Response("", { status: 204 }));',
     '  };',

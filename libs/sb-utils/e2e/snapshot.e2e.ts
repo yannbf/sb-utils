@@ -117,6 +117,115 @@ test.describe('HTML snapshot export', () => {
     await ctx.close()
   })
 
+  test('snapshot hides stale cache entries by default (bakes startedAt)', async ({
+    page,
+    eventLoggerWithCache,
+    browser,
+  }) => {
+    // Use the playground project so the cache has pre-existing
+    // (stale) entries. Export a snapshot WITHOUT toggling
+    // showStaleCache — the snapshot should bake the live startedAt
+    // so the viewer sees the same default-hidden behavior.
+    await page.goto(eventLoggerWithCache.url)
+    // Wait for the dashboard to settle (config + entries fetch).
+    await page.waitForFunction(
+      () => sessionStorage.getItem('sbutils.eventlog.session') != null,
+      undefined,
+      { timeout: 5_000 },
+    )
+    // Confirm no stale cache events are visible in the live dashboard.
+    await expect(page.locator('#cacheAllCount')).toHaveText('0')
+
+    // Export.
+    await page.locator('#exportBtn').click()
+    await page.locator('[data-export="html"]').click()
+    const downloadPromise = page.waitForEvent('download')
+    await page.locator('#modalSubmitBtn').click()
+    const download = await downloadPromise
+    const stream = await download.createReadStream()
+    const chunks: Buffer[] = []
+    for await (const c of stream) chunks.push(c as Buffer)
+    const html = Buffer.concat(chunks).toString('utf-8')
+
+    // The bake must include the startedAt so the snapshot's stubbed
+    // /config returns it and the staleness gate fires.
+    expect(html).toMatch(/__SNAPSHOT_STARTED_AT__\s*=\s*\d+/)
+
+    // Open the snapshot in a fresh context.
+    const dir = path.join(os.tmpdir(), 'sb-utils-e2e-stale-' + Date.now())
+    mkdirSync(dir, { recursive: true })
+    const snapPath = path.join(dir, 'snapshot.html')
+    writeFileSync(snapPath, html)
+    const ctx = await browser.newContext({})
+    const snap = await ctx.newPage()
+    await snap.goto('file://' + snapPath)
+    await expect.poll(() => snap.evaluate(() => (window as any).__SNAPSHOT__)).toBe(true)
+
+    // Stale cache entries from the playground are NOT visible by default.
+    await expect(snap.locator('#cacheAllCount')).toHaveText('0')
+
+    await ctx.close()
+  })
+
+  test('snapshot hides stale cache even if export was made with stale=on', async ({
+    page,
+    eventLoggerWithCache,
+    browser,
+  }) => {
+    // Boot, flip stale toggle ON so the playground's pre-existing
+    // entries materialize as cache:write events in events.value, then
+    // export. The snapshot should still default to hidden — relying
+    // on the matchesFilters staleness gate (event._receivedAt <
+    // bakedStartedAt) instead of trusting the events.value contents.
+    await page.goto(eventLoggerWithCache.url)
+    await page.waitForFunction(
+      () => sessionStorage.getItem('sbutils.eventlog.session') != null,
+      undefined,
+      { timeout: 5_000 },
+    )
+    await page.locator('#cacheOpsGearBtn').click()
+    await page.locator('.cache-ops-toggle').nth(1).click() // stale ON
+    await expect(page.locator('#cacheAllCount')).not.toHaveText('0', {
+      timeout: 5_000,
+    })
+
+    // Export.
+    await page.locator('#exportBtn').click()
+    await page.locator('[data-export="html"]').click()
+    const downloadPromise = page.waitForEvent('download')
+    await page.locator('#modalSubmitBtn').click()
+    const download = await downloadPromise
+    const stream = await download.createReadStream()
+    const chunks: Buffer[] = []
+    for await (const c of stream) chunks.push(c as Buffer)
+    const html = Buffer.concat(chunks).toString('utf-8')
+
+    const dir = path.join(os.tmpdir(), 'sb-utils-e2e-stale-baked-' + Date.now())
+    mkdirSync(dir, { recursive: true })
+    const snapPath = path.join(dir, 'snapshot.html')
+    writeFileSync(snapPath, html)
+
+    const ctx = await browser.newContext({})
+    const snap = await ctx.newPage()
+    await snap.goto('file://' + snapPath)
+    await expect.poll(() => snap.evaluate(() => (window as any).__SNAPSHOT__)).toBe(true)
+
+    // Even though stale entries were baked into __SNAPSHOT_EVENTS__,
+    // matchesFilters hides them by default in the snapshot. The
+    // sidebar "All operations" still counts them (it counts
+    // events.value, not visible) — but the dashboard list shows none.
+    await expect(snap.locator('#eventContainer .event-card:not(.filtered-out)')).toHaveCount(0)
+
+    // Toggling stale on inside the snapshot reveals them.
+    await snap.locator('#cacheOpsGearBtn').click()
+    await snap.locator('.cache-ops-toggle').nth(1).click()
+    await expect(
+      snap.locator('#eventContainer .event-card:not(.filtered-out)').first(),
+    ).toBeVisible({ timeout: 5_000 })
+
+    await ctx.close()
+  })
+
   test('snapshot ignores any sessionStorage preferences from the viewing machine', async ({
     page,
     eventLogger,

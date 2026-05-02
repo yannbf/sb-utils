@@ -68,6 +68,14 @@ test.describe('timeline view', () => {
     eventLogger,
   }) => {
     await page.goto(eventLogger.url)
+    // Wait for the runtime to wire up its keyboard listener — the
+    // session-id stamp is set during early boot, so its presence is a
+    // good "the runtime has settled" signal.
+    await page.waitForFunction(
+      () => sessionStorage.getItem('sbutils.eventlog.session') != null,
+      undefined,
+      { timeout: 5_000 },
+    )
     await page.keyboard.press('v')
     await expect(page.locator('#timelineView')).toBeVisible()
     await page.keyboard.press('v')

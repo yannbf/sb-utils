@@ -16,6 +16,8 @@ import {
   hiddenCacheKeys,
   cacheAllHidden,
   telemetryAllHidden,
+  showStaleCache,
+  serverStartedAt,
   searchQuery,
   type StoredEvent,
 } from '../store/signals'
@@ -30,6 +32,20 @@ export function matchesFilters(event: StoredEvent): boolean {
   // stream without touching the other.
   if (event._source === 'cache-watch') {
     if (cacheAllHidden.value) return false
+    // Hide baked stale entries (mtime < server startedAt) unless the
+    // user toggles "Show stale cache data" on. This catches snapshot
+    // mode where stale entries were baked into events.value at export
+    // time — at runtime ingestSyntheticCacheCreate filters them
+    // before they reach events.value, so this branch is a no-op for
+    // the live dashboard.
+    if (
+      !showStaleCache.value &&
+      serverStartedAt.value != null &&
+      event._receivedAt != null &&
+      event._receivedAt < serverStartedAt.value
+    ) {
+      return false
+    }
     const ck = cacheKeyOf(event)
     if (ck && hiddenCacheKeys.value.has(ck)) return false
     if (activeCacheKey.value && ck !== activeCacheKey.value) return false
