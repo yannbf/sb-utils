@@ -14,6 +14,7 @@ import {
   autoScroll,
   expandAll,
   searchQuery,
+  connectionStatus,
 } from '../store/signals'
 import { actions } from '../store/actions'
 
@@ -300,6 +301,26 @@ function EventCounter() {
   )
 }
 
+function StatusDot() {
+  // Combines connection status (SSE) and pause state. Paused dot uses
+  // the yellow paused style; disconnected falls back to red. Connected
+  // (the default) is green.
+  const status = connectionStatus.value
+  const isPaused = paused.value
+  const cls =
+    'status-dot' +
+    (isPaused ? ' paused' : '') +
+    (status === 'disconnected' ? ' disconnected' : '')
+  const title = isPaused
+    ? 'Paused'
+    : status === 'connected'
+      ? 'Connected'
+      : status === 'disconnected'
+        ? 'Disconnected — retrying...'
+        : 'Connecting…'
+  return <div class={cls} id="statusDot" title={title} />
+}
+
 export function Header() {
   return (
     <div class="header">
@@ -308,11 +329,7 @@ export function Header() {
           <StorybookLogo />
         </div>
         Telemetry Debugger
-        <div
-          class={'status-dot' + (paused.value ? ' paused' : '')}
-          id="statusDot"
-          title={paused.value ? 'Paused' : 'Connected'}
-        />
+        <StatusDot />
       </div>
       <ViewToggle />
       <div class="controls">

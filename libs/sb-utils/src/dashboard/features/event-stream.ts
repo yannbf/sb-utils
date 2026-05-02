@@ -14,6 +14,7 @@ import {
   realTelemetryDetected,
   paused,
   pausedWhileCount,
+  connectionStatus,
   appendEvent,
   setEvents,
   type StoredEvent,
@@ -21,20 +22,6 @@ import {
 import { backfillFromCache, reconstructTelemetryFromCacheWrite } from './reconstruction'
 import { refreshCacheEntries } from '../store/cache'
 import { timelineApi } from '../components/Timeline'
-
-let connectionStatus: 'connected' | 'disconnected' = 'disconnected'
-
-function applyStatus() {
-  const sd = document.getElementById('statusDot')
-  if (!sd) return
-  if (connectionStatus === 'connected') {
-    sd.className = 'status-dot'
-    sd.title = 'Connected'
-  } else {
-    sd.className = 'status-dot disconnected'
-    sd.title = 'Disconnected — retrying...'
-  }
-}
 
 function connect() {
   const eventSource = new EventSource('/sse')
@@ -60,13 +47,11 @@ function connect() {
     }
   }
   eventSource.onopen = () => {
-    connectionStatus = 'connected'
-    applyStatus()
+    connectionStatus.value = 'connected'
     void recoverMissedEvents()
   }
   eventSource.onerror = () => {
-    connectionStatus = 'disconnected'
-    applyStatus()
+    connectionStatus.value = 'disconnected'
   }
 }
 
