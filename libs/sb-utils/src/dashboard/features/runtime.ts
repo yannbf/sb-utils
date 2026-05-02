@@ -65,6 +65,18 @@ const isSnapshot = !!(window as any).__SNAPSHOT__
 if (!isSnapshot) {
   if (readPref('reconstruct') === '1') reconstructFromCache.value = true
   if (readPref('showStaleCache') === '1') showStaleCache.value = true
+} else {
+  // Snapshot mode: restore the cache-options toggles from the values
+  // baked at export time so the viewer sees what the exporter saw.
+  // sessionStorage is no-op in snapshot mode (so the viewer's local
+  // prefs can't bleed in), so we read straight from the baked global.
+  const baked = (window as any).__SNAPSHOT_PREFS__ as
+    | { reconstructFromCache?: boolean; showStaleCache?: boolean }
+    | undefined
+  if (baked) {
+    if (baked.reconstructFromCache) reconstructFromCache.value = true
+    if (baked.showStaleCache) showStaleCache.value = true
+  }
 }
 // ── Live event stream (SSE + boot recovery) ─────────────────────────
 setupEventStream()

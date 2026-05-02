@@ -189,32 +189,93 @@ test.describe('reconstruction toggle (opt-in via gear menu)', () => {
     await expect(page.locator('.event-recon-badge')).toHaveCount(0)
   })
 
-  test('cache-options gear shows a badge when any toggle is on', async ({
+  test('cache-options gear shows a blue "modified" badge when any toggle is on', async ({
     page,
-    eventLoggerWithCache,
+    eventLogger,
   }) => {
-    await page.goto(eventLoggerWithCache.url)
-    // Default: no badge.
+    // eventLogger fixture has no project root, so no cache — that
+    // isolates this test from the yellow "stale data" badge variant
+    // (which fires when the playground's cache is in scope).
+    await page.goto(eventLogger.url)
     await expect(page.locator('#cacheOpsGearBtn .cache-ops-gear-dot')).toHaveCount(0)
     await expect(page.locator('#cacheOpsGearBtn')).not.toHaveClass(/modified/)
+    await expect(page.locator('#cacheOpsGearBtn')).not.toHaveClass(/attention/)
 
-    // Flip a toggle.
     await page.locator('#cacheOpsGearBtn').click()
     await page.locator('.cache-ops-toggle').first().click()
 
     await expect(page.locator('#cacheOpsGearBtn .cache-ops-gear-dot')).toHaveCount(1)
     await expect(page.locator('#cacheOpsGearBtn')).toHaveClass(/modified/)
 
-    // Flip back off.
     await page.locator('.cache-ops-toggle').first().click()
     await expect(page.locator('#cacheOpsGearBtn .cache-ops-gear-dot')).toHaveCount(0)
   })
 
-  test('preferences live in sessionStorage and reset across server restarts', async ({
+  test('cache-options gear shows a yellow "attention" badge when stale data is detected and no toggle is on', async ({
+    page,
+    eventLoggerWithCache,
+  }) => {
+    // The playground has pre-existing cache files (stale by
+    // definition for a fresh server). Default boot: no toggle on,
+    // stale data exists → yellow attention badge.
+    await page.goto(eventLoggerWithCache.url)
+    // Wait for backfill to settle.
+    await page.waitForFunction(
+      () => sessionStorage.getItem('sbutils.eventlog.session') != null,
+      undefined,
+      { timeout: 5_000 },
+    )
+    await expect(page.locator('#cacheOpsGearBtn')).toHaveClass(/attention/, {
+      timeout: 5_000,
+    })
+    await expect(page.locator('#cacheOpsGearBtn .cache-ops-gear-dot')).toHaveCount(1)
+
+    // Flipping any toggle on transitions to the blue "modified" state
+    // (the user has acted on the nudge).
+    await page.locator('#cacheOpsGearBtn').click()
+    await page.locator('.cache-ops-toggle').first().click() // reconstruct
+    await expect(page.locator('#cacheOpsGearBtn')).not.toHaveClass(/attention/)
+    await expect(page.locator('#cacheOpsGearBtn')).toHaveClass(/modified/)
+  })
+
+  test('"Show stale cache data" toggle is hidden when no stale data exists', async ({
+    page,
+    eventLogger,
+  }) => {
+    // No project root → no cache entries → no stale row in the menu.
+    // Only the "Reconstruct telemetry from cache" row should render.
+    await page.goto(eventLogger.url)
+    await page.locator('#cacheOpsGearBtn').click()
+    await expect(page.locator('.cache-ops-menu-row')).toHaveCount(1)
+    await expect(page.locator('.cache-ops-menu-title')).toContainText(
+      'Reconstruct telemetry from cache',
+    )
+  })
+
+  test('"Show stale cache data" row mentions the detected entry count', async ({
     page,
     eventLoggerWithCache,
   }) => {
     await page.goto(eventLoggerWithCache.url)
+    await page.waitForFunction(
+      () => sessionStorage.getItem('sbutils.eventlog.session') != null,
+      undefined,
+      { timeout: 5_000 },
+    )
+    await page.locator('#cacheOpsGearBtn').click()
+    // The pill renders the count followed by "entries detected".
+    await expect(page.locator('.cache-ops-menu-pill')).toContainText(/\d+ entr(?:y|ies) detected/, {
+      timeout: 5_000,
+    })
+  })
+
+  test('preferences live in sessionStorage and reset across server restarts', async ({
+    page,
+    eventLogger,
+  }) => {
+    // Use the no-cache fixture so the gear's yellow "attention" badge
+    // doesn't conflate with the "modified" badge we're checking here.
+    await page.goto(eventLogger.url)
     await page.locator('#cacheOpsGearBtn').click()
     await page.locator('.cache-ops-toggle').first().click()
     await expect(page.locator('.cache-ops-toggle').first()).toHaveAttribute(

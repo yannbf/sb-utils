@@ -14,6 +14,8 @@ import {
   events,
   realTelemetryDetected,
   serverStartedAt,
+  reconstructFromCache,
+  showStaleCache,
   pushToast,
 } from '../store/signals'
 import { openSaveModal } from '../store/modal'
@@ -84,6 +86,15 @@ export async function exportHtmlSnapshot(): Promise<void> {
   // `<script>` at the top of <head>. Vite's bundle is a deferred
   // `<script type="module">` so this runs first by definition.
   const bakedStartedAt = serverStartedAt.value
+  // Bake the user's cache-options toggle state so the viewer sees
+  // exactly what the exporter saw — same stale-data visibility, same
+  // reconstruction state. Without this, opening the snapshot on a
+  // viewer's machine always defaulted to both off, so the viewer
+  // would see fewer events than the exporter intended to share.
+  const bakedPrefs = {
+    reconstructFromCache: reconstructFromCache.value,
+    showStaleCache: showStaleCache.value,
+  }
   const bootstrap = document.createElement('script')
   bootstrap.textContent = [
     '(function() {',
@@ -95,6 +106,7 @@ export async function exportHtmlSnapshot(): Promise<void> {
     // `started != null` gate was always false — every cache entry
     // got ingested, defeating the "Show stale cache data" default.
     '  window.__SNAPSHOT_STARTED_AT__ = ' + JSON.stringify(bakedStartedAt) + ';',
+    '  window.__SNAPSHOT_PREFS__ = ' + JSON.stringify(bakedPrefs) + ';',
     // Carry the realTelemetryDetected flag so reconstruction doesn't
     // re-run on snapshot load. Storybook generates DIFFERENT eventIds
     // for HTTP-sent telemetry vs the body it stores in the lastEvents

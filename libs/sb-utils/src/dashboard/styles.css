@@ -372,7 +372,10 @@
   .cache-ops-gear:hover { color: var(--text); background: var(--bg-card-hover); }
   .cache-ops-gear.open { color: var(--accent); background: var(--accent-muted); }
   .cache-ops-gear.modified { color: var(--accent); }
-  /* Tiny dot at the top-right of the gear when any cache toggle is on. */
+  /* Yellow "attention" variant — stale data detected but no mode is on. */
+  .cache-ops-gear.attention { color: var(--yellow); }
+  /* Tiny dot at the top-right of the gear when any cache toggle is on,
+     or when stale data was detected and the user hasn't opted in. */
   .cache-ops-gear-dot {
     position: absolute;
     top: 2px;
@@ -384,6 +387,10 @@
     border: 1.5px solid var(--bg-raised);
     box-shadow: 0 0 4px rgba(108,158,248,0.6);
     pointer-events: none;
+  }
+  .cache-ops-gear.attention .cache-ops-gear-dot {
+    background: var(--yellow);
+    box-shadow: 0 0 4px rgba(251, 191, 36, 0.7);
   }
 
   .cache-ops-menu {
@@ -414,6 +421,26 @@
     font-size: 12px;
     font-weight: 500;
     color: var(--text);
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  /* Small "N entries detected" pill next to the stale-cache toggle
+     title. Yellow to match the gear's attention badge — visually
+     consistent with the "you have stale data" state. */
+  .cache-ops-menu-pill {
+    font-family: var(--font-sans);
+    font-size: 9.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--yellow);
+    background: rgba(251, 191, 36, 0.14);
+    border: 1px solid rgba(251, 191, 36, 0.45);
+    border-radius: 4px;
+    padding: 1px 6px;
+    line-height: 1.3;
   }
   .cache-ops-menu-hint {
     font-size: 11px;

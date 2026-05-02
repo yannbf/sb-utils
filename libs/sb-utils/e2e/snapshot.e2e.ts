@@ -167,16 +167,61 @@ test.describe('HTML snapshot export', () => {
     await ctx.close()
   })
 
-  test('snapshot hides stale cache even if export was made with stale=on', async ({
+  test('snapshot exposes the yellow attention badge when baked entries are stale', async ({
     page,
     eventLoggerWithCache,
     browser,
   }) => {
-    // Boot, flip stale toggle ON so the playground's pre-existing
-    // entries materialize as cache:write events in events.value, then
-    // export. The snapshot should still default to hidden — relying
-    // on the matchesFilters staleness gate (event._receivedAt <
-    // bakedStartedAt) instead of trusting the events.value contents.
+    // Export a snapshot from the playground (stale entries exist) WITHOUT
+    // toggling anything. The viewer should see the same yellow
+    // attention badge the exporter saw — the staleCacheCount signal
+    // is populated from the stubbed /cache/entries response.
+    await page.goto(eventLoggerWithCache.url)
+    await page.waitForFunction(
+      () => sessionStorage.getItem('sbutils.eventlog.session') != null,
+      undefined,
+      { timeout: 5_000 },
+    )
+    await expect(page.locator('#cacheOpsGearBtn')).toHaveClass(/attention/)
+
+    await page.locator('#exportBtn').click()
+    await page.locator('[data-export="html"]').click()
+    const downloadPromise = page.waitForEvent('download')
+    await page.locator('#modalSubmitBtn').click()
+    const download = await downloadPromise
+    const stream = await download.createReadStream()
+    const chunks: Buffer[] = []
+    for await (const c of stream) chunks.push(c as Buffer)
+    const html = Buffer.concat(chunks).toString('utf-8')
+
+    const dir = path.join(os.tmpdir(), 'sb-utils-e2e-attention-' + Date.now())
+    mkdirSync(dir, { recursive: true })
+    const snapPath = path.join(dir, 'snapshot.html')
+    writeFileSync(snapPath, html)
+    const ctx = await browser.newContext({})
+    const snap = await ctx.newPage()
+    await snap.goto('file://' + snapPath)
+    await expect.poll(() => snap.evaluate(() => (window as any).__SNAPSHOT__)).toBe(true)
+
+    // Yellow badge present in the snapshot too.
+    await expect(snap.locator('#cacheOpsGearBtn')).toHaveClass(/attention/, {
+      timeout: 5_000,
+    })
+    // The gear popover surfaces the "N entries detected" pill.
+    await snap.locator('#cacheOpsGearBtn').click()
+    await expect(snap.locator('.cache-ops-menu-pill')).toContainText(/\d+ entr(?:y|ies) detected/)
+
+    await ctx.close()
+  })
+
+  test('snapshot preserves the exporter\'s cache toggle state', async ({
+    page,
+    eventLoggerWithCache,
+    browser,
+  }) => {
+    // The exporter wants the viewer to see what they saw. So if the
+    // exporter had stale=on at export time, the snapshot should boot
+    // with stale=on too — visible entries match the exporter's view.
     await page.goto(eventLoggerWithCache.url)
     await page.waitForFunction(
       () => sessionStorage.getItem('sbutils.eventlog.session') != null,
@@ -200,6 +245,9 @@ test.describe('HTML snapshot export', () => {
     for await (const c of stream) chunks.push(c as Buffer)
     const html = Buffer.concat(chunks).toString('utf-8')
 
+    // Bake includes the exporter's prefs.
+    expect(html).toMatch(/__SNAPSHOT_PREFS__\s*=\s*\{[^}]*"showStaleCache":\s*true/)
+
     const dir = path.join(os.tmpdir(), 'sb-utils-e2e-stale-baked-' + Date.now())
     mkdirSync(dir, { recursive: true })
     const snapPath = path.join(dir, 'snapshot.html')
@@ -210,18 +258,23 @@ test.describe('HTML snapshot export', () => {
     await snap.goto('file://' + snapPath)
     await expect.poll(() => snap.evaluate(() => (window as any).__SNAPSHOT__)).toBe(true)
 
-    // Even though stale entries were baked into __SNAPSHOT_EVENTS__,
-    // matchesFilters hides them by default in the snapshot. The
-    // sidebar "All operations" still counts them (it counts
-    // events.value, not visible) — but the dashboard list shows none.
-    await expect(snap.locator('#eventContainer .event-card:not(.filtered-out)')).toHaveCount(0)
-
-    // Toggling stale on inside the snapshot reveals them.
-    await snap.locator('#cacheOpsGearBtn').click()
-    await snap.locator('.cache-ops-toggle').nth(1).click()
+    // Stale entries are visible because the exporter's stale=on was
+    // restored from the baked prefs.
     await expect(
       snap.locator('#eventContainer .event-card:not(.filtered-out)').first(),
     ).toBeVisible({ timeout: 5_000 })
+
+    // Toggle inside the snapshot still flips state — viewer can hide
+    // stale entries if they want. The toggle reads on initially.
+    await snap.locator('#cacheOpsGearBtn').click()
+    await expect(snap.locator('.cache-ops-toggle').nth(1)).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    await snap.locator('.cache-ops-toggle').nth(1).click()
+    await expect(
+      snap.locator('#eventContainer .event-card:not(.filtered-out)'),
+    ).toHaveCount(0)
 
     await ctx.close()
   })

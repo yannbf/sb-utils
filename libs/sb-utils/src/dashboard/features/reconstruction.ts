@@ -15,6 +15,7 @@ import {
   reconstructFromCache,
   showStaleCache,
   serverStartedAt,
+  staleCacheCount,
   paused,
   pausedWhileCount,
   appendEvent,
@@ -204,6 +205,22 @@ export async function backfillFromCache(): Promise<void> {
     if (!cacheRes.ok) return
     const data = await cacheRes.json()
     const entries: any[] = data && Array.isArray(data.entries) ? data.entries : []
+
+    // Count stale entries (mtime < startedAt) regardless of whether
+    // they're being ingested. The sidebar gear uses this to decide
+    // whether to show the "Show stale cache data" toggle and to flag
+    // its badge yellow when stale data exists but no mode is on.
+    const cutoff = serverStartedAt.value
+    if (cutoff != null) {
+      let stale = 0
+      for (const entry of entries) {
+        const ts = typeof entry?.mtime === 'number' ? entry.mtime : null
+        if (ts != null && ts < cutoff) stale++
+      }
+      staleCacheCount.value = stale
+    } else {
+      staleCacheCount.value = 0
+    }
     if (entries.length === 0) return
 
     const sorted = entries.slice().sort((a, b) => (a.mtime || 0) - (b.mtime || 0))

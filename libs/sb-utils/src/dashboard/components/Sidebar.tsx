@@ -21,6 +21,7 @@ import {
   telemetryAllHidden,
   reconstructFromCache,
   showStaleCache,
+  staleCacheCount,
   typeCounts,
   sessionMap,
   cacheMap,
@@ -173,6 +174,12 @@ function CacheOpsMenu({
 }) {
   const reconstruct = reconstructFromCache.value
   const stale = showStaleCache.value
+  const staleCount = staleCacheCount.value
+  // The "Show stale cache data" row only renders when stale entries
+  // actually exist OR the toggle is currently on (so the user can
+  // turn it off). If we hid it on `stale=true && staleCount==0`
+  // there'd be no way to flip it back.
+  const showStaleRow = staleCount > 0 || stale
   const ref = useRef<HTMLDivElement>(null)
   const rect = anchor.getBoundingClientRect()
   // Left-align the menu's left edge with the anchor (gear) and open
@@ -226,24 +233,34 @@ function CacheOpsMenu({
           <span class="cache-ops-toggle-knob" />
         </button>
       </label>
-      <label class="cache-ops-menu-row">
-        <span class="cache-ops-menu-label">
-          <span class="cache-ops-menu-title">Show stale cache data</span>
-          <span class="cache-ops-menu-hint">
-            Cache entries written before this session started are hidden
-            by default. Toggle on to surface pre-existing files.
+      {showStaleRow && (
+        <label class="cache-ops-menu-row">
+          <span class="cache-ops-menu-label">
+            <span class="cache-ops-menu-title">
+              Show stale cache data
+              {staleCount > 0 && (
+                <span class="cache-ops-menu-pill">
+                  {staleCount} {staleCount === 1 ? 'entry' : 'entries'} detected
+                </span>
+              )}
+            </span>
+            <span class="cache-ops-menu-hint">
+              {staleCount > 0
+                ? `${staleCount} cache ${staleCount === 1 ? 'entry was' : 'entries were'} written before this session started. Toggle on to surface ${staleCount === 1 ? 'it' : 'them'}.`
+                : 'Cache entries written before this session started are hidden by default.'}
+            </span>
           </span>
-        </span>
-        <button
-          type="button"
-          class={'cache-ops-toggle' + (stale ? ' on' : '')}
-          role="switch"
-          aria-checked={stale}
-          onClick={() => actions().setShowStaleCache(!stale)}
-        >
-          <span class="cache-ops-toggle-knob" />
-        </button>
-      </label>
+          <button
+            type="button"
+            class={'cache-ops-toggle' + (stale ? ' on' : '')}
+            role="switch"
+            aria-checked={stale}
+            onClick={() => actions().setShowStaleCache(!stale)}
+          >
+            <span class="cache-ops-toggle-knob" />
+          </button>
+        </label>
+      )}
     </div>
   )
 }
@@ -259,10 +276,24 @@ function CacheOpsSection() {
   const isAllActive = active === null
   const [menuOpen, setMenuOpen] = useState(false)
   const gearRef = useRef<HTMLButtonElement>(null)
-  // Show a small badge on the gear icon when any cache-options toggle
-  // is on, so it's visually obvious from the sidebar at a glance that
-  // the cache pipeline is in a non-default state.
+  // Two badge variants on the gear icon:
+  //   - 'modified' (blue): a cache option toggle is on, signaling the
+  //     pipeline is in a non-default state.
+  //   - 'attention' (yellow): stale cache data exists but no toggle
+  //     is on — the user might be missing pre-existing data they'd
+  //     want to surface, so we nudge them toward the gear.
   const hasModified = reconstructFromCache.value || showStaleCache.value
+  const hasStaleAttention = !hasModified && staleCacheCount.value > 0
+  const gearClass =
+    'cache-ops-gear' +
+    (menuOpen ? ' open' : '') +
+    (hasModified ? ' modified' : '') +
+    (hasStaleAttention ? ' attention' : '')
+  const gearTitle = hasModified
+    ? 'Cache options (modified from defaults)'
+    : hasStaleAttention
+      ? `Cache options (${staleCacheCount.value} stale ${staleCacheCount.value === 1 ? 'entry' : 'entries'} detected)`
+      : 'Cache options'
 
   return (
     <div class="sidebar-section">
@@ -271,13 +302,9 @@ function CacheOpsSection() {
         <button
           type="button"
           ref={gearRef}
-          class={'cache-ops-gear' + (menuOpen ? ' open' : '') + (hasModified ? ' modified' : '')}
+          class={gearClass}
           id="cacheOpsGearBtn"
-          title={
-            hasModified
-              ? 'Cache options (modified from defaults)'
-              : 'Cache options'
-          }
+          title={gearTitle}
           aria-label="Cache options"
           aria-expanded={menuOpen}
           onClick={(e) => {
@@ -286,7 +313,9 @@ function CacheOpsSection() {
           }}
         >
           <GearIcon />
-          {hasModified && <span class="cache-ops-gear-dot" aria-hidden="true" />}
+          {(hasModified || hasStaleAttention) && (
+            <span class="cache-ops-gear-dot" aria-hidden="true" />
+          )}
         </button>
         {menuOpen && gearRef.current && (
           <CacheOpsMenu anchor={gearRef.current} onClose={() => setMenuOpen(false)} />

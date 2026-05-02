@@ -68,6 +68,15 @@ export const showStaleCache = signal(false)
  */
 export const serverStartedAt = signal<number | null>(null)
 
+/**
+ * Number of cache entries with mtime < serverStartedAt that the
+ * backfill detected on the most recent run. Drives the gear badge
+ * (yellow when stale data exists and no toggle is set) and the
+ * conditional rendering of the "Show stale cache data" row in the
+ * gear popover. Reset to 0 between backfill runs.
+ */
+export const staleCacheCount = signal(0)
+
 // ── Reconstruction flag ──────────────────────────────────
 export const realTelemetryDetected = signal(false)
 
