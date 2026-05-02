@@ -95,6 +95,9 @@ test.describe('cache discovery', () => {
       undefined,
       { timeout: 5_000 },
     )
+    // Cache events are hidden by default — flip "Show cache
+    // operations" so the seed entry + live write surface as cards.
+    await page.locator('#cacheOpsShowToggle').click()
 
     // Storybook creates the cache directory + a seed entry.
     const cacheDir = path.join(

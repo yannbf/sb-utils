@@ -68,14 +68,13 @@ test.describe('telemetry reconstruction from cache', () => {
     eventLoggerWithCache,
   }) => {
     await bootWithPrefs(page, eventLoggerWithCache.url)
-    // Cache Operations sidebar should be non-empty after backfill.
-    await expect(page.locator('#cacheAllCount')).not.toHaveText('0', {
-      timeout: 5_000,
-    })
-    const allOpsCount = await page
-      .locator('#cacheAllCount')
-      .textContent()
-    expect(Number(allOpsCount)).toBeGreaterThan(0)
+    // Cache events are hidden by default — flip "Show cache operations"
+    // on so the synthetic cache:write cards become visible in the
+    // dashboard list, then assert at least one rendered.
+    await page.locator('#cacheOpsShowToggle').click()
+    await expect(
+      page.locator('#eventContainer .event-card[data-cache-event="true"]').first(),
+    ).toBeVisible({ timeout: 5_000 })
   })
 
   test('a real telemetry event arriving via SSE coexists with reconstructed ones', async ({
@@ -114,10 +113,11 @@ test.describe('telemetry reconstruction from cache', () => {
 
 /**
  * Reconstruction is opt-in: by default no recon badges show. The user
- * has to flip the toggle in the Cache Operations gear menu — at which
- * point the synthetic events appear immediately (no reload required).
+ * flips the inline "Reconstruct telemetry from cache" toggle in the
+ * Cache Operations sidebar — synthetic events appear immediately (no
+ * reload required).
  */
-test.describe('reconstruction toggle (opt-in via gear menu)', () => {
+test.describe('reconstruction toggle (opt-in via sidebar)', () => {
   test('boots with no recon badges when the toggle is off', async ({
     page,
     eventLoggerWithCache,
@@ -132,7 +132,7 @@ test.describe('reconstruction toggle (opt-in via gear menu)', () => {
     page,
     eventLoggerWithCache,
   }) => {
-    // Reconstruction now respects the staleness gate: with stale=off
+    // Reconstruction respects the staleness gate: with stale=off
     // (default), only telemetry events at-or-after the server's
     // startedAt are reconstructed. The mocks' lastEvents file is
     // entirely pre-existing, so reconstruct alone yields zero events.
@@ -141,39 +141,45 @@ test.describe('reconstruction toggle (opt-in via gear menu)', () => {
     await page.waitForTimeout(800)
     await expect(page.locator('.event-recon-badge')).toHaveCount(0)
 
-    await page.locator('#cacheOpsGearBtn').click()
-    await page.locator('.cache-ops-toggle').first().click() // reconstruct
-    await expect(page.locator('.cache-ops-toggle').first()).toHaveAttribute('aria-checked', 'true')
-    // Stale is still off — mocks' pre-existing lastEvents
-    // entries are skipped.
+    await page.locator('#cacheOpsReconstructToggle').click()
+    await expect(page.locator('#cacheOpsReconstructToggle')).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    // Stale is still off — mocks' pre-existing lastEvents entries are
+    // skipped.
     await expect(page.locator('.event-recon-badge')).toHaveCount(0)
 
     // Now flip stale on — the previously-skipped entries get
     // reconstructed in the same flow.
-    await page.locator('.cache-ops-toggle').nth(1).click() // stale
+    await page.locator('#cacheOpsStaleToggle').click()
     await expect(page.locator('.event-recon-badge').first()).toBeVisible({
       timeout: 5_000,
     })
   })
 
-  test('toggling reconstruction ON un-hides cache events if they were hidden', async ({
+  test('toggling reconstruct ON does not auto-flip "Show cache operations"', async ({
     page,
     eventLoggerWithCache,
   }) => {
+    // The three toggles are independent — turning reconstruct on
+    // surfaces cache-recon events (which aren't gated by
+    // cacheAllHidden) but leaves the "Show cache operations" toggle
+    // in whatever state the user left it in.
     await page.goto(eventLoggerWithCache.url)
-    // First hide cache manually so we have something for reconstruct
-    // to un-hide.
-    const cacheRow = page.locator('[data-cache-key="__all__"]')
-    await cacheRow.hover()
-    await page.locator('#cacheAllEyeBtn').click()
-    await expect(cacheRow).toHaveClass(/hidden-item/)
-
-    // Toggle reconstruction. The first .cache-ops-toggle is the
-    // reconstruct one (rows are stable in CacheOpsMenu).
-    await page.locator('#cacheOpsGearBtn').click()
-    await page.locator('.cache-ops-toggle').first().click()
-
-    await expect(cacheRow).not.toHaveClass(/hidden-item/)
+    await expect(page.locator('#cacheOpsShowToggle')).toHaveAttribute(
+      'aria-checked',
+      'false',
+    )
+    await page.locator('#cacheOpsReconstructToggle').click()
+    await expect(page.locator('#cacheOpsReconstructToggle')).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    await expect(page.locator('#cacheOpsShowToggle')).toHaveAttribute(
+      'aria-checked',
+      'false',
+    )
   })
 
   test('toggling reconstruction OFF removes previously-reconstructed events', async ({
@@ -183,11 +189,8 @@ test.describe('reconstruction toggle (opt-in via gear menu)', () => {
     await page.goto(eventLoggerWithCache.url)
     // Flip both reconstruct + stale ON so the mocks' pre-existing
     // lastEvents content is reconstructed.
-    await page.locator('#cacheOpsGearBtn').click()
-    const reconstructToggle = page.locator('.cache-ops-toggle').first()
-    const staleToggle = page.locator('.cache-ops-toggle').nth(1)
-    await reconstructToggle.click()
-    await staleToggle.click()
+    await page.locator('#cacheOpsReconstructToggle').click()
+    await page.locator('#cacheOpsStaleToggle').click()
     await expect(page.locator('.event-recon-badge').first()).toBeVisible({
       timeout: 5_000,
     })
@@ -195,84 +198,43 @@ test.describe('reconstruction toggle (opt-in via gear menu)', () => {
     expect(reconCount).toBeGreaterThan(0)
 
     // Flip reconstruct OFF — every reconstructed event should disappear.
-    await reconstructToggle.click()
-    await expect(reconstructToggle).toHaveAttribute('aria-checked', 'false')
-    await expect(page.locator('.event-recon-badge')).toHaveCount(0)
-  })
-
-  test('cache-options gear shows a blue "modified" badge when any toggle is on', async ({
-    page,
-    eventLogger,
-  }) => {
-    // eventLogger fixture has no project root, so no cache — that
-    // isolates this test from the yellow "stale data" badge variant
-    // (which fires when the mocks' cache is in scope).
-    await page.goto(eventLogger.url)
-    await expect(page.locator('#cacheOpsGearBtn .cache-ops-gear-dot')).toHaveCount(0)
-    await expect(page.locator('#cacheOpsGearBtn')).not.toHaveClass(/modified/)
-    await expect(page.locator('#cacheOpsGearBtn')).not.toHaveClass(/attention/)
-
-    await page.locator('#cacheOpsGearBtn').click()
-    await page.locator('.cache-ops-toggle').first().click()
-
-    await expect(page.locator('#cacheOpsGearBtn .cache-ops-gear-dot')).toHaveCount(1)
-    await expect(page.locator('#cacheOpsGearBtn')).toHaveClass(/modified/)
-
-    await page.locator('.cache-ops-toggle').first().click()
-    await expect(page.locator('#cacheOpsGearBtn .cache-ops-gear-dot')).toHaveCount(0)
-  })
-
-  test('cache-options gear shows a yellow "attention" badge when stale data is detected and no toggle is on', async ({
-    page,
-    eventLoggerWithCache,
-  }) => {
-    // The mocks fixture has pre-existing cache files (stale by
-    // definition for a fresh server). Default boot: no toggle on,
-    // stale data exists → yellow attention badge.
-    await page.goto(eventLoggerWithCache.url)
-    // Wait for backfill to settle.
-    await page.waitForFunction(
-      () => sessionStorage.getItem('sbutils.eventlog.session') != null,
-      undefined,
-      { timeout: 5_000 },
+    await page.locator('#cacheOpsReconstructToggle').click()
+    await expect(page.locator('#cacheOpsReconstructToggle')).toHaveAttribute(
+      'aria-checked',
+      'false',
     )
-    await expect(page.locator('#cacheOpsGearBtn')).toHaveClass(/attention/, {
-      timeout: 5_000,
-    })
-    await expect(page.locator('#cacheOpsGearBtn .cache-ops-gear-dot')).toHaveCount(1)
-
-    // Flipping any toggle on transitions to the blue "modified" state
-    // (the user has acted on the nudge).
-    await page.locator('#cacheOpsGearBtn').click()
-    await page.locator('.cache-ops-toggle').first().click() // reconstruct
-    await expect(page.locator('#cacheOpsGearBtn')).not.toHaveClass(/attention/)
-    await expect(page.locator('#cacheOpsGearBtn')).toHaveClass(/modified/)
+    await expect(page.locator('.event-recon-badge')).toHaveCount(0)
   })
 
   test('toggling stale OFF after both were on drops stale cache:write AND stale cache-recon events', async ({
     page,
     eventLoggerWithCache,
   }) => {
-    // Both on → reconstruction + stale cache visible.
+    // Show cache + reconstruct + stale all on → reconstruction +
+    // stale cache:write entries visible.
     await page.goto(eventLoggerWithCache.url)
-    await page.locator('#cacheOpsGearBtn').click()
-    await page.locator('.cache-ops-toggle').first().click() // reconstruct
-    await page.locator('.cache-ops-toggle').nth(1).click() // stale
+    await page.locator('#cacheOpsShowToggle').click()
+    await page.locator('#cacheOpsReconstructToggle').click()
+    await page.locator('#cacheOpsStaleToggle').click()
     await expect(page.locator('.event-recon-badge').first()).toBeVisible({
       timeout: 5_000,
     })
-    await expect(page.locator('#cacheAllCount')).not.toHaveText('0')
+    await expect(
+      page.locator('#eventContainer .event-card[data-cache-event="true"]').first(),
+    ).toBeVisible({ timeout: 5_000 })
     const initialRecon = await page.locator('.event-recon-badge').count()
     expect(initialRecon).toBeGreaterThan(0)
 
     // Flip stale off — should drop both stale cache:write events
-    // (cacheCount → 0) AND stale cache-recon events (no badges left).
-    await page.locator('.cache-ops-toggle').nth(1).click()
-    await expect(page.locator('#cacheAllCount')).toHaveText('0')
+    // (cache cards → 0) AND stale cache-recon events (no badges left).
+    await page.locator('#cacheOpsStaleToggle').click()
+    await expect(
+      page.locator('#eventContainer .event-card[data-cache-event="true"]'),
+    ).toHaveCount(0)
     await expect(page.locator('.event-recon-badge')).toHaveCount(0)
     // Reconstruct toggle stayed on — flipping stale on again brings
     // the recon events back (round-trip test).
-    await page.locator('.cache-ops-toggle').nth(1).click()
+    await page.locator('#cacheOpsStaleToggle').click()
     await expect(page.locator('.event-recon-badge').first()).toBeVisible({
       timeout: 5_000,
     })
@@ -282,14 +244,13 @@ test.describe('reconstruction toggle (opt-in via gear menu)', () => {
     page,
     eventLogger,
   }) => {
-    // No project root → no cache entries → no stale row in the menu.
-    // Only the "Reconstruct telemetry from cache" row should render.
+    // No project root → no cache entries → no stale row in the section.
+    // The other two toggles ("Show cache operations" + "Reconstruct")
+    // still render.
     await page.goto(eventLogger.url)
-    await page.locator('#cacheOpsGearBtn').click()
-    await expect(page.locator('.cache-ops-menu-row')).toHaveCount(1)
-    await expect(page.locator('.cache-ops-menu-title')).toContainText(
-      'Reconstruct telemetry from cache',
-    )
+    await expect(page.locator('#cacheOpsShowToggle')).toBeVisible()
+    await expect(page.locator('#cacheOpsReconstructToggle')).toBeVisible()
+    await expect(page.locator('#cacheOpsStaleToggle')).toHaveCount(0)
   })
 
   test('"Show stale cache data" row mentions the detected entry count', async ({
@@ -302,23 +263,21 @@ test.describe('reconstruction toggle (opt-in via gear menu)', () => {
       undefined,
       { timeout: 5_000 },
     )
-    await page.locator('#cacheOpsGearBtn').click()
-    // The pill renders the count followed by "entries detected".
-    await expect(page.locator('.cache-ops-menu-pill')).toContainText(/\d+ entr(?:y|ies) detected/, {
-      timeout: 5_000,
-    })
+    // The pill renders next to the "Show stale cache data" title.
+    await expect(page.locator('.cache-ops-menu-pill')).toContainText(
+      /\d+ entr(?:y|ies) detected/,
+      { timeout: 5_000 },
+    )
   })
 
   test('preferences live in sessionStorage and reset across server restarts', async ({
     page,
     eventLogger,
   }) => {
-    // Use the no-cache fixture so the gear's yellow "attention" badge
-    // doesn't conflate with the "modified" badge we're checking here.
+    // Use the no-cache fixture so the stale-data row doesn't render.
     await page.goto(eventLogger.url)
-    await page.locator('#cacheOpsGearBtn').click()
-    await page.locator('.cache-ops-toggle').first().click()
-    await expect(page.locator('.cache-ops-toggle').first()).toHaveAttribute(
+    await page.locator('#cacheOpsReconstructToggle').click()
+    await expect(page.locator('#cacheOpsReconstructToggle')).toHaveAttribute(
       'aria-checked',
       'true',
     )
@@ -340,43 +299,43 @@ test.describe('reconstruction toggle (opt-in via gear menu)', () => {
       sessionStorage.setItem('sbutils.eventlog.session', '0')
     })
     await page.reload()
-    // The pref should be gone — open the gear menu and check the
-    // toggle reads OFF.
-    await page.locator('#cacheOpsGearBtn').click()
-    await expect(page.locator('.cache-ops-toggle').first()).toHaveAttribute(
+    // The pref should be gone — the toggle reads OFF after reload.
+    await expect(page.locator('#cacheOpsReconstructToggle')).toHaveAttribute(
       'aria-checked',
       'false',
     )
-    // And the badge should be cleared.
-    await expect(page.locator('#cacheOpsGearBtn .cache-ops-gear-dot')).toHaveCount(0)
   })
 
   test('show-stale-cache toggle materializes pre-existing cache entries', async ({
     page,
     eventLoggerWithCache,
   }) => {
-    // The mocks' cache files were written long before the test
-    // server booted, so they're stale by definition. With the default
-    // off they don't appear in the Cache Operations sidebar. Toggling
-    // the second gear option on backfills them.
+    // The mocks' cache files were written long before the test server
+    // booted, so they're stale by definition. With the default off
+    // (and "Show cache operations" also off), they don't appear in the
+    // dashboard. Flipping both surfaces them.
     await page.goto(eventLoggerWithCache.url)
-    // Wait for boot to settle (config + entries fetch).
     await page.waitForTimeout(800)
-    await expect(page.locator('#cacheAllCount')).toHaveText('0')
+    await expect(
+      page.locator('#eventContainer .event-card[data-cache-event="true"]'),
+    ).toHaveCount(0)
 
-    await page.locator('#cacheOpsGearBtn').click()
-    // Show-stale-cache is the second row in the gear popover.
-    const staleToggle = page.locator('.cache-ops-toggle').nth(1)
-    await staleToggle.click()
-    await expect(staleToggle).toHaveAttribute('aria-checked', 'true')
+    await page.locator('#cacheOpsShowToggle').click()
+    await page.locator('#cacheOpsStaleToggle').click()
+    await expect(page.locator('#cacheOpsStaleToggle')).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
 
-    await expect(page.locator('#cacheAllCount')).not.toHaveText('0', {
-      timeout: 5_000,
-    })
+    await expect(
+      page.locator('#eventContainer .event-card[data-cache-event="true"]').first(),
+    ).toBeVisible({ timeout: 5_000 })
 
-    // Flip OFF — pre-existing entries vanish again.
-    await staleToggle.click()
-    await expect(page.locator('#cacheAllCount')).toHaveText('0')
+    // Flip stale OFF — pre-existing entries vanish again.
+    await page.locator('#cacheOpsStaleToggle').click()
+    await expect(
+      page.locator('#eventContainer .event-card[data-cache-event="true"]'),
+    ).toHaveCount(0)
   })
 
   test('toggle ON replays cache even after a real telemetry event has been seen', async ({
@@ -398,15 +357,14 @@ test.describe('reconstruction toggle (opt-in via gear menu)', () => {
     ).toHaveCount(1, { timeout: 5_000 })
     await expect(page.locator('.event-recon-badge')).toHaveCount(0)
 
-    // Now flip both toggles — reconstruct + stale — so the
-    // mocks' pre-existing lastEvents content is replayed even
-    // though a real event already landed first.
-    await page.locator('#cacheOpsGearBtn').click()
-    await page.locator('.cache-ops-toggle').first().click() // reconstruct
-    await page.locator('.cache-ops-toggle').nth(1).click() // stale
+    // Now flip both toggles — reconstruct + stale — so the mocks'
+    // pre-existing lastEvents content is replayed even though a real
+    // event already landed first.
+    await page.locator('#cacheOpsReconstructToggle').click()
+    await page.locator('#cacheOpsStaleToggle').click()
 
-    // Recon badges show up — mocks' lastEvents was replayed
-    // despite real telemetry having arrived first.
+    // Recon badges show up — mocks' lastEvents was replayed despite
+    // real telemetry having arrived first.
     await expect(page.locator('.event-recon-badge').first()).toBeVisible({
       timeout: 5_000,
     })

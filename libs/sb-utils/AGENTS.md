@@ -155,17 +155,27 @@ snapshots, bake it in `snapshot-export.ts` AND restore it in
 
 ### Cache toggles + staleness
 
-Three orthogonal toggles in the gear popover:
+Three orthogonal toggles in the **Cache Operations** sidebar section,
+all OFF by default:
 
-1. `cacheAllHidden` — eye on "All operations" row. Hides cache from
-   the dashboard list (and timeline canvas).
-2. `showStaleCache` — gear menu. Pre-existing cache entries (mtime <
-   `serverStartedAt`) are filtered at ingestion (`ingestSyntheticCacheCreate`)
-   and via `matchesFilters` for safety. Off by default.
-3. `reconstructFromCache` — gear menu. Synthesizes telemetry events
-   from `dev-server/lastEvents`. Off by default. Per-event staleness
-   gate inside `reconstructTelemetryFromCacheWriteInner` mirrors the
+1. `cacheAllHidden` — flipped via the "Show cache operations" toggle
+   (UI shows the inverse: on=visible, off=hidden). When hidden, cache
+   events are filtered out of the dashboard list, the timeline canvas,
+   and the cache count in `cacheCount`. Default: hidden.
+2. `showStaleCache` — pre-existing cache entries (mtime <
+   `serverStartedAt`) are filtered at ingestion
+   (`ingestSyntheticCacheCreate`) and via `matchesFilters` for safety.
+   The toggle row only renders when stale entries actually exist OR
+   the toggle is currently on (so the user can flip it back).
+3. `reconstructFromCache` — synthesizes telemetry events from
+   `dev-server/lastEvents`. Per-event staleness gate inside
+   `reconstructTelemetryFromCacheWriteInner` mirrors the
    `showStaleCache` rule — recent only unless stale toggle is also on.
+
+The three toggles are independent: enabling reconstruction does NOT
+auto-flip "Show cache operations". Reconstructed events use
+`_source: 'cache-recon'` and aren't gated by `cacheAllHidden`, so they
+stay visible even with cache hidden.
 
 Mid-session cache discovery (storybook creates the cache after
 event-logger started) emits cold-start `cache:write` events from the

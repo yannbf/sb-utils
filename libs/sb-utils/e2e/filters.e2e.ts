@@ -73,9 +73,10 @@ test.describe('sidebar filtering', () => {
     page,
     eventLogger,
   }) => {
-    // Posting cache + telemetry events together, then hiding cache,
-    // should number the visible (telemetry-only) cards as #1, #2, #3 —
-    // not #1 #4 #6 with gaps for the hidden ones.
+    // Posting cache + telemetry events together with cache hidden (the
+    // default, since the redesigned sidebar is opt-in for cache
+    // visibility) should number the visible telemetry-only cards as
+    // #1, #2, #3 — not #1 #4 #6 with gaps for the hidden ones.
     await page.goto(eventLogger.url)
     await eventLogger.postEvent({
       eventType: 'cache:write',
@@ -91,12 +92,7 @@ test.describe('sidebar filtering', () => {
     await eventLogger.postEvent({ eventType: 'dev', sessionId: 's1' })
     await eventLogger.postEvent({ eventType: 'error', sessionId: 's1' })
 
-    // Hide cache via the master "All operations" eye toggle.
-    const cacheRow = page.locator('[data-cache-key="__all__"]')
-    await cacheRow.hover()
-    await page.locator('#cacheAllEyeBtn').click()
-
-    const visibleCards = page.locator('#eventContainer .event-card:not(.filtered-out)')
+    const visibleCards = page.locator('#eventContainer .event-card')
     await expect(visibleCards).toHaveCount(3)
 
     const indices = await visibleCards.locator('.event-index').allTextContents()

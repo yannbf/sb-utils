@@ -6,9 +6,9 @@ import { test, expect } from './fixtures'
  * test feeds a synthetic cache event directly via /event-log so we
  * don't need a real Storybook to flip the cache.
  *
- * Cache operations now show by default — pre-existing entries are
- * dropped at backfill time (mtime < server startedAt) instead of being
- * hidden globally, so synthetic posts in these tests aren't filtered.
+ * Cache operations are HIDDEN by default in the redesigned sidebar —
+ * each test flips "Show cache operations" on so the synthetic
+ * cache:write events render in the dashboard list.
  */
 test.describe('cache write diff rendering', () => {
   test('renders side-by-side diff when prev + next content are both present', async ({
@@ -16,6 +16,7 @@ test.describe('cache write diff rendering', () => {
     eventLogger,
   }) => {
     await page.goto(eventLogger.url)
+    await page.locator('#cacheOpsShowToggle').click()
     // Synthetic cache:write event mimicking what watchCache produces.
     await eventLogger.postEvent({
       eventType: 'cache:write',
@@ -47,6 +48,7 @@ test.describe('cache write diff rendering', () => {
     eventLogger,
   }) => {
     await page.goto(eventLogger.url)
+    await page.locator('#cacheOpsShowToggle').click()
     await eventLogger.postEvent({
       eventType: 'cache:delete',
       _source: 'cache-watch',
@@ -65,6 +67,7 @@ test.describe('cache write diff rendering', () => {
     eventLogger,
   }) => {
     await page.goto(eventLogger.url)
+    await page.locator('#cacheOpsShowToggle').click()
     await eventLogger.postEvent({
       eventType: 'cache:write',
       _source: 'cache-watch',

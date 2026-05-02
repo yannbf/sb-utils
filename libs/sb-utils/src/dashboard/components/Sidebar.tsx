@@ -6,16 +6,13 @@
  * the imperative core is gone.
  */
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import {
   activeFilter,
   activeSession,
   activeImport,
-  activeCacheKey,
   hiddenTypes,
   hiddenSessions,
   hiddenImports,
-  hiddenCacheKeys,
   cacheAllHidden,
   telemetryAllHidden,
   reconstructFromCache,
@@ -23,10 +20,8 @@ import {
   staleCacheCount,
   typeCounts,
   sessionMap,
-  cacheMap,
   imports,
   telemetryCount,
-  cacheCount,
 } from '../store/signals'
 import { actions } from '../store/actions'
 import { getColor } from '../lib/colors'
@@ -47,12 +42,6 @@ const TrashIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <polyline points="3 6 5 6 21 6" />
     <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-  </svg>
-)
-const GearIcon = () => (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="12" cy="12" r="3" />
-    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
   </svg>
 )
 
@@ -163,16 +152,14 @@ function EventTypesSection() {
 // or Escape. Holds the per-section toggles that aren't worth a top-level
 // row in the sidebar.
 //
-// Uses position: fixed with computed coords so it can render outside
-// the sidebar's overflow:auto clip — without that, a 260px-wide menu
-// hanging off a 230px sidebar gets cut.
-function CacheOpsMenu({
-  anchor,
-  onClose,
-}: {
-  anchor: HTMLElement
-  onClose: () => void
-}) {
+// ── Cache Operations ──
+// The whole section is just a stack of toggles — no per-cache-key list,
+// no aggregate "All operations" row, no popover. The three toggles
+// default OFF, so a fresh dashboard is opt-in for cache visibility,
+// reconstruction, and stale data — surfacing each only when the user
+// asks for it.
+function CacheOpsSection() {
+  const showOps = !cacheAllHidden.value
   const reconstruct = reconstructFromCache.value
   const stale = showStaleCache.value
   const staleCount = staleCacheCount.value
@@ -181,259 +168,88 @@ function CacheOpsMenu({
   // turn it off). If we hid it on `stale=true && staleCount==0`
   // there'd be no way to flip it back.
   const showStaleRow = staleCount > 0 || stale
-  const ref = useRef<HTMLDivElement>(null)
-  const rect = anchor.getBoundingClientRect()
-  // Left-align the menu's left edge with the anchor (gear) and open
-  // downward. Falls back to right-aligning if the menu would overflow
-  // the right viewport edge.
-  const MENU_W = 280
-  const left = Math.min(rect.left, window.innerWidth - MENU_W - 8)
-  // Start the menu just below the anchor; useLayoutEffect below will
-  // flip it above (and/or clamp it inside the viewport) once we know
-  // its rendered height. This matters when the sidebar is tall enough
-  // to push the gear button down so the menu would otherwise hang off
-  // the bottom of the screen — happens with cache fixtures that emit
-  // many event types.
-  const initialTop = rect.bottom + 6
-  const [top, setTop] = useState(initialTop)
-
-  useLayoutEffect(() => {
-    if (!ref.current) return
-    const menuH = ref.current.getBoundingClientRect().height
-    const VIEWPORT_PAD = 8
-    const fitsBelow = rect.bottom + 6 + menuH <= window.innerHeight - VIEWPORT_PAD
-    if (fitsBelow) {
-      setTop(rect.bottom + 6)
-      return
-    }
-    // Try opening above the anchor.
-    const above = rect.top - 6 - menuH
-    if (above >= VIEWPORT_PAD) {
-      setTop(above)
-      return
-    }
-    // Neither side fits — clamp inside the viewport so the toggles
-    // stay clickable. Worst case we cover the gear, which is fine
-    // since the user is already interacting with the menu.
-    setTop(Math.max(VIEWPORT_PAD, window.innerHeight - menuH - VIEWPORT_PAD))
-  }, [rect.bottom, rect.top])
-
-  useEffect(() => {
-    const onDoc = (e: MouseEvent) => {
-      if (!ref.current) return
-      if (ref.current.contains(e.target as Node)) return
-      if (anchor.contains(e.target as Node)) return
-      onClose()
-    }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('mousedown', onDoc)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onDoc)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [onClose, anchor])
 
   return (
-    <div
-      class="cache-ops-menu"
-      ref={ref}
-      role="menu"
-      aria-label="Cache options"
-      style={{ left: `${Math.max(8, left)}px`, top: `${top}px`, width: `${MENU_W}px` }}
-    >
-      <label class="cache-ops-menu-row">
-        <span class="cache-ops-menu-label">
-          <span class="cache-ops-menu-title">Reconstruct telemetry from cache</span>
-          <span class="cache-ops-menu-hint">
-            Replays Storybook's <code>lastEvents</code> cache as synthetic
-            telemetry until real events arrive.
-          </span>
-        </span>
-        <button
-          type="button"
-          class={'cache-ops-toggle' + (reconstruct ? ' on' : '')}
-          role="switch"
-          aria-checked={reconstruct}
-          onClick={() => actions().setReconstructFromCache(!reconstruct)}
-        >
-          <span class="cache-ops-toggle-knob" />
-        </button>
-      </label>
-      {showStaleRow && (
-        <label class="cache-ops-menu-row">
-          <span class="cache-ops-menu-label">
-            <span class="cache-ops-menu-title">
-              Show stale cache data
-              {staleCount > 0 && (
-                <span class="cache-ops-menu-pill">
-                  {staleCount} {staleCount === 1 ? 'entry' : 'entries'} detected
-                </span>
-              )}
-            </span>
-            <span class="cache-ops-menu-hint">
-              {staleCount > 0
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Cache Operations</div>
+      <div class="cache-ops-toggles" id="cacheOpsToggles">
+        <CacheOpsToggle
+          id="cacheOpsShowToggle"
+          title="Show cache operations"
+          hint="Surface cache:write / cache:delete events in the dashboard, timeline, and counts."
+          on={showOps}
+          onToggle={() => actions().toggleCacheAllHidden()}
+        />
+        <CacheOpsToggle
+          id="cacheOpsReconstructToggle"
+          title="Reconstruct telemetry from cache"
+          hint={
+            <>
+              Replays Storybook's <code>lastEvents</code> cache as synthetic
+              telemetry until real events arrive.
+            </>
+          }
+          on={reconstruct}
+          onToggle={() => actions().setReconstructFromCache(!reconstruct)}
+        />
+        {showStaleRow && (
+          <CacheOpsToggle
+            id="cacheOpsStaleToggle"
+            title="Show stale cache data"
+            pill={
+              staleCount > 0
+                ? `${staleCount} ${staleCount === 1 ? 'entry' : 'entries'} detected`
+                : null
+            }
+            hint={
+              staleCount > 0
                 ? `${staleCount} cache ${staleCount === 1 ? 'entry was' : 'entries were'} written before this session started. Toggle on to surface ${staleCount === 1 ? 'it' : 'them'}.`
-                : 'Cache entries written before this session started are hidden by default.'}
-            </span>
-          </span>
-          <button
-            type="button"
-            class={'cache-ops-toggle' + (stale ? ' on' : '')}
-            role="switch"
-            aria-checked={stale}
-            onClick={() => actions().setShowStaleCache(!stale)}
-          >
-            <span class="cache-ops-toggle-knob" />
-          </button>
-        </label>
-      )}
+                : 'Cache entries written before this session started are hidden by default.'
+            }
+            on={stale}
+            onToggle={() => actions().setShowStaleCache(!stale)}
+          />
+        )}
+      </div>
     </div>
   )
 }
 
-// ── Cache Operations ──
-function CacheOpsSection() {
-  const map = cacheMap.value
-  const allHidden = cacheAllHidden.value
-  const hidden = hiddenCacheKeys.value
-  const active = activeCacheKey.value
-  const total = cacheCount.value
-  const keys = Object.keys(map).sort()
-  const isAllActive = active === null
-  const [menuOpen, setMenuOpen] = useState(false)
-  const gearRef = useRef<HTMLButtonElement>(null)
-  // Two badge variants on the gear icon:
-  //   - 'modified' (blue): a cache option toggle is on, signaling the
-  //     pipeline is in a non-default state.
-  //   - 'attention' (yellow): stale cache data exists but no toggle
-  //     is on — the user might be missing pre-existing data they'd
-  //     want to surface, so we nudge them toward the gear.
-  const hasModified = reconstructFromCache.value || showStaleCache.value
-  const hasStaleAttention = !hasModified && staleCacheCount.value > 0
-  const gearClass =
-    'cache-ops-gear' +
-    (menuOpen ? ' open' : '') +
-    (hasModified ? ' modified' : '') +
-    (hasStaleAttention ? ' attention' : '')
-  const gearTitle = hasModified
-    ? 'Cache options (modified from defaults)'
-    : hasStaleAttention
-      ? `Cache options (${staleCacheCount.value} stale ${staleCacheCount.value === 1 ? 'entry' : 'entries'} detected)`
-      : 'Cache options'
-
+function CacheOpsToggle({
+  id,
+  title,
+  hint,
+  pill,
+  on,
+  onToggle,
+}: {
+  id: string
+  title: string
+  hint: preact.ComponentChildren
+  pill?: string | null
+  on: boolean
+  onToggle: () => void
+}) {
   return (
-    <div class="sidebar-section">
-      <div class="sidebar-section-title cache-ops-title">
-        <span>Cache Operations</span>
-        <button
-          type="button"
-          ref={gearRef}
-          class={gearClass}
-          id="cacheOpsGearBtn"
-          title={gearTitle}
-          aria-label="Cache options"
-          aria-expanded={menuOpen}
-          onClick={(e) => {
-            e.stopPropagation()
-            setMenuOpen((v) => !v)
-          }}
-        >
-          <GearIcon />
-          {(hasModified || hasStaleAttention) && (
-            <span class="cache-ops-gear-dot" aria-hidden="true" />
-          )}
-        </button>
-        {menuOpen && gearRef.current && (
-          <CacheOpsMenu anchor={gearRef.current} onClose={() => setMenuOpen(false)} />
-        )}
-      </div>
-      <div id="cacheList">
-        <div
-          class={'filter-item' + (isAllActive ? ' active' : '') + (allHidden ? ' hidden-item' : '')}
-          data-cache-key="__all__"
-          onClick={() => actions().setActiveCacheKey(null)}
-        >
-          <div class="label-row">
-            <span>All operations</span>
-          </div>
-          <div class="item-actions">
-            <button
-              class="item-action danger trash-btn"
-              id="cacheAllTrashBtn"
-              title="Delete all cache events"
-              onClick={(e) => {
-                e.stopPropagation()
-                actions().deleteAllCacheEvents()
-              }}
-            >
-              <TrashIcon />
-            </button>
-            <button
-              class="item-action eye-btn"
-              id="cacheAllEyeBtn"
-              title="Hide all cache events"
-              onClick={(e) => {
-                e.stopPropagation()
-                actions().toggleCacheAllHidden()
-              }}
-            >
-              {allHidden ? <EyeOffIcon /> : <EyeIcon />}
-            </button>
-          </div>
-          <span class="count" id="cacheAllCount">
-            {total}
-          </span>
-        </div>
-        {keys.map((key) => {
-          const info = map[key]
-          const isActive = active === key
-          const isHidden = hidden.has(key)
-          return (
-            <div
-              key={key}
-              class={
-                'filter-item' +
-                (isActive ? ' active' : '') +
-                (isHidden ? ' hidden-item' : '')
-              }
-              data-cache-key={key}
-              onClick={() => actions().setActiveCacheKey(key)}
-            >
-              <div class="label-row">
-                <span>{key}</span>
-              </div>
-              {info.lastOp && <div class="filter-item-sub">{info.lastOp}</div>}
-              <div class="item-actions">
-                <button
-                  class="item-action danger trash-btn"
-                  title="Delete events for this cache key"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    actions().deleteEventsByCacheKey(key)
-                  }}
-                >
-                  <TrashIcon />
-                </button>
-                <button
-                  class="item-action eye-btn"
-                  title={isHidden ? 'Show this cache key' : 'Hide this cache key'}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    actions().toggleHiddenCacheKey(key)
-                  }}
-                >
-                  {isHidden ? <EyeOffIcon /> : <EyeIcon />}
-                </button>
-              </div>
-              <span class="count">{info.count}</span>
-            </div>
-          )
-        })}
-      </div>
-    </div>
+    <label class="cache-ops-menu-row">
+      <span class="cache-ops-menu-label">
+        <span class="cache-ops-menu-title">
+          {title}
+          {pill && <span class="cache-ops-menu-pill">{pill}</span>}
+        </span>
+        <span class="cache-ops-menu-hint">{hint}</span>
+      </span>
+      <button
+        type="button"
+        id={id}
+        class={'cache-ops-toggle' + (on ? ' on' : '')}
+        role="switch"
+        aria-checked={on}
+        onClick={onToggle}
+      >
+        <span class="cache-ops-toggle-knob" />
+      </button>
+    </label>
   )
 }
 

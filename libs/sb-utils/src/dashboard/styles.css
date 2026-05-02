@@ -353,54 +353,13 @@
     opacity: 0.7;
   }
 
-  /* Cache Operations section title hosts a gear button on the right. */
-  .cache-ops-title { position: relative; }
-  .cache-ops-gear {
-    width: 22px;
-    height: 22px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: none;
-    background: none;
-    color: var(--text-dim);
-    cursor: pointer;
-    border-radius: 4px;
-    transition: color 0.1s, background 0.1s;
-    position: relative;
-  }
-  .cache-ops-gear:hover { color: var(--text); background: var(--bg-card-hover); }
-  .cache-ops-gear.open { color: var(--accent); background: var(--accent-muted); }
-  .cache-ops-gear.modified { color: var(--accent); }
-  /* Yellow "attention" variant — stale data detected but no mode is on. */
-  .cache-ops-gear.attention { color: var(--yellow); }
-  /* Tiny dot at the top-right of the gear when any cache toggle is on,
-     or when stale data was detected and the user hasn't opted in. */
-  .cache-ops-gear-dot {
-    position: absolute;
-    top: 2px;
-    right: 2px;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--accent);
-    border: 1.5px solid var(--bg-raised);
-    box-shadow: 0 0 4px rgba(108,158,248,0.6);
-    pointer-events: none;
-  }
-  .cache-ops-gear.attention .cache-ops-gear-dot {
-    background: var(--yellow);
-    box-shadow: 0 0 4px rgba(251, 191, 36, 0.7);
-  }
-
-  .cache-ops-menu {
-    position: fixed;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px 12px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
-    z-index: 1000;
+  /* Cache Operations section is just a stack of toggle rows. The
+     `.cache-ops-menu-*` classes are reused inline (originally written
+     for the popover that lived here) — they style the title, hint,
+     pill, and toggle switch identically whether they sit inside a
+     fixed popover or a sidebar section. */
+  .cache-ops-toggles {
+    padding: 4px 2px 2px;
     text-transform: none;
     letter-spacing: 0;
   }

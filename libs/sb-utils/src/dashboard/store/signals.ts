@@ -45,12 +45,14 @@ export const hiddenTypes = signal<Set<string>>(new Set())
 export const hiddenSessions = signal<Set<string>>(new Set())
 export const hiddenImports = signal<Set<string>>(new Set())
 export const hiddenCacheKeys = signal<Set<string>>(new Set())
-// Cache events are visible by default. Pre-existing entries from
-// before the server booted are filtered out at ingestion time (see
-// `showStaleCache` below) so they don't drown the live operations the
-// user actually cares about — meaning there's no need to hide cache
-// wholesale anymore.
-export const cacheAllHidden = signal(false)
+// Cache events are HIDDEN by default. The sidebar surfaces a single
+// "Show cache operations" toggle that flips this flag — the user opts
+// in when they want cache:write/cache:delete events in the dashboard,
+// timeline, and counts. Pre-existing (stale) entries are also gated
+// independently via `showStaleCache` (see below). `cacheAllHidden=true`
+// keeps the legacy semantics of the underlying flag (true=hidden) while
+// flipping the default so a fresh boot starts quiet.
+export const cacheAllHidden = signal(true)
 export const telemetryAllHidden = signal(false)
 
 /**
@@ -285,7 +287,7 @@ export function resetAll() {
   hiddenSessions.value = new Set()
   hiddenImports.value = new Set()
   hiddenCacheKeys.value = new Set()
-  cacheAllHidden.value = false
+  cacheAllHidden.value = true
   telemetryAllHidden.value = false
   activeFilter.value = 'all'
   activeSession.value = null

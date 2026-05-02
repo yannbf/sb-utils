@@ -16,6 +16,7 @@ import {
   serverStartedAt,
   reconstructFromCache,
   showStaleCache,
+  cacheAllHidden,
   pushToast,
 } from '../store/signals'
 import { openSaveModal } from '../store/modal'
@@ -94,6 +95,10 @@ export async function exportHtmlSnapshot(): Promise<void> {
   const bakedPrefs = {
     reconstructFromCache: reconstructFromCache.value,
     showStaleCache: showStaleCache.value,
+    // `showCacheOperations` is the user-facing label; persist as the
+    // inverse of the internal `cacheAllHidden` flag so the bake reads
+    // intuitively in the snapshot HTML.
+    showCacheOperations: !cacheAllHidden.value,
   }
   const bootstrap = document.createElement('script')
   bootstrap.textContent = [

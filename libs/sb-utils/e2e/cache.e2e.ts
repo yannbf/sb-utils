@@ -41,15 +41,15 @@ test.describe('cache view', () => {
     await expect(page.locator('#cacheRootVersion')).toContainText('sb 10.4.0-alpha.15')
   })
 
-  test('cache events from the watcher show up in the Cache Operations sidebar', async ({
+  test('cache events from the watcher show up in the dashboard once cache is shown', async ({
     page,
     eventLoggerWithCache,
   }) => {
-    // Stale cache is hidden by default — flip the toggle on so the
-    // mocks fixture's pre-existing cache files materialize as cache:write
-    // events and bump the master count. Two-step boot so the
-    // session-id rotation can stamp first, then we write the pref and
-    // reload to pick it up.
+    // Cache is hidden AND stale is gated by default — flip both toggles
+    // so the mocks fixture's pre-existing cache files materialize as
+    // visible cache:write cards in the dashboard list. Two-step boot so
+    // the session-id rotation can stamp first, then we write the pref
+    // and reload to pick it up.
     await page.goto(eventLoggerWithCache.url)
     await page.waitForFunction(
       () => sessionStorage.getItem('sbutils.eventlog.session') != null,
@@ -60,9 +60,10 @@ test.describe('cache view', () => {
       sessionStorage.setItem('sbutils.eventlog.showStaleCache', '1')
     })
     await page.reload()
-    await expect(page.locator('#cacheAllCount')).not.toHaveText('0', {
-      timeout: 5_000,
-    })
+    await page.locator('#cacheOpsShowToggle').click()
+    await expect(
+      page.locator('#eventContainer .event-card[data-cache-event="true"]').first(),
+    ).toBeVisible({ timeout: 5_000 })
   })
 
   test('Edit mode toggle reveals Edit/Delete buttons + Clear cache', async ({

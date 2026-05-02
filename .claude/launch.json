@@ -10,7 +10,7 @@
         "--port",
         "6017",
         "--project-root",
-        "libs/sb-utils/playground"
+        "libs/sb-utils/mocks"
       ],
       "port": 6017
     },

@@ -105,6 +105,10 @@ export function toggleHiddenCacheKey(key: string): void {
 }
 export function toggleCacheAllHidden(): void {
   cacheAllHidden.value = !cacheAllHidden.value
+  // Persist the user-facing "Show cache operations" state. Stored as
+  // the inverse of the internal flag so the pref reads as the toggle
+  // label: `showCacheOperations=1` means cache is visible.
+  writePref('showCacheOperations', cacheAllHidden.value ? '0' : '1')
   bridges.invalidateTimeline()
 }
 
@@ -167,7 +171,11 @@ export function setReconstructFromCache(on: boolean): void {
   reconstructFromCache.value = on
   writePref('reconstruct', on ? '1' : '0')
   if (on) {
-    if (cacheAllHidden.value) cacheAllHidden.value = false
+    // The three cache toggles in the sidebar are independent now —
+    // turning reconstruction on no longer flips "Show cache
+    // operations" automatically. Reconstructed events use
+    // `_source: 'cache-recon'` and aren't gated by `cacheAllHidden`
+    // (only `cache-watch` events are), so they remain visible.
     void reconstructFromCacheNow().then(() => bridges.invalidateTimeline())
   } else {
     events.value = events.value.filter((e) => e._source !== 'cache-recon')
@@ -228,7 +236,7 @@ export function deleteAllTelemetryEvents(): void {
 export function deleteAllCacheEvents(): void {
   events.value = events.value.filter((e) => e._source !== 'cache-watch')
   hiddenCacheKeys.value = new Set()
-  cacheAllHidden.value = false
+  cacheAllHidden.value = true
   activeCacheKey.value = null
   bridges.invalidateTimeline()
 }
@@ -327,7 +335,7 @@ export async function clearAll(): Promise<void> {
   hiddenSessions.value = new Set()
   hiddenImports.value = new Set()
   hiddenCacheKeys.value = new Set()
-  cacheAllHidden.value = false
+  cacheAllHidden.value = true
   telemetryAllHidden.value = false
   activeFilter.value = 'all'
   activeSession.value = null
