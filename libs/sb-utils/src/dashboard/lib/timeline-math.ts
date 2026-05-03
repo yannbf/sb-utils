@@ -159,17 +159,25 @@ export function chooseTickInterval(rangeMs: number, pxPerTick: number, totalPx: 
  * prev/next walks every cache write in time order, regardless of
  * namespace/key — same UX as scrubbing cache edits in a folder). All
  * other events navigate within their session.
+ *
+ * The optional `matches` predicate filters out events the user has
+ * hidden in the sidebar (sessions, types, search, cache visibility,
+ * etc.). Without it, prev/next would happily land on dots that aren't
+ * even visible on the canvas. The currently-selected event itself
+ * always stays in the list — even if it'd be filtered out — so its
+ * `pos` lookup in TimelineDrawer doesn't return -1 mid-navigation.
  */
 export function navigableEventsFor<
   E extends { _source?: string; sessionId?: string; _receivedAt?: number },
->(event: E, all: E[]): E[] {
+>(event: E, all: E[], matches?: (e: E) => boolean): E[] {
   if (!event) return []
   const byTime = (a: E, b: E) => (a._receivedAt || 0) - (b._receivedAt || 0)
+  const keep = (e: E) => e === event || !matches || matches(e)
   if (event._source === 'cache-watch') {
-    return all.filter((e) => e._source === 'cache-watch').slice().sort(byTime)
+    return all.filter((e) => e._source === 'cache-watch' && keep(e)).slice().sort(byTime)
   }
   if (event.sessionId) {
-    return all.filter((e) => e.sessionId === event.sessionId).slice().sort(byTime)
+    return all.filter((e) => e.sessionId === event.sessionId && keep(e)).slice().sort(byTime)
   }
   return []
 }

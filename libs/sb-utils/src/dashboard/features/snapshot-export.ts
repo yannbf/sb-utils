@@ -17,6 +17,7 @@ import {
   reconstructFromCache,
   showStaleCache,
   cacheAllHidden,
+  collapseTimelineGaps,
   pushToast,
 } from '../store/signals'
 import { openSaveModal } from '../store/modal'
@@ -99,6 +100,10 @@ export async function exportHtmlSnapshot(): Promise<void> {
     // inverse of the internal `cacheAllHidden` flag so the bake reads
     // intuitively in the snapshot HTML.
     showCacheOperations: !cacheAllHidden.value,
+    // Timeline view's gap-collapse toggle. Defaults ON in fresh
+    // dashboards; baking the live value lets the viewer land on the
+    // same view the exporter was looking at.
+    collapseTimelineGaps: collapseTimelineGaps.value,
   }
   const bootstrap = document.createElement('script')
   bootstrap.textContent = [

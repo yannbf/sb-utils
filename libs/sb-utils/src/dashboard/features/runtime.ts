@@ -25,6 +25,7 @@ import {
   reconstructFromCache,
   showStaleCache,
   cacheAllHidden,
+  collapseTimelineGaps,
   serverStartedAt,
 } from '../store/signals'
 import { rotateSessionIfChanged, readPref } from '../lib/session-storage'
@@ -73,6 +74,11 @@ if (!isSnapshot) {
   const showCachePref = readPref('showCacheOperations')
   if (showCachePref === '1') cacheAllHidden.value = false
   else if (showCachePref === '0') cacheAllHidden.value = true
+  // `collapseTimelineGaps` defaults to ON. Persist the toggle so a
+  // user who turned it off doesn't have to flip it again on reload.
+  const collapsePref = readPref('collapseTimelineGaps')
+  if (collapsePref === '0') collapseTimelineGaps.value = false
+  else if (collapsePref === '1') collapseTimelineGaps.value = true
 } else {
   // Snapshot mode: restore the cache-options toggles from the values
   // baked at export time so the viewer sees what the exporter saw.
@@ -83,6 +89,7 @@ if (!isSnapshot) {
         reconstructFromCache?: boolean
         showStaleCache?: boolean
         showCacheOperations?: boolean
+        collapseTimelineGaps?: boolean
       }
     | undefined
   if (baked) {
@@ -90,6 +97,9 @@ if (!isSnapshot) {
     if (baked.showStaleCache) showStaleCache.value = true
     if (typeof baked.showCacheOperations === 'boolean') {
       cacheAllHidden.value = !baked.showCacheOperations
+    }
+    if (typeof baked.collapseTimelineGaps === 'boolean') {
+      collapseTimelineGaps.value = baked.collapseTimelineGaps
     }
   }
 }

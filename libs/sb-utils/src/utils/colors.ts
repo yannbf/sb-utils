@@ -1,3 +1,5 @@
+export const green = (message: string): string =>
+  `\u001b[32m${message}\u001b[39m`
 export const blue = (message: string): string =>
   `\u001b[34m${message}\u001b[39m`
 export const grey = (message: string): string =>

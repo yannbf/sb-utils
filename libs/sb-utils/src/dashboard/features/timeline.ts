@@ -14,9 +14,11 @@
 
 import { effect } from '@preact/signals'
 import { escapeHtml, formatGapDuration as _formatGapDurationLib } from '../lib/format'
+import { formatDelta } from '../lib/event-helpers'
+import { writePref } from './../lib/session-storage'
 import { getColor } from '../lib/colors'
 import { matchesFilters as _matchesFilters } from '../lib/filters'
-import { selectedTimelineEvent } from '../store/signals'
+import { selectedTimelineEvent, collapseTimelineGaps } from '../store/signals'
 import {
   computeDataRange,
   buildSegments as _buildSegments,
@@ -37,6 +39,13 @@ const Timeline = (function () {
   const LIFESPAN_H = 10;
   const GAP_SEG_DISP_MS = 400;
   const MINIMAP_HANDLE_HIT = 7;
+  // Two consecutive in-lane dots within this many CSS pixels collapse
+  // into a single "+N" cluster puck. Picked so dots that would
+  // visually touch (radius 4) get grouped, not when they merely sit
+  // close enough to crowd labels — the user wants a discoverability
+  // tool for overlapping dots, not aggressive aggregation.
+  const CLUSTER_PX = 12;
+  const CLUSTER_R = DOT_R + 4;
 
   const st: any = {
     viewStartDisp: 0,
@@ -46,7 +55,10 @@ const Timeline = (function () {
     selectedIdx: null,
     panDrag: null,
     minimapDrag: null,
-    collapseGaps: false,
+    // Mirror of the `collapseTimelineGaps` signal — initial value
+    // pulled from the signal so persisted prefs / snapshot bake take
+    // effect on boot. `toggleCollapseGaps` keeps both in sync.
+    collapseGaps: collapseTimelineGaps.value,
     segments: null,
   };
 
@@ -133,6 +145,12 @@ const Timeline = (function () {
       }
       st.selectedIdx = sel._index;
       focusSelectedEvent(sel);
+      // No auto-zoom: keyboard navigation must not yank the view
+      // around. When the selection lands inside a cluster, the
+      // cluster swaps its representative to the selected event so
+      // its label shows in place of the first event's — see the
+      // "selectedInCluster" branch in drawContent. The user can
+      // still click the "+N" pill explicitly to zoom in.
       invalidate();
     });
   }
@@ -436,6 +454,11 @@ const Timeline = (function () {
     axisCtx.textAlign = 'center';
     axisCtx.textBaseline = 'middle';
 
+    // Track tick positions so the start/end edge labels below can
+    // skip drawing if a periodic tick already sits at that timestamp
+    // (avoids a doubled-up label at the same x).
+    const drawnXs: number[] = [];
+
     for (const seg of st.segments) {
       if (seg.type !== 'data') continue;
       // Iterate ticks in src time within this data segment, clipped to view
@@ -450,19 +473,57 @@ const Timeline = (function () {
         axisCtx.fillRect(x, h - 5, 1, 4);
         axisCtx.fillStyle = '#9ba8b9';
         axisCtx.fillText(formatClockTime(t, includeSeconds), x, h / 2 - 1);
+        drawnXs.push(x);
       }
     }
 
-    // Draw gap markers on axis (chevrons)
+    // Always render an edge label at the very first and very last
+    // event timestamps in view, so the user can always read the
+    // bookends. Periodic ticks above only land on rounded values
+    // (whole seconds / minutes), so the actual data range is often
+    // missing from the axis. Skip an edge if it's within ~30 px of
+    // an already-drawn tick to avoid overlap.
+    const [dataFirst, dataLast] = dataRange();
+    const viewFirstSrc = Math.max(dataFirst, dispToSrc(st.viewStartDisp));
+    const viewLastSrc = Math.min(dataLast, dispToSrc(st.viewEndDisp));
+    const drawEdge = (t: number, side: 'left' | 'right') => {
+      const x = timeToX(t, w);
+      if (x < LABEL_COL_W || x > w - 4) return;
+      for (const dx of drawnXs) if (Math.abs(dx - x) < 30) return;
+      axisCtx.fillStyle = 'rgba(108,158,248,0.6)';
+      axisCtx.fillRect(x, h - 5, 1, 4);
+      axisCtx.fillStyle = '#cfe0ff';
+      // Anchor to the inside edge so the text never spills over the
+      // sticky label column (left) or the canvas right edge (right).
+      axisCtx.textAlign = side === 'left' ? 'left' : 'right';
+      axisCtx.fillText(formatClockTime(t, includeSeconds), x, h / 2 - 1);
+      axisCtx.textAlign = 'center';
+    };
+    if (viewLastSrc > viewFirstSrc) {
+      drawEdge(viewFirstSrc, 'left');
+      drawEdge(viewLastSrc, 'right');
+    }
+
+    // Gap markers on the axis are just slim dashed caps marking the
+    // edges of the collapsed range. The duration label moved into
+    // the lane area (drawn in drawContent) so it doesn't fight the
+    // edge timestamps for space.
     for (const seg of st.segments) {
       if (seg.type !== 'gap') continue;
       const x1 = LABEL_COL_W + ((seg.dispStart - st.viewStartDisp) / viewRange) * (w - LABEL_COL_W);
       const x2 = LABEL_COL_W + ((seg.dispEnd - st.viewStartDisp) / viewRange) * (w - LABEL_COL_W);
       if (x2 < LABEL_COL_W || x1 > w) continue;
-      const cx = (Math.max(LABEL_COL_W, x1) + Math.min(w, x2)) / 2;
-      axisCtx.fillStyle = 'rgba(251,191,36,0.7)';
-      axisCtx.font = '9px ui-monospace, SFMono-Regular, Menlo, monospace';
-      axisCtx.fillText('⎯⎯', cx, h / 2 - 1);
+      const gx1 = Math.max(LABEL_COL_W, x1);
+      const gx2 = Math.min(w, x2);
+      if (gx2 <= gx1) continue;
+      axisCtx.strokeStyle = 'rgba(251,191,36,0.55)';
+      axisCtx.setLineDash([3, 3]);
+      axisCtx.lineWidth = 1;
+      axisCtx.beginPath();
+      axisCtx.moveTo(gx1 + 0.5, 0); axisCtx.lineTo(gx1 + 0.5, h);
+      axisCtx.moveTo(gx2 - 0.5, 0); axisCtx.lineTo(gx2 - 0.5, h);
+      axisCtx.stroke();
+      axisCtx.setLineDash([]);
     }
 
     axisCtx.fillStyle = '#1e2a3a';
@@ -477,32 +538,9 @@ const Timeline = (function () {
     hitMap = [];
     if (sessions.length === 0) return;
 
-    // Draw gap bands across all lanes (behind dots)
-    const viewRange = st.viewEndDisp - st.viewStartDisp;
-    for (const seg of st.segments) {
-      if (seg.type !== 'gap') continue;
-      const x1 = LABEL_COL_W + ((seg.dispStart - st.viewStartDisp) / viewRange) * (w - LABEL_COL_W);
-      const x2 = LABEL_COL_W + ((seg.dispEnd - st.viewStartDisp) / viewRange) * (w - LABEL_COL_W);
-      const gx1 = Math.max(LABEL_COL_W, x1);
-      const gx2 = Math.min(w, x2);
-      if (gx2 <= gx1) continue;
-      contentCtx.fillStyle = 'rgba(251,191,36,0.04)';
-      contentCtx.fillRect(gx1, 0, gx2 - gx1, h);
-      contentCtx.strokeStyle = 'rgba(251,191,36,0.35)';
-      contentCtx.setLineDash([3, 3]);
-      contentCtx.lineWidth = 1;
-      contentCtx.beginPath();
-      contentCtx.moveTo(gx1 + 0.5, 0); contentCtx.lineTo(gx1 + 0.5, h);
-      contentCtx.moveTo(gx2 - 0.5, 0); contentCtx.lineTo(gx2 - 0.5, h);
-      contentCtx.stroke();
-      contentCtx.setLineDash([]);
-      const mid = (gx1 + gx2) / 2;
-      contentCtx.fillStyle = 'rgba(251,191,36,0.7)';
-      contentCtx.font = '9px ui-monospace, SFMono-Regular, Menlo, monospace';
-      contentCtx.textAlign = 'center';
-      contentCtx.textBaseline = 'middle';
-      contentCtx.fillText(formatGapDuration(seg.srcLen || 0), mid, 10);
-    }
+    // Gap markers live entirely on the axis canvas now (drawAxis); the
+    // content canvas no longer paints full-height bands or duration
+    // labels for collapsed gaps. Keeps the lane area clean.
 
     contentCtx.font = '10px ui-monospace, SFMono-Regular, Menlo, monospace';
     contentCtx.textBaseline = 'middle';
@@ -531,11 +569,47 @@ const Timeline = (function () {
       const dimSession = lane.kind !== 'cache' && state.activeSession && state.activeSession !== lane.sid;
       const sessionAlpha = dimSession ? 0.3 : 1;
       const laneHits: any[] = [];
+      const laneClusterHits: any[] = [];
       let lastLabelRight = -Infinity;
+      // Selected/hovered label is drawn AFTER the lane's normal labels
+      // so its pill background can cover any neighbor that overlaps it
+      // in source order. Captured here, painted below.
+      type EmphLabel = { text: string; x: number; y: number; tw: number; isSelected: boolean }
+      const emphasized: EmphLabel[] = [];
 
+      // First pass: project visible events into pixel space, dropping
+      // those that fall outside the canvas (with a small margin so
+      // half-clipped dots near the edge still show).
+      type Vis = { e: any; x: number };
+      const visible: Vis[] = [];
       for (const e of lane.events) {
         const x = timeToX(e._receivedAt, w);
         if (x < LABEL_COL_W - 12 || x > w + 12) continue;
+        visible.push({ e, x });
+      }
+
+      // Group consecutive visible dots whose centers are within
+      // CLUSTER_PX of each other into a cluster. Singleton groups
+      // render as normal dots; multi-element groups collapse into a
+      // single "+N" puck that opens a popover when clicked.
+      const groups: Vis[][] = [];
+      let curGroup: Vis[] = [];
+      for (const v of visible) {
+        if (curGroup.length > 0 && v.x - curGroup[curGroup.length - 1].x > CLUSTER_PX) {
+          groups.push(curGroup);
+          curGroup = [];
+        }
+        curGroup.push(v);
+      }
+      if (curGroup.length > 0) groups.push(curGroup);
+
+      // Per-event drawing helper — used for singletons, the
+      // first-event-of-collapsed-cluster, and every member of an
+      // expanded cluster. Captures the dot + label + hover/selection
+      // ring code once. The `forcePos` arg lets callers paint the
+      // dot at a fictional x (used by expansion to spread members
+      // away from their crowded natural positions).
+      const drawEventDot = (e: any, x: number, forcePos: boolean) => {
         const color = getColor(e.eventType).fg;
         const isHover = st.hoveredIdx === e._index;
         const isSelected = st.selectedIdx === e._index;
@@ -574,21 +648,168 @@ const Timeline = (function () {
           contentCtx.globalAlpha = alpha;
         }
 
-        const text = e.eventType || 'unknown';
+        // Cache lane drops the "cache:" prefix so labels read
+        // "write" / "delete" rather than "cache:write" /
+        // "cache:delete" — the lane label already says "Cache".
+        const rawType = e.eventType || 'unknown';
+        const text =
+          lane.kind === 'cache' ? rawType.replace(/^cache:/, '') || 'cache' : rawType;
         const tw = getTextWidth(text);
         const labelLeft = x - tw / 2;
-        const collides = labelLeft < lastLabelRight + 4;
-        contentCtx.globalAlpha = sessionAlpha * (matches ? (collides ? 0.35 : 1) : 0.15);
-        contentCtx.fillStyle = collides ? 'rgba(155,168,185,0.9)' : '#9ba8b9';
+        // Force-positioned (expanded) labels never collide-dim — that's
+        // the whole point of expansion: every label readable.
+        const collides = !forcePos && labelLeft < lastLabelRight + 4;
         contentCtx.textAlign = 'center';
-        contentCtx.fillText(text, x, yLabel);
+        if (isSelected || isHover) {
+          emphasized.push({ text, x, y: yLabel, tw, isSelected });
+        } else {
+          contentCtx.globalAlpha = sessionAlpha * (matches ? (collides ? 0.35 : 1) : 0.15);
+          contentCtx.fillStyle = collides ? 'rgba(155,168,185,0.9)' : '#9ba8b9';
+          contentCtx.fillText(text, x, yLabel);
+        }
         if (!collides) lastLabelRight = x + tw / 2;
 
         laneHits.push({ x, y: yDot, idx: e._index, event: e });
+        return tw;
+      };
+
+      for (const grp of groups) {
+        if (grp.length === 1) {
+          const { e, x } = grp[0];
+          drawEventDot(e, x, false);
+          continue;
+        }
+
+        // ── Multi-event group: render ONE representative event as
+        // a normal dot+label, plus a "+N" pill saying "this dot is
+        // standing in for N other events here". The representative
+        // is the currently-selected member when the selection lives
+        // inside the cluster — that way arrow-key navigation just
+        // swaps the visible label in place instead of yanking the
+        // viewport. Otherwise it's the first member.
+        const cid = lane.sid + ':' + grp[0].e._index;
+        const xc = (grp[0].x + grp[grp.length - 1].x) / 2;
+        const repIndex = grp.findIndex((g) => g.e._index === st.selectedIdx);
+        const { e: first, x: firstX } = repIndex >= 0 ? grp[repIndex] : grp[0];
+        const tw = drawEventDot(first, firstX, false);
+        const more = grp.length - 1;
+        const pillText = '+' + more;
+        contentCtx.font = 'bold 10px ui-monospace, SFMono-Regular, Menlo, monospace';
+        const pillW = Math.max(20, contentCtx.measureText(pillText).width as number + 10);
+        contentCtx.font = '10px ui-monospace, SFMono-Regular, Menlo, monospace';
+        const pillH = 14;
+        const pillX = firstX + tw / 2 + 6;
+        const pillY = yLabel - pillH / 2;
+        const containsHover = grp.some((g) => g.e._index === st.hoveredIdx);
+        const containsSelected = grp.some((g) => g.e._index === st.selectedIdx);
+
+        contentCtx.globalAlpha = sessionAlpha;
+        contentCtx.fillStyle = containsSelected
+          ? 'rgba(108,158,248,0.22)'
+          : containsHover
+            ? 'rgba(108,158,248,0.16)'
+            : 'rgba(108,158,248,0.10)';
+        contentCtx.strokeStyle = containsSelected
+          ? 'rgba(108,158,248,0.85)'
+          : 'rgba(108,158,248,0.55)';
+        contentCtx.lineWidth = 1;
+        // Rounded rect — small radius so it reads as a pill.
+        const r = pillH / 2;
+        contentCtx.beginPath();
+        contentCtx.moveTo(pillX + r, pillY);
+        contentCtx.lineTo(pillX + pillW - r, pillY);
+        contentCtx.arcTo(pillX + pillW, pillY, pillX + pillW, pillY + r, r);
+        contentCtx.lineTo(pillX + pillW, pillY + pillH - r);
+        contentCtx.arcTo(pillX + pillW, pillY + pillH, pillX + pillW - r, pillY + pillH, r);
+        contentCtx.lineTo(pillX + r, pillY + pillH);
+        contentCtx.arcTo(pillX, pillY + pillH, pillX, pillY + pillH - r, r);
+        contentCtx.lineTo(pillX, pillY + r);
+        contentCtx.arcTo(pillX, pillY, pillX + r, pillY, r);
+        contentCtx.fill();
+        contentCtx.stroke();
+
+        contentCtx.globalAlpha = 1;
+        contentCtx.fillStyle = '#cfe0ff';
+        contentCtx.font = 'bold 10px ui-monospace, SFMono-Regular, Menlo, monospace';
+        contentCtx.textAlign = 'center';
+        contentCtx.textBaseline = 'middle';
+        contentCtx.fillText(pillText, pillX + pillW / 2, pillY + pillH / 2);
+        contentCtx.font = '10px ui-monospace, SFMono-Regular, Menlo, monospace';
+        contentCtx.textBaseline = 'middle';
+
+        lastLabelRight = pillX + pillW;
+
+        laneClusterHits.push({
+          x: pillX + pillW / 2,
+          y: pillY + pillH / 2,
+          r: Math.max(pillW / 2, pillH) + 3,
+          rectLeft: pillX,
+          rectRight: pillX + pillW,
+          rectTop: pillY,
+          rectBottom: pillY + pillH,
+          cid,
+          members: grp.map((g) => g.e),
+          anchorX: xc,
+        });
       }
       contentCtx.globalAlpha = 1;
 
-      hitMap.push({ yTop, yBottom: yTop + LANE_H, hits: laneHits, sid: lane.sid });
+      // Selected/hovered label pass — paints on top of any same-lane
+      // labels drawn earlier in the loop so the active label always
+      // wins. Both states share the same dark pill + bright text so
+      // the label stays readable; the selection vs hover distinction
+      // already lives on the dot itself (rings).
+      for (const lab of emphasized) {
+        const padX = 4;
+        const padY = 2;
+        contentCtx.globalAlpha = 1;
+        contentCtx.fillStyle = 'rgba(10,14,20,0.92)';
+        contentCtx.fillRect(
+          lab.x - lab.tw / 2 - padX,
+          lab.y - 7 - padY,
+          lab.tw + padX * 2,
+          14 + padY,
+        );
+        contentCtx.fillStyle = '#e6edf6';
+        contentCtx.fillText(lab.text, lab.x, lab.y);
+      }
+
+      hitMap.push({
+        yTop,
+        yBottom: yTop + LANE_H,
+        hits: laneHits,
+        clusters: laneClusterHits,
+        sid: lane.sid,
+      });
+    }
+
+    // Gap duration labels — only drawn when the collapsed gap is
+    // wide enough on screen to fit the text without crowding its
+    // dashed-cap neighbors. Below that threshold, the axis caps
+    // alone indicate the gap. Plain text, no pill — keeps the lane
+    // area visually quiet.
+    {
+      const viewRange = st.viewEndDisp - st.viewStartDisp;
+      contentCtx.font = '9px ui-monospace, SFMono-Regular, Menlo, monospace';
+      contentCtx.textAlign = 'center';
+      contentCtx.textBaseline = 'middle';
+      contentCtx.fillStyle = 'rgba(251,191,36,0.85)';
+      for (const seg of st.segments) {
+        if (seg.type !== 'gap') continue;
+        const x1 = LABEL_COL_W + ((seg.dispStart - st.viewStartDisp) / viewRange) * (w - LABEL_COL_W);
+        const x2 = LABEL_COL_W + ((seg.dispEnd - st.viewStartDisp) / viewRange) * (w - LABEL_COL_W);
+        const gx1 = Math.max(LABEL_COL_W, x1);
+        const gx2 = Math.min(w, x2);
+        const gapW = gx2 - gx1;
+        if (gapW <= 0) continue;
+        const text = formatGapDuration(seg.srcLen || 0);
+        const tw = contentCtx.measureText(text).width as number;
+        // Need 6 px of clearance on each side so the text doesn't
+        // touch the dashed caps on the axis above.
+        if (tw + 12 > gapW) continue;
+        contentCtx.fillText(text, (gx1 + gx2) / 2, 12);
+      }
+      contentCtx.font = '10px ui-monospace, SFMono-Regular, Menlo, monospace';
     }
 
     // Draw sticky label column LAST so it covers events that overflow left
@@ -723,6 +944,35 @@ const Timeline = (function () {
     return null;
   }
 
+  // Cluster pill / collapse-puck hit testing. Pills are rectangular,
+  // the "−" collapse glyph is circular — accept either. Checked
+  // before findEventAt so a click on the pill wins over the underlying
+  // dot it sits next to.
+  function findClusterAt(clientX: number, clientY: number): any {
+    const rect = contentCanvas.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    if (x < LABEL_COL_W) return null;
+    for (const lane of hitMap) {
+      if (y < lane.yTop || y > lane.yBottom) continue;
+      const clusters = lane.clusters || [];
+      for (const c of clusters) {
+        if (
+          c.rectLeft != null &&
+          x >= c.rectLeft &&
+          x <= c.rectRight &&
+          y >= c.rectTop &&
+          y <= c.rectBottom
+        ) {
+          return c;
+        }
+        if (Math.hypot(c.x - x, c.y - y) <= c.r) return c;
+      }
+      return null;
+    }
+    return null;
+  }
+
   function findLaneLabelAt(clientX, clientY) {
     const rect = contentCanvas.getBoundingClientRect();
     const x = clientX - rect.left;
@@ -759,10 +1009,17 @@ const Timeline = (function () {
     } else {
       contentCanvas.style.cursor = '';
     }
-    const hit = findEventAt(e.clientX, e.clientY);
+    // Cluster pills take hover priority over the dots they sit next
+    // to — otherwise the user would never see the "click to expand"
+    // tooltip while their cursor is over the pill region.
+    const cluster = findClusterAt(e.clientX, e.clientY);
+    const hit = cluster ? null : findEventAt(e.clientX, e.clientY);
     const lane = findLaneLabelAt(e.clientX, e.clientY);
-    contentCanvas.classList.toggle('hovering', !!hit || !!lane);
-    if (hit) {
+    contentCanvas.classList.toggle('hovering', !!cluster || !!hit || !!lane);
+    if (cluster) {
+      if (st.hoveredIdx !== null) { st.hoveredIdx = null; invalidate(); }
+      showClusterTooltip(cluster, e.clientX, e.clientY);
+    } else if (hit) {
       if (st.hoveredIdx !== hit.idx) { st.hoveredIdx = hit.idx; invalidate(); }
       showTooltip(hit.event, e.clientX, e.clientY);
     } else {
@@ -789,13 +1046,19 @@ const Timeline = (function () {
       contentCanvas.style.cursor = 'crosshair';
       return;
     }
-    const hit = findEventAt(e.clientX, e.clientY);
+    const cluster = findClusterAt(e.clientX, e.clientY);
+    const hit = cluster ? null : findEventAt(e.clientX, e.clientY);
     const lane = findLaneLabelAt(e.clientX, e.clientY);
-    if (hit || lane) return;
+    if (cluster || hit || lane) return;
     st.panDrag = { x: e.clientX, start: st.viewStartDisp, end: st.viewEndDisp, moved: false };
     contentCanvas.classList.add('grabbing');
   }
   function onContentClick(e) {
+    // Cluster pills zoom into the cluster's time range; the dots
+    // they sit next to are checked second so a click on the pill
+    // always wins.
+    const cluster = findClusterAt(e.clientX, e.clientY);
+    if (cluster) { zoomIntoCluster(cluster); return; }
     const hit = findEventAt(e.clientX, e.clientY);
     if (hit) { openDrawer(hit.event); return; }
     const lane = findLaneLabelAt(e.clientX, e.clientY);
@@ -1005,12 +1268,36 @@ const Timeline = (function () {
   function showTooltip(event, clientX, clientY) {
     const color = getColor(event.eventType);
     const [first] = dataRange();
+    // Visible-only index (#N) so the tooltip matches the dashboard
+    // cards and the drawer header. Synthetic events use a 1e9-range
+    // _index that would render as "#1000000007"; the displayIdx walk
+    // matches whatever's currently passing the sidebar filters.
+    const displayIdx = visibleDisplayIdx(event);
+    // Cache-lane labels strip the "cache:" prefix so the badge reads
+    // "write" / "delete" instead of "cache:write" / "cache:delete" —
+    // the lane label already says "Cache".
+    const isCache = event._source === 'cache-watch';
+    const badgeText = isCache
+      ? (event.eventType || '').replace(/^cache:/, '') || 'cache'
+      : event.eventType || 'unknown';
+    // Source-time delta from the previous event in the same lane that
+    // currently passes the sidebar filters — gives a quick sense of
+    // "how long since the last visible thing on this row". Formatted
+    // in min/s/ms units (e.g. "+340ms", "+2.4s", "+1m23s") to match
+    // the +Δ string on the dashboard cards.
+    const prev = previousVisibleSibling(event);
+    const sincePrev =
+      prev && prev._receivedAt && event._receivedAt != null
+        ? formatDelta(event._receivedAt - prev._receivedAt)
+        : '—';
     tooltipEl.innerHTML =
-      '<div class="tt-badge" style="background:' + color.bg + '; color:' + color.fg + '">' + escapeHtml(event.eventType || 'unknown') + '</div>' +
-      '<div class="tt-row"><span>session</span><span class="val">' + (event.sessionId ? event.sessionId.slice(0, 8) : '—') + '</span></div>' +
+      '<div class="tt-head">' +
+      '<span class="tt-idx">#' + (displayIdx || event._index) + '</span>' +
+      '<div class="tt-badge" style="background:' + color.bg + '; color:' + color.fg + '">' + escapeHtml(badgeText) + '</div>' +
+      '</div>' +
       '<div class="tt-row"><span>time</span><span class="val">' + formatClockTime(event._receivedAt, true) + '</span></div>' +
       '<div class="tt-row"><span>elapsed</span><span class="val">+' + formatRelTime(event._receivedAt, first, false) + '</span></div>' +
-      '<div class="tt-row"><span>index</span><span class="val">#' + event._index + '</span></div>' +
+      '<div class="tt-row"><span>since prev</span><span class="val">' + sincePrev + '</span></div>' +
       '<div class="tt-hint">click for details →</div>';
     tooltipEl.style.display = 'block';
     const tRect = tooltipEl.getBoundingClientRect();
@@ -1023,36 +1310,134 @@ const Timeline = (function () {
     tooltipEl.style.top = Math.max(6, top) + 'px';
   }
 
-  function sessionEventsFor(sid) {
-    return state.events.filter(e => e.sessionId === sid).sort((a, b) => (a._receivedAt || 0) - (b._receivedAt || 0));
+  // Tooltip that lists the cluster's hidden events. Hover the "+N"
+  // pill to peek; click to actually expand the cluster on the canvas.
+  // Caps at 10 rows so a 60-event burst doesn't spawn a tooltip
+  // taller than the viewport.
+  function showClusterTooltip(cluster: any, clientX: number, clientY: number) {
+    const ms = cluster.members;
+    const MAX_ROWS = 10;
+    const shown = ms.slice(0, MAX_ROWS);
+    const overflow = ms.length - shown.length;
+    const rows = shown
+      .map((ev: any) => {
+        const isCache = ev._source === 'cache-watch';
+        const name = isCache
+          ? (ev.eventType || '').replace(/^cache:/, '') || 'cache'
+          : ev.eventType || 'unknown';
+        const c = getColor(ev.eventType || 'unknown');
+        return (
+          '<div class="tt-cluster-row">' +
+          '<span class="tt-cluster-dot" style="background:' + c.fg + '"></span>' +
+          '<span class="tt-cluster-name">' + escapeHtml(name) + '</span>' +
+          '<span class="tt-cluster-time">' + formatClockTime(ev._receivedAt, true) + '</span>' +
+          '</div>'
+        );
+      })
+      .join('');
+    const overflowRow =
+      overflow > 0
+        ? '<div class="tt-cluster-row tt-cluster-more">+' + overflow + ' more</div>'
+        : '';
+    tooltipEl.innerHTML =
+      '<div class="tt-head">' +
+      '<span class="tt-idx">+' + ms.length + '</span>' +
+      '<div class="tt-badge" style="background:#1a232f; color:#cfe0ff">cluster</div>' +
+      '</div>' +
+      '<div class="tt-cluster-list">' + rows + overflowRow + '</div>' +
+      '<div class="tt-hint">click pill to zoom in →</div>';
+    tooltipEl.style.display = 'block';
+    const tRect = tooltipEl.getBoundingClientRect();
+    const wrapRect = wrapEl.getBoundingClientRect();
+    let left = clientX - wrapRect.left + 14;
+    let top = clientY - wrapRect.top + 14;
+    if (left + tRect.width + 14 > wrapRect.width) left = clientX - wrapRect.left - tRect.width - 14;
+    if (top + tRect.height + 14 > wrapRect.height) top = clientY - wrapRect.top - tRect.height - 14;
+    tooltipEl.style.left = Math.max(6, left) + 'px';
+    tooltipEl.style.top = Math.max(6, top) + 'px';
   }
 
-  // Cache events live in the synthetic "Cache" lane and don't have a
-  // sessionId — drawer prev/next walks them linearly in chronological
-  // order regardless of namespace/key, so users can scrub through every
-  // cache write in sequence.
-  function allCacheEventsByTime() {
-    return state.events
-      .filter(e => e._source === 'cache-watch')
-      .sort((a, b) => (a._receivedAt || 0) - (b._receivedAt || 0));
+  // Position of `event` among the events that currently pass the
+  // sidebar filters (1-based). Mirrors the EventList computed pass so
+  // the timeline tooltip's #N matches the card numbering.
+  function visibleDisplayIdx(event) {
+    let n = 0;
+    for (const e of state.events) {
+      if (!matchesFilters(e)) continue;
+      n++;
+      if (e === event) return n;
+    }
+    return 0;
   }
 
-  // Returns the navigable list for a given drawer event — session events
-  // for telemetry, all cache events (linear by time) for cache pseudo-events.
+  // Closest earlier event in the same lane that's currently visible —
+  // session for telemetry, cache-watch for cache pseudo-events. Used
+  // by the tooltip to surface "since prev".
+  function previousVisibleSibling(event: any): any {
+    if (!event || !event._receivedAt) return null;
+    const isCache = event._source === 'cache-watch';
+    let best: any = null;
+    for (const e of state.events) {
+      if (e === event) continue;
+      if (!matchesFilters(e)) continue;
+      if (isCache) {
+        if (e._source !== 'cache-watch') continue;
+      } else {
+        if (e.sessionId !== event.sessionId) continue;
+      }
+      if (!e._receivedAt || e._receivedAt >= event._receivedAt) continue;
+      if (!best || e._receivedAt > best._receivedAt) best = e;
+    }
+    return best;
+  }
+
+  // Returns the navigable list for a given drawer event — session
+  // events for telemetry, all cache events (linear by time) for cache
+  // pseudo-events. Honors the active sidebar filters so prev/next
+  // (from arrow keys via setupKeyboardShortcuts) skips dots the user
+  // has hidden. The selected event itself stays in the list so its
+  // position lookup is stable.
   function navigableEventsFor(event) {
     if (!event) return [];
-    if (event._source === 'cache-watch') return allCacheEventsByTime();
-    if (event.sessionId) return sessionEventsFor(event.sessionId);
+    const byTime = (a, b) => (a._receivedAt || 0) - (b._receivedAt || 0);
+    const keep = (e) => e === event || matchesFilters(e);
+    if (event._source === 'cache-watch') {
+      return state.events.filter(e => e._source === 'cache-watch' && keep(e)).sort(byTime);
+    }
+    if (event.sessionId) {
+      return state.events.filter(e => e.sessionId === event.sessionId && keep(e)).sort(byTime);
+    }
     return [];
   }
 
   function openDrawer(event) {
     // Drawer rendering is owned by components/TimelineDrawer.tsx —
-    // we just publish the selection. The drawer reads selectedTimelineEvent
-    // and renders its content reactively.
+    // we just publish the selection. The drawer reads
+    // selectedTimelineEvent and renders its content reactively.
+    // Pan + cluster auto-expand are handled by the effect above so
+    // canvas-clicks and drawer-driven selection behave identically.
     selectedTimelineEvent.value = event;
-    st.selectedIdx = event._index;
-    focusSelectedEvent(event);
+  }
+
+  // Zoom the view so the cluster's source-time range fills most of
+  // the canvas. The dots naturally separate at the new zoom and the
+  // labels become readable. Triggered only by an explicit click on
+  // the "+N" pill — keyboard nav never auto-zooms because the view
+  // jump is too disorienting.
+  function zoomIntoCluster(cluster: any): void {
+    const ms = cluster.members;
+    const tFirst = ms[0]._receivedAt;
+    const tLast = ms[ms.length - 1]._receivedAt;
+    if (tFirst == null || tLast == null) return;
+    const span = Math.max(1, tLast - tFirst);
+    // Pad ~25 % of the cluster's source span on each side so the
+    // user sees a hint of context without losing the focus.
+    const pad = Math.max(span * 0.25, 50);
+    const startSrc = tFirst - pad;
+    const endSrc = tLast + pad;
+    st.viewStartDisp = srcToDisp(startSrc);
+    st.viewEndDisp = srcToDisp(endSrc);
+    st.followTail = false;
     invalidate();
   }
 
@@ -1108,6 +1493,12 @@ const Timeline = (function () {
 
   function toggleCollapseGaps() {
     st.collapseGaps = !st.collapseGaps;
+    // Keep the signal in sync so persistence + snapshot bake see the
+    // new value. The signal is also what the engine reads on boot.
+    collapseTimelineGaps.value = st.collapseGaps;
+    // sessionStorage is namespaced by server startedAt and no-ops in
+    // snapshot mode (see lib/session-storage.ts), so this is safe.
+    writePref('collapseTimelineGaps', st.collapseGaps ? '1' : '0');
     const midSrc = dispToSrc((st.viewStartDisp + st.viewEndDisp) / 2);
     rebuildSegments();
     const midDisp = srcToDisp(midSrc);

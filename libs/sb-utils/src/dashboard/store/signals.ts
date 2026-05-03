@@ -62,6 +62,16 @@ export const telemetryAllHidden = signal(false)
 export const showStaleCache = signal(false)
 
 /**
+ * Timeline view's "Collapse gaps" mode. On by default: long quiet
+ * stretches between event bursts compress to a fixed display width
+ * (see `buildSegments` in `lib/timeline-math.ts`), giving dense
+ * regions more room and helping labels fit. The toolbar toggle in
+ * `features/timeline.ts` writes here; runtime restores from
+ * sessionStorage on boot and snapshot mode bakes the live value.
+ */
+export const collapseTimelineGaps = signal(true)
+
+/**
  * Wall-clock time the event-logger process booted, fetched from
  * `/config`. Cache entries with mtime < this are considered stale.
  * Null until /config has been read; cache backfill waits for it.
@@ -221,6 +231,7 @@ export function sortEventsByTime(): void {
  * component reads here to render. Navigation (prev/next) updates this.
  */
 export const selectedTimelineEvent = signal<StoredEvent | null>(null)
+
 
 /**
  * SSE connection status — read by the Header's status dot.

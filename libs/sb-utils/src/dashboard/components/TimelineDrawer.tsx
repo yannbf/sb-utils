@@ -14,8 +14,23 @@ import { matchesFilters } from '../lib/filters'
 import { navigableEventsFor } from '../lib/timeline-math'
 import { JsonView } from './JsonView'
 import { DiffView } from './DiffView'
+import { CopyButton } from './CopyButton'
 
 type Tab = { key: string; label: string }
+
+// What the per-tab copy button puts on the clipboard. Mirrors the
+// data each TabPanel renders so users get exactly what they see —
+// payload/metadata/context for the named tab, the underlying cache
+// payload for diff (the diff view itself isn't JSON-serializable),
+// and the full event minus server-only bookkeeping for raw.
+function copyValueFor(ev: StoredEvent, tabKey: string): unknown {
+  if (tabKey === 'diff') return ev.payload
+  if (tabKey === 'raw') {
+    const { _index, _receivedAt, ...rest } = ev
+    return rest
+  }
+  return (ev as any)[tabKey]
+}
 
 function tabsFor(ev: StoredEvent): Tab[] {
   const isCache = ev._source === 'cache-watch'
@@ -43,8 +58,11 @@ export function TimelineDrawer() {
   }, [ev])
 
   // ── Navigation ──
+  // Honor the active sidebar filters so prev/next can't land on a dot
+  // the user has hidden. The selected event itself stays in the list
+  // even if it'd be filtered out (so its position lookup is stable).
   const all = events.value
-  const list = ev ? navigableEventsFor(ev, all) : []
+  const list = ev ? navigableEventsFor(ev, all, matchesFilters) : []
   const pos = ev ? list.findIndex((e) => e._index === ev._index) : -1
   const canPrev = pos > 0
   const canNext = pos !== -1 && pos < list.length - 1
@@ -186,6 +204,7 @@ export function TimelineDrawer() {
                 data-tab-content={t.key}
                 style={active === t.key ? undefined : { display: 'none' }}
               >
+                <CopyButton getValue={() => copyValueFor(ev, t.key)} title={`Copy ${t.label}`} />
                 {t.key === 'diff' ? (
                   <DiffView payload={ev.payload as any} />
                 ) : (

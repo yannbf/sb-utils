@@ -180,18 +180,6 @@ function CacheOpsSection() {
           on={showOps}
           onToggle={() => actions().toggleCacheAllHidden()}
         />
-        <CacheOpsToggle
-          id="cacheOpsReconstructToggle"
-          title="Reconstruct telemetry from cache"
-          hint={
-            <>
-              Replays Storybook's <code>lastEvents</code> cache as synthetic
-              telemetry until real events arrive.
-            </>
-          }
-          on={reconstruct}
-          onToggle={() => actions().setReconstructFromCache(!reconstruct)}
-        />
         {showStaleRow && (
           <CacheOpsToggle
             id="cacheOpsStaleToggle"
@@ -210,6 +198,18 @@ function CacheOpsSection() {
             onToggle={() => actions().setShowStaleCache(!stale)}
           />
         )}
+        <CacheOpsToggle
+          id="cacheOpsReconstructToggle"
+          title="Reconstruct telemetry from cache"
+          hint={
+            <>
+              Replays Storybook's <code>lastEvents</code> cache as synthetic
+              telemetry until real events arrive.
+            </>
+          }
+          on={reconstruct}
+          onToggle={() => actions().setReconstructFromCache(!reconstruct)}
+        />
       </div>
     </div>
   )

@@ -15,6 +15,7 @@ import { getColor } from '../lib/colors'
 import { formatDelta } from '../lib/event-helpers'
 import { JsonView } from './JsonView'
 import { DiffView } from './DiffView'
+import { CopyButton } from './CopyButton'
 
 type Tab = { key: string; label: string }
 
@@ -56,6 +57,18 @@ function TabPanel({ event, tabKey }: { event: StoredEvent; tabKey: string }) {
   if (tabKey === 'diff') return <DiffView payload={event.payload as any} />
   const data = tabKey === 'raw' ? event : ((event as any)[tabKey] as unknown)
   return <JsonView value={data} />
+}
+
+// Same per-tab copy semantics as the TimelineDrawer: hand back the
+// data each TabPanel actually renders. For raw, strip server-only
+// bookkeeping (mirrors the row-level Copy button on the card header).
+function copyValueFor(ev: StoredEvent, tabKey: string): unknown {
+  if (tabKey === 'diff') return ev.payload
+  if (tabKey === 'raw') {
+    const { _index, _receivedAt, ...rest } = ev
+    return rest
+  }
+  return (ev as any)[tabKey]
 }
 
 export function EventCard({
@@ -207,6 +220,7 @@ export function EventCard({
             ))}
           </div>
           <div class="event-tab-content" data-tab-content={active}>
+            <CopyButton getValue={() => copyValueFor(event, active)} title={`Copy ${active}`} />
             <TabPanel event={event} tabKey={active} />
           </div>
         </div>

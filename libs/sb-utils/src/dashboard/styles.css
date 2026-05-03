@@ -890,6 +890,44 @@
     padding: 14px 16px;
     max-height: 500px;
     overflow: auto;
+    position: relative;
+  }
+
+  /* Per-tab copy icon — top-right of the visible tab content. Sits on
+     top of the JSON tree so the user can grab whatever's currently
+     showing (payload / metadata / context / raw / diff) in a single
+     click. Flips to a check icon for ~1.2s after copy. */
+  .tab-copy-btn {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    width: 26px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text-muted);
+    cursor: pointer;
+    z-index: 2;
+    opacity: 0.7;
+    transition: opacity 0.12s, color 0.12s, border-color 0.12s, background 0.12s;
+  }
+  .tab-copy-btn:hover {
+    opacity: 1;
+    color: var(--text);
+    border-color: var(--border-hover);
+    background: var(--bg-surface);
+  }
+  /* When the icon swaps to the check, lift the button into the
+     accent palette so the success state is unmistakable. */
+  .tab-copy-btn.copied {
+    color: var(--green);
+    border-color: var(--green);
+    opacity: 1;
   }
 
   /* Inside the timeline drawer the body is already a scroll container
@@ -1382,13 +1420,26 @@
     font-family: var(--font-mono);
     display: none;
   }
+  /* Tooltip header lays the visible-only #N to the left of the badge,
+     so the user reads "#3 boot" left-to-right just like an event card. */
+  .tl-tooltip .tt-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+  .tl-tooltip .tt-idx {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
   .tl-tooltip .tt-badge {
     display: inline-block;
     padding: 2px 6px;
     border-radius: 3px;
     font-size: 10px;
     font-weight: 600;
-    margin-bottom: 6px;
     font-family: var(--font-mono);
   }
   .tl-tooltip .tt-row {
@@ -1406,6 +1457,48 @@
     font-size: 10px;
     border-top: 1px solid var(--border);
     padding-top: 5px;
+  }
+
+  /* Cluster preview list inside the timeline tooltip — appears when
+     the user hovers a "+N" pill. Lists the cluster's hidden events
+     so they can decide whether to expand. Caps at 10 rows; an
+     overflow row indicates the rest. */
+  .tl-tooltip .tt-cluster-list {
+    margin: 4px 0 6px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .tl-tooltip .tt-cluster-row {
+    display: grid;
+    grid-template-columns: 8px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 2px 0;
+    font-size: 11px;
+  }
+  .tl-tooltip .tt-cluster-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .tl-tooltip .tt-cluster-name {
+    color: var(--text);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+  .tl-tooltip .tt-cluster-time {
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+  .tl-tooltip .tt-cluster-more {
+    color: var(--text-dim);
+    font-style: italic;
+    padding: 2px 0;
+    font-size: 11px;
   }
 
   .tl-jump {

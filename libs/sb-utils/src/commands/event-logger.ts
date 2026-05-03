@@ -8,7 +8,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { isAgent, agent } from 'std-env'
-import { blue, bright, grey } from '../utils/colors'
+import { blue, bright, green, grey } from '../utils/colors'
 import {
   createCacheRoutes,
   resolveCacheLocation,
@@ -183,7 +183,8 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
   let cacheWatchHandle: { close: () => void } | null = null
 
   function ingestCacheChange(change: CacheChange) {
-    const eventType = change.operation === 'delete' ? 'cache:delete' : 'cache:write'
+    const eventType =
+      change.operation === 'delete' ? 'cache:delete' : 'cache:write'
     const index = eventCounter++
     // The dashboard reads `_source` to differentiate cache events from
     // telemetry for styling and filtering. StoredEvent is open-ended so this
@@ -214,7 +215,9 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
       process.stdout.write(JSON.stringify(stored) + '\n')
     } else if (!quiet && !options.noCache) {
       const op = change.operation.toUpperCase().padEnd(6)
-      log.info(`${grey(`#${index}`)} ${blue(`cache ${op}`)} ${change.namespace}/${change.key}`)
+      log.info(
+        `${grey(`#${index}`)} ${blue(`cache ${op}`)} ${change.namespace}/${change.key}`,
+      )
     }
 
     broadcastEvent(stored)
@@ -266,7 +269,7 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
           log.info(
             blue('cache') +
               ' detected at ' +
-              grey(next.cacheRoot ?? '(unknown)')
+              grey(next.cacheRoot ?? '(unknown)'),
           )
         }
       }
@@ -338,7 +341,7 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
         }
         return cacheLocation
       },
-    })
+    }),
   )
 
   // GET /config — dashboard preferences resolved from CLI flags. The UI
@@ -347,7 +350,7 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
     c.json({
       cacheEnabledByDefault: !options.noCache,
       startedAt,
-    })
+    }),
   )
 
   // SSE endpoint for real-time streaming
@@ -554,7 +557,7 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
             : `${blue('Cache')}        ${grey('not detected — pass --project-root <path> or pick one in the dashboard')}`
         note(
           [
-            `${blue('Dashboard')}    ${url}`,
+            `${green('Dashboard')}    ${url}`,
             `${blue('Event API')}    ${url}/event-log`,
             `${blue('Cache API')}    ${url}/cache/entries`,
             `${blue('SSE stream')}   ${url}/sse`,
