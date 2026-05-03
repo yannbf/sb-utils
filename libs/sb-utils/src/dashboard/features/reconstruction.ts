@@ -14,6 +14,8 @@ import {
   realTelemetryDetected,
   reconstructFromCache,
   showStaleCache,
+  cacheAllHidden,
+  collapseTimelineGaps,
   serverStartedAt,
   staleCacheCount,
   paused,
@@ -199,8 +201,19 @@ export async function backfillFromCache(): Promise<void> {
           // critical path so multi-tab refreshes don't queue.
           const wiped = rotateSessionIfChanged(cfg.startedAt)
           if (wiped) {
+            // sessionStorage was just cleared. Reset every signal the
+            // runtime restored from prefs back to its module default,
+            // otherwise the boot-time restore from the OLD session's
+            // values lingers in memory and the dashboard ends up in
+            // a half-rotated state — most visibly: the cache toggle
+            // reads "on" while the stale gate silently reset to off,
+            // so backfill filters every pre-existing entry as stale
+            // and the cache lane comes up empty until the user
+            // reloads or re-toggles things.
             reconstructFromCache.value = false
             showStaleCache.value = false
+            cacheAllHidden.value = true
+            collapseTimelineGaps.value = true
             view.value = 'dashboard'
           }
         }
