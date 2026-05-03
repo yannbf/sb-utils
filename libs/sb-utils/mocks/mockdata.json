@@ -8,7 +8,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "create",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -18,8 +18,8 @@
         "diff": null
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -28,7 +28,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "create",
         "content": {
           "boot": {
@@ -56,8 +56,8 @@
         "diff": null
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -66,15 +66,15 @@
       "payload": {
         "key": "telemetry-notification-date",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-8699db6d26857319b7250953c5a19ac5bb6fa0aee8e1e0c2c4cc75b7826248f3",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-8699db6d26857319b7250953c5a19ac5bb6fa0aee8e1e0c2c4cc75b7826248f3",
         "operation": "create",
         "content": 1777740291755,
         "previousContent": null,
         "diff": null
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -83,7 +83,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -105,8 +105,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -115,7 +115,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -307,8 +307,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -317,7 +317,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -339,8 +339,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -419,7 +419,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -755,8 +755,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -765,7 +765,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -787,8 +787,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -797,7 +797,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -1175,8 +1175,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -1185,7 +1185,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -1207,8 +1207,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -1217,7 +1217,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -1595,8 +1595,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -1605,15 +1605,15 @@
       "payload": {
         "key": "portableStories",
         "namespace": "telemetry",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/telemetry/storybook-09450a31212f99f666068703d2615f84f5282dbd85f9f278ea8cd4599c57328b",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/telemetry/storybook-09450a31212f99f666068703d2615f84f5282dbd85f9f278ea8cd4599c57328b",
         "operation": "create",
         "content": 3,
         "previousContent": null,
         "diff": null
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -1622,15 +1622,15 @@
       "payload": {
         "key": "applicationFiles",
         "namespace": "telemetry",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/telemetry/storybook-bd268263fa367c2fb211b0c1f71d2542d1644222de70562c4fbfb0292d4384e6",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/telemetry/storybook-bd268263fa367c2fb211b0c1f71d2542d1644222de70562c4fbfb0292d4384e6",
         "operation": "create",
         "content": 38,
         "previousContent": null,
         "diff": null
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -1639,7 +1639,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -1661,8 +1661,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -1769,7 +1769,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -2307,8 +2307,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -2317,7 +2317,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -2339,8 +2339,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -2444,7 +2444,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -3036,8 +3036,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -3046,7 +3046,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -3068,8 +3068,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -3184,7 +3184,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -3992,8 +3992,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -4002,7 +4002,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -4024,8 +4024,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -4052,7 +4052,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -4902,8 +4902,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -4912,7 +4912,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -4934,8 +4934,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -4944,7 +4944,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -5968,8 +5968,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -6084,7 +6084,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -6106,8 +6106,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -6116,21 +6116,21 @@
       "payload": {
         "key": "ai-setup-pending",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-4ada1dbddcc0536a6a7f93ea66120e3789fedde9a2cb53cd2c4fa776b58b6bc3",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-4ada1dbddcc0536a6a7f93ea66120e3789fedde9a2cb53cd2c4fa776b58b6bc3",
         "operation": "create",
         "content": {
           "timestamp": 1777740315779,
           "sessionId": "BEjt7uC0C8eyyXM8Nt0ZS",
-          "configDir": "/Users/yannbraga/Dev/mealdrop/.storybook",
-          "previewPath": "/Users/yannbraga/Dev/mealdrop/.storybook/preview.tsx",
+          "configDir": "/Users/foo/.storybook",
+          "previewPath": "/Users/foo/.storybook/preview.tsx",
           "previewHash": "1b6c325cbe047750d829cdb19a678c44474ee6290d530a0829453736b7a9c194"
         },
         "previousContent": null,
         "diff": null
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -6139,7 +6139,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -6161,8 +6161,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -6171,7 +6171,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -6193,8 +6193,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -6203,7 +6203,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -7457,8 +7457,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -7580,7 +7580,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -7602,8 +7602,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -7612,7 +7612,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -8944,8 +8944,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -8991,7 +8991,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -9013,8 +9013,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -9023,7 +9023,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -9045,8 +9045,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -9055,7 +9055,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -10619,8 +10619,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -10742,7 +10742,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -10764,8 +10764,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -10774,7 +10774,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -12174,8 +12174,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -12215,7 +12215,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -12237,8 +12237,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -12247,7 +12247,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -12269,8 +12269,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -12279,7 +12279,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -13831,8 +13831,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -13954,7 +13954,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -13976,8 +13976,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -13986,7 +13986,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -15374,8 +15374,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -15415,7 +15415,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -15437,8 +15437,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -15447,7 +15447,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -15469,8 +15469,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -15479,7 +15479,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -17031,8 +17031,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -17154,7 +17154,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -17176,8 +17176,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -17186,7 +17186,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -18574,8 +18574,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -18615,7 +18615,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -18637,8 +18637,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -18647,7 +18647,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -18669,8 +18669,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -18679,7 +18679,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -20231,8 +20231,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -20354,7 +20354,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -20376,8 +20376,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -20386,7 +20386,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -21786,8 +21786,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -21833,7 +21833,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -21855,8 +21855,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -21865,7 +21865,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -21887,8 +21887,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -21897,7 +21897,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -23461,8 +23461,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -23584,7 +23584,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -23606,8 +23606,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -23616,7 +23616,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -25016,8 +25016,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -25057,7 +25057,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -25079,8 +25079,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -25089,7 +25089,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -25111,8 +25111,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -25121,7 +25121,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -26673,8 +26673,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -26796,7 +26796,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -26818,8 +26818,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -26828,7 +26828,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -28232,8 +28232,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -28281,7 +28281,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -28303,8 +28303,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -28313,7 +28313,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -28335,8 +28335,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -28345,7 +28345,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -29913,8 +29913,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -30036,7 +30036,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -30058,8 +30058,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -30068,7 +30068,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -31488,8 +31488,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -31537,7 +31537,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -31559,8 +31559,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -31569,7 +31569,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -31591,8 +31591,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -31601,7 +31601,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -33169,8 +33169,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -33292,7 +33292,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -33314,8 +33314,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -33324,7 +33324,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -34728,8 +34728,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -34769,7 +34769,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -34791,8 +34791,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -34801,7 +34801,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -34823,8 +34823,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -34833,7 +34833,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -36385,8 +36385,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -36508,7 +36508,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -36530,8 +36530,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -36540,7 +36540,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -37928,8 +37928,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -37969,7 +37969,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -37991,8 +37991,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -38001,7 +38001,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -38023,8 +38023,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -38033,7 +38033,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -39585,8 +39585,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -39708,7 +39708,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -39730,8 +39730,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -39740,7 +39740,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -41140,8 +41140,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -41187,7 +41187,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -41209,8 +41209,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -41219,7 +41219,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -41241,8 +41241,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -41251,7 +41251,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -42815,8 +42815,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -42938,7 +42938,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -42960,8 +42960,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -42970,7 +42970,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -44382,8 +44382,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -44429,7 +44429,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -44451,8 +44451,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -44461,7 +44461,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -44483,8 +44483,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -44493,7 +44493,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -46057,8 +46057,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -46180,7 +46180,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -46202,8 +46202,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -46212,7 +46212,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -47624,8 +47624,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -47671,7 +47671,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -47693,8 +47693,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -47703,7 +47703,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -47725,8 +47725,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -47735,7 +47735,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -49299,8 +49299,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -49422,7 +49422,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -49444,8 +49444,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -49454,7 +49454,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -50866,8 +50866,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -50913,7 +50913,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -50935,8 +50935,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -50945,7 +50945,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -50967,8 +50967,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -50977,7 +50977,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -52541,8 +52541,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -52664,7 +52664,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -52686,8 +52686,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -52696,7 +52696,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -54108,8 +54108,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -54155,7 +54155,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -54177,8 +54177,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -54187,7 +54187,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -54209,8 +54209,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -54219,7 +54219,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -55783,8 +55783,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -55906,7 +55906,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -55928,8 +55928,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -55938,7 +55938,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -57338,8 +57338,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -57379,7 +57379,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -57401,8 +57401,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -57411,7 +57411,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -57433,8 +57433,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -57443,7 +57443,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -58995,8 +58995,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -59118,7 +59118,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -59140,8 +59140,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -59150,7 +59150,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -60538,8 +60538,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -60579,7 +60579,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -60601,8 +60601,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -60611,7 +60611,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -61973,8 +61973,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -62001,7 +62001,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -62023,8 +62023,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -62033,7 +62033,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -63557,8 +63557,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -63667,7 +63667,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -63689,8 +63689,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -63699,7 +63699,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -65265,8 +65265,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -65293,7 +65293,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -65315,8 +65315,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -65325,7 +65325,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -67085,8 +67085,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -67210,7 +67210,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -67232,8 +67232,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -67242,7 +67242,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -69072,8 +69072,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -69218,7 +69218,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -69240,8 +69240,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -69250,7 +69250,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -71118,8 +71118,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -71144,7 +71144,7 @@
       "payload": {
         "key": "lastUpdateCheck",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-79469b211410522e759cf6d8fd44f86a21435c250efaaa48ff49ca85d531c0c9",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-79469b211410522e759cf6d8fd44f86a21435c250efaaa48ff49ca85d531c0c9",
         "operation": "create",
         "content": {
           "success": true,
@@ -71163,8 +71163,8 @@
         "diff": null
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -71173,7 +71173,7 @@
       "payload": {
         "key": "state",
         "namespace": "checklist",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/checklist/storybook-4ba69735ca53765ed6a709edb56c6ea236b7193a3b29a6b390c346f0f4340e4e",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/checklist/storybook-4ba69735ca53765ed6a709edb56c6ea236b7193a3b29a6b390c346f0f4340e4e",
         "operation": "create",
         "content": {
           "items": {
@@ -71186,8 +71186,8 @@
         "diff": null
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -71196,7 +71196,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -71218,8 +71218,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -71228,7 +71228,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -73276,8 +73276,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -73395,7 +73395,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -73417,8 +73417,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -73427,7 +73427,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -75703,8 +75703,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -75825,7 +75825,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -75847,8 +75847,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -75857,7 +75857,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -78419,8 +78419,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -78570,7 +78570,7 @@
       "payload": {
         "key": "<unparseable:storybook-4ba69735ca53765ed6a709edb56c6ea236b7193a3b29a6b390c346f0f4340e4e>",
         "namespace": "checklist",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/checklist/storybook-4ba69735ca53765ed6a709edb56c6ea236b7193a3b29a6b390c346f0f4340e4e",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/checklist/storybook-4ba69735ca53765ed6a709edb56c6ea236b7193a3b29a6b390c346f0f4340e4e",
         "operation": "update",
         "content": null,
         "previousContent": {
@@ -78598,8 +78598,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -78608,7 +78608,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -78630,8 +78630,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -78640,7 +78640,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -81432,8 +81432,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -81554,7 +81554,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -84346,8 +84346,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -84468,7 +84468,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -87260,8 +87260,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -87382,7 +87382,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -90174,8 +90174,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -90296,7 +90296,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -90318,8 +90318,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -90328,7 +90328,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -90350,8 +90350,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -90360,7 +90360,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -93613,8 +93613,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -93961,7 +93961,7 @@
       "payload": {
         "key": "state",
         "namespace": "checklist",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/checklist/storybook-4ba69735ca53765ed6a709edb56c6ea236b7193a3b29a6b390c346f0f4340e4e",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/checklist/storybook-4ba69735ca53765ed6a709edb56c6ea236b7193a3b29a6b390c346f0f4340e4e",
         "operation": "update",
         "content": {
           "items": {
@@ -94043,8 +94043,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -94053,7 +94053,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -94075,8 +94075,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -94085,7 +94085,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -97337,8 +97337,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -97459,7 +97459,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -97481,8 +97481,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -97491,7 +97491,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -100741,8 +100741,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -100862,7 +100862,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -100884,8 +100884,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -100894,7 +100894,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -104166,8 +104166,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -104301,7 +104301,7 @@
       "payload": {
         "key": "session",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-3f3af1ecebbd1410ab417ec0d27bbfcb5d340e177ae159b59fc8626c2dfd9175",
         "operation": "update",
         "content": {
           "id": "BEjt7uC0C8eyyXM8Nt0ZS",
@@ -104323,8 +104323,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {
@@ -104333,7 +104333,7 @@
       "payload": {
         "key": "lastEvents",
         "namespace": "dev-server",
-        "file": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
+        "file": "/Users/foo/node_modules/.cache/storybook/10.4.0-alpha.15/default/dev-server/storybook-a41f6fb672eabbb1b4e10c4623451fe1929aaff66b3739c3893a2d0cefce5547",
         "operation": "update",
         "content": {
           "boot": {
@@ -107893,8 +107893,8 @@
         }
       },
       "context": {
-        "cacheRoot": "/Users/yannbraga/Dev/mealdrop/node_modules/.cache/storybook",
-        "projectRoot": "/Users/yannbraga/Dev/mealdrop"
+        "cacheRoot": "/Users/foo/node_modules/.cache/storybook",
+        "projectRoot": "/Users/foo"
       }
     },
     {

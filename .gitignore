@@ -2,5 +2,10 @@ node_modules/
 .env
 dist
 **/*/.cache
+# The e2e cache fixture is intentionally tracked — `eventLoggerWithCache`
+# spawns the CLI against this directory so tests have a real Storybook
+# cache to discover. Negate the broad `.cache` ignore for it.
+!libs/sb-utils/mocks/.cache/
+!libs/sb-utils/mocks/.cache/**
 .claude/launch.json
 .claude/settings.local.json
