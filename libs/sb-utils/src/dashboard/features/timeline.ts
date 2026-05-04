@@ -1184,18 +1184,7 @@ const Timeline = (function () {
     // Shift+drag inside the content area starts a time-range
     // box-select. Releasing with a non-trivial width zooms the main
     // view to that range — same UX as shift+drag on the minimap.
-    //
-    // Exception: shift+click on a dot when there's already a
-    // selected anchor event is a *range type-filter* gesture (handled
-    // in onContentClick). In that case skip the box-select setup so
-    // the click event sees a clean state.
     if (e.shiftKey && x >= LABEL_COL_W) {
-      const anchor = selectedTimelineEvent.value;
-      const dotHit = anchor ? findEventAt(e.clientX, e.clientY) : null;
-      if (anchor && dotHit && dotHit.event !== anchor) {
-        e.preventDefault();
-        return;
-      }
       e.preventDefault();
       st.contentBoxSelect = { startX: x, currentX: x };
       updateContentSelectOverlay();
@@ -1216,19 +1205,7 @@ const Timeline = (function () {
     const cluster = findClusterAt(e.clientX, e.clientY);
     if (cluster) { zoomIntoCluster(cluster); return; }
     const hit = findEventAt(e.clientX, e.clientY);
-    if (hit) {
-      // Shift+click on a second dot, when an anchor is already
-      // selected, isolates the event types that occur in the
-      // chronological range between the two clicks. The clicked dot
-      // becomes the new anchor so a follow-up shift+click extends
-      // (or contracts) the range relative to it.
-      const anchor = selectedTimelineEvent.value;
-      if (e.shiftKey && anchor && hit.event !== anchor) {
-        applyRangeTypeFilter(anchor, hit.event);
-      }
-      openDrawer(hit.event);
-      return;
-    }
+    if (hit) { openDrawer(hit.event); return; }
     const lane = findLaneLabelAt(e.clientX, e.clientY);
     if (lane) {
       // Cache lane has no session-filter equivalent — clicking its label
@@ -1239,31 +1216,6 @@ const Timeline = (function () {
       applyFiltersInPlace();
       invalidate();
     }
-  }
-  // Hide every telemetry event type that does NOT occur in the
-  // chronological range [a._receivedAt, b._receivedAt]. Cache:*
-  // events live in their own sidebar section (governed by
-  // cacheAllHidden) and aren't swept in or out by this gesture.
-  function applyRangeTypeFilter(a: any, b: any): void {
-    const tA = a && a._receivedAt;
-    const tB = b && b._receivedAt;
-    if (tA == null || tB == null) return;
-    const lo = Math.min(tA, tB);
-    const hi = Math.max(tA, tB);
-    const inRange = new Set<string>();
-    const known = new Set<string>();
-    for (const ev of state.events) {
-      if (ev._source === 'cache-watch') continue;
-      const t = ev._receivedAt;
-      const typ = ev.eventType || 'unknown';
-      known.add(typ);
-      if (t == null) continue;
-      if (t >= lo && t <= hi) inRange.add(typ);
-    }
-    const hide = new Set<string>();
-    for (const typ of known) if (!inRange.has(typ)) hide.add(typ);
-    state.hiddenTypes = hide;
-    invalidate();
   }
   function onContentWheel(e) {
     e.preventDefault();
@@ -1522,6 +1474,29 @@ const Timeline = (function () {
       prev && prev._receivedAt && event._receivedAt != null
         ? formatDelta(event._receivedAt - prev._receivedAt)
         : '—';
+    // "since selected": signed delta from the dot the user has clicked
+    // on (selectedTimelineEvent), but only when the hovered dot is in
+    // the same lane — otherwise the comparison is meaningless. Same
+    // lane rule as previousVisibleSibling: cache-watch grouped
+    // together, telemetry grouped by sessionId. Formatted with a "+"
+    // when the hovered dot is after the selected one and "−" when
+    // before, so users can read direction at a glance.
+    const sel = selectedTimelineEvent.value as any;
+    const sameLane =
+      sel && sel !== event
+        ? isCache
+          ? sel._source === 'cache-watch'
+          : sel.sessionId === event.sessionId
+        : false;
+    const sinceSelectedHtml =
+      sameLane && sel._receivedAt != null && event._receivedAt != null
+        ? (() => {
+            const dt = event._receivedAt - sel._receivedAt;
+            const abs = formatDelta(Math.abs(dt));
+            const signed = dt < 0 ? '−' + abs.slice(1) : abs;
+            return '<div class="tt-row"><span>since selected</span><span class="val">' + signed + '</span></div>';
+          })()
+        : '';
     // Short payload summary (e.g. `boot` → "dev", `cache:write` →
     // "namespace/key"). Same string the dashboard cards show next
     // to the badge — keeps the two views consistent.
@@ -1538,6 +1513,7 @@ const Timeline = (function () {
       '<div class="tt-row"><span>time</span><span class="val">' + formatClockTime(event._receivedAt, true) + '</span></div>' +
       '<div class="tt-row"><span>elapsed</span><span class="val">+' + formatRelTime(event._receivedAt, first, false) + '</span></div>' +
       '<div class="tt-row"><span>since prev</span><span class="val">' + sincePrev + '</span></div>' +
+      sinceSelectedHtml +
       '<div class="tt-hint">click for details →</div>';
     tooltipEl.style.display = 'block';
     const tRect = tooltipEl.getBoundingClientRect();
