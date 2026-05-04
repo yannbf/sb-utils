@@ -48,20 +48,40 @@ export function TimelineDrawer() {
   const ev = selectedTimelineEvent.value
   const open = ev !== null
 
-  // Tabs default to the first one available; reset when the selected
-  // event changes (e.g. user navigates prev/next or clicks a different
-  // dot on the canvas). For error-flagged telemetry events we jump
-  // straight to the Payload tab — the user almost always wants to see
-  // the squiggle without an extra click.
+  // Tab default + user-pick memory.
+  //
+  // - If the user has manually clicked a tab in this drawer session,
+  //   honor that pick when the selected event changes — `userPickedTab`
+  //   sticks until the user picks something else (or until the dashboard
+  //   reloads). Falls back to the type-default if the new event doesn't
+  //   have that tab (e.g. picked Metadata, next event has no metadata).
+  // - Otherwise, telemetry events open on Payload (where the actual
+  //   event content lives — that's what the user is here for 95% of
+  //   the time). Cache events keep tabsFor()'s first entry, which is
+  //   Diff.
   const tabs = useMemo(() => (ev ? tabsFor(ev) : []), [ev])
+  const isCache = ev?._source === 'cache-watch'
   const isErrorEv = ev ? hasErrorPayload(ev) : false
   const [active, setActive] = useState(tabs[0]?.key ?? 'raw')
+  const [userPickedTab, setUserPickedTab] = useState<string | null>(null)
+  const pickTab = (key: string) => {
+    setActive(key)
+    setUserPickedTab(key)
+  }
   useEffect(() => {
     if (tabs.length === 0) return
-    if (isErrorEv && tabs.some((t) => t.key === 'payload')) {
+    // 1. Honor a sticky user pick if the new event has that tab.
+    if (userPickedTab && tabs.some((t) => t.key === userPickedTab)) {
+      setActive(userPickedTab)
+      return
+    }
+    // 2. Telemetry default: Payload.
+    if (!isCache && tabs.some((t) => t.key === 'payload')) {
       setActive('payload')
       return
     }
+    // 3. Fall back to the first available tab if the current selection
+    //    isn't one of them anymore (e.g. switching cache→telemetry).
     if (!tabs.some((t) => t.key === active)) setActive(tabs[0].key)
   }, [ev])
 
@@ -109,7 +129,7 @@ export function TimelineDrawer() {
 
   // ── Header content ──
   const color = ev ? getColor(ev.eventType || 'unknown') : { bg: '', fg: '' }
-  const isCache = ev?._source === 'cache-watch'
+  // `isCache` is declared earlier (alongside the tab default) — reused here.
   const isReconstructed = ev?._source === 'cache-recon'
   const subLabel = ev
     ? isCache
@@ -267,41 +287,45 @@ export function TimelineDrawer() {
           </span>
         </div>
       )}
-      <div class="tl-drawer-body" id="tlDrawerBody">
-        {ev && (
-          <>
-            <div class="event-tabs">
-              {tabs.map((t) => (
-                <div
-                  key={t.key}
-                  class={'event-tab' + (active === t.key ? ' active' : '')}
-                  data-tab={t.key}
-                  onClick={() => setActive(t.key)}
-                >
-                  {t.label}
-                </div>
-              ))}
+      {ev && (
+        // Tab strip lives OUTSIDE the scroll container so it stays
+        // pinned at the top of the drawer while the user scrolls long
+        // payloads. Was previously the first child of .tl-drawer-body
+        // and scrolled away with the JSON tree. Click goes through
+        // pickTab() so the user's selection sticks across navigation.
+        <div class="event-tabs tl-drawer-tabs">
+          {tabs.map((t) => (
+            <div
+              key={t.key}
+              class={'event-tab' + (active === t.key ? ' active' : '')}
+              data-tab={t.key}
+              onClick={() => pickTab(t.key)}
+            >
+              {t.label}
             </div>
-            {tabs.map((t) => (
-              <div
-                key={t.key}
-                class="event-tab-content"
-                data-tab-content={t.key}
-                style={active === t.key ? undefined : { display: 'none' }}
-              >
-                <CopyButton getValue={() => copyValueFor(ev, t.key)} title={`Copy ${t.label}`} />
-                {t.key === 'diff' ? (
-                  <DiffView payload={ev.payload as any} />
-                ) : (
-                  <JsonView
-                    value={t.key === 'raw' ? ev : ((ev as any)[t.key] as unknown)}
-                    highlightErrors={t.key === 'payload' && !isCache}
-                  />
-                )}
-              </div>
-            ))}
-          </>
-        )}
+          ))}
+        </div>
+      )}
+      <div class="tl-drawer-body" id="tlDrawerBody">
+        {ev &&
+          tabs.map((t) => (
+            <div
+              key={t.key}
+              class="event-tab-content"
+              data-tab-content={t.key}
+              style={active === t.key ? undefined : { display: 'none' }}
+            >
+              <CopyButton getValue={() => copyValueFor(ev, t.key)} title={`Copy ${t.label}`} />
+              {t.key === 'diff' ? (
+                <DiffView payload={ev.payload as any} />
+              ) : (
+                <JsonView
+                  value={t.key === 'raw' ? ev : ((ev as any)[t.key] as unknown)}
+                  highlightErrors={t.key === 'payload' && !isCache}
+                />
+              )}
+            </div>
+          ))}
       </div>
     </aside>
   )

@@ -1706,6 +1706,13 @@
     min-width: 44px;
     text-align: center;
   }
+  /* Drawer-scoped tab strip. Lives between the timing strip and the
+     scrollable body so the tabs stay pinned at the top while the
+     payload JSON scrolls beneath them. flex-shrink: 0 prevents flex
+     layout from squishing it when the body content is tall. */
+  .tl-drawer .tl-drawer-tabs {
+    flex-shrink: 0;
+  }
   /* Compact timing strip below the drawer header. Mirrors the canvas
      tooltip's clock / elapsed / since-prev rows but inline so it
      barely costs vertical space. */
