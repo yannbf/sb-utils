@@ -64,3 +64,69 @@ export function summaryFor(ev: StoredEvent | null | undefined): string {
   }
   return parts.join(' · ')
 }
+
+/**
+ * Whether a value should count as "actually populated" for error
+ * detection. JS truthy already filters null/undefined/''/0/false/NaN;
+ * we additionally treat empty arrays / objects / whitespace-only
+ * strings as not-real so an event with `payload: { error: {} }` or
+ * `payload: { errorMessage: '' }` doesn't get flagged.
+ */
+function isMeaningful(v: unknown): boolean {
+  if (v == null) return false
+  if (typeof v === 'boolean') return v
+  if (typeof v === 'number') return v !== 0 && !Number.isNaN(v)
+  if (typeof v === 'string') return v.trim().length > 0
+  if (Array.isArray(v)) return v.length > 0
+  if (typeof v === 'object') return Object.keys(v as Record<string, unknown>).length > 0
+  return true
+}
+
+/**
+ * Single source of truth for "is this {key, value} pair an error
+ * indicator?". Reused both for event-level detection
+ * (`hasErrorPayload`) and per-key highlighting in the JSON tree (the
+ * red squiggle on the matching property in the Payload tab).
+ *
+ * Rule: lowercased key contains 'error' or 'fail' AND the value is
+ * meaningful (see `isMeaningful` — null / undefined / '' / 0 / false /
+ * empty array / empty object don't count).
+ */
+export function isErrorEntry(key: string, value: unknown): boolean {
+  const lk = key.toLowerCase()
+  if (!lk.includes('error') && !lk.includes('fail')) return false
+  return isMeaningful(value)
+}
+
+/**
+ * Heuristic: does this event's `payload` carry a populated error/fail
+ * field anywhere in its tree? Drives the red error outline on the
+ * timeline canvas dot and the event-type badge. Walks the payload
+ * (with a depth cap and a visited-set against cycles) because real
+ * error info is often nested — e.g. `payload.analysis.uniqueErrorCount`
+ * or `payload.result.categorizedErrors`.
+ */
+export function hasErrorPayload(
+  ev: { payload?: unknown } | null | undefined,
+): boolean {
+  const p = ev?.payload
+  if (!p || typeof p !== 'object') return false
+  const seen = new WeakSet<object>()
+  const MAX_DEPTH = 6
+  const walk = (node: unknown, depth: number): boolean => {
+    if (depth > MAX_DEPTH) return false
+    if (!node || typeof node !== 'object') return false
+    if (seen.has(node as object)) return false
+    seen.add(node as object)
+    if (Array.isArray(node)) {
+      for (const item of node) if (walk(item, depth + 1)) return true
+      return false
+    }
+    for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
+      if (isErrorEntry(k, v)) return true
+      if (v && typeof v === 'object' && walk(v, depth + 1)) return true
+    }
+    return false
+  }
+  return walk(p, 0)
+}

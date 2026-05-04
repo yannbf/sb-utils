@@ -14,7 +14,7 @@
 
 import { effect } from '@preact/signals'
 import { escapeHtml, formatGapDuration as _formatGapDurationLib } from '../lib/format'
-import { formatDelta, summaryFor } from '../lib/event-helpers'
+import { formatDelta, hasErrorPayload, summaryFor } from '../lib/event-helpers'
 import { writePref } from './../lib/session-storage'
 import { getColor } from '../lib/colors'
 import { matchesFilters as _matchesFilters } from '../lib/filters'
@@ -690,6 +690,7 @@ const Timeline = (function () {
         const color = getColor(e.eventType).fg;
         const isHover = st.hoveredIdx === e._index;
         const isSelected = st.selectedIdx === e._index;
+        const isError = hasErrorPayload(e);
         const matches = eventMatchesActiveFilters(e);
         const alpha = sessionAlpha * (matches ? 1 : 0.25);
 
@@ -698,8 +699,8 @@ const Timeline = (function () {
         contentCtx.beginPath();
         contentCtx.arc(x, yDot, isHover || isSelected ? DOT_R + 2 : DOT_R, 0, Math.PI * 2);
         contentCtx.fill();
-        contentCtx.strokeStyle = '#0a0e14';
-        contentCtx.lineWidth = 1.5;
+        contentCtx.strokeStyle = isError ? '#ef4444' : '#0a0e14';
+        contentCtx.lineWidth = isError ? 2 : 1.5;
         contentCtx.stroke();
 
         if (isSelected) {
@@ -721,6 +722,18 @@ const Timeline = (function () {
           contentCtx.lineWidth = 2;
           contentCtx.beginPath();
           contentCtx.arc(x, yDot, DOT_R + 4, 0, Math.PI * 2);
+          contentCtx.stroke();
+          contentCtx.globalAlpha = alpha;
+        } else if (isError) {
+          // Soft halo so the red outline reads even at low alpha (e.g.
+          // a dimmed dot from `activeFilter` focus mode). Keeps
+          // selected/hover rings as the primary attention signal when
+          // they're present — the halo only fires when neither is.
+          contentCtx.globalAlpha = Math.min(1, alpha + 0.15);
+          contentCtx.strokeStyle = 'rgba(239,68,68,0.45)';
+          contentCtx.lineWidth = 1.5;
+          contentCtx.beginPath();
+          contentCtx.arc(x, yDot, DOT_R + 3, 0, Math.PI * 2);
           contentCtx.stroke();
           contentCtx.globalAlpha = alpha;
         }

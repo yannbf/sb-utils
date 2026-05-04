@@ -9,7 +9,7 @@
 import { useEffect, useState, useMemo } from 'preact/hooks'
 import { events, selectedTimelineEvent, type StoredEvent } from '../store/signals'
 import { getColor } from '../lib/colors'
-import { cacheKeyOf, formatDelta, summaryFor } from '../lib/event-helpers'
+import { cacheKeyOf, formatDelta, hasErrorPayload, summaryFor } from '../lib/event-helpers'
 import { formatClockTime, formatRelTime } from '../lib/format'
 import { matchesFilters } from '../lib/filters'
 import { navigableEventsFor } from '../lib/timeline-math'
@@ -136,7 +136,7 @@ export function TimelineDrawer() {
   const clockTime = ev?._receivedAt != null ? formatClockTime(ev._receivedAt, true) : '—'
 
   return (
-    <aside class={'tl-drawer' + (open ? ' open' : '')} id="tlDrawer">
+    <aside class={'tl-drawer' + (open ? ' open' : '') + (ev && hasErrorPayload(ev) ? ' error-event' : '')} id="tlDrawer">
       {ev && (
         <span class="tl-drawer-meta">
           <span class="tl-drawer-meta-id" aria-hidden="true">
@@ -263,7 +263,10 @@ export function TimelineDrawer() {
                 {t.key === 'diff' ? (
                   <DiffView payload={ev.payload as any} />
                 ) : (
-                  <JsonView value={t.key === 'raw' ? ev : ((ev as any)[t.key] as unknown)} />
+                  <JsonView
+                    value={t.key === 'raw' ? ev : ((ev as any)[t.key] as unknown)}
+                    highlightErrors={t.key === 'payload'}
+                  />
                 )}
               </div>
             ))}

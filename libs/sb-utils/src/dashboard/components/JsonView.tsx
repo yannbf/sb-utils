@@ -8,18 +8,42 @@
  */
 
 import { useState } from 'preact/hooks'
+import { isErrorEntry } from '../lib/event-helpers'
 
 type AnyJson = unknown
 
-export function JsonView({ value }: { value: AnyJson }) {
+/**
+ * Renders a JSON tree.
+ *
+ * `highlightErrors` (used by the Payload tab) draws a red wavy
+ * underline on any property name whose lowercased key contains 'error'
+ * or 'fail' AND whose value is populated. Same rule as the
+ * event-level `hasErrorPayload` heuristic — keeps the per-key
+ * highlight in lock-step with the badge outline.
+ */
+export function JsonView({
+  value,
+  highlightErrors,
+}: {
+  value: AnyJson
+  highlightErrors?: boolean
+}) {
   return (
     <div class="json-view">
-      <JsonNode value={value} depth={0} />
+      <JsonNode value={value} depth={0} highlightErrors={!!highlightErrors} />
     </div>
   )
 }
 
-function JsonNode({ value, depth }: { value: AnyJson; depth: number }) {
+function JsonNode({
+  value,
+  depth,
+  highlightErrors,
+}: {
+  value: AnyJson
+  depth: number
+  highlightErrors: boolean
+}) {
   if (value === null) return <span class="json-null">null</span>
   if (value === undefined) return <span class="json-null">undefined</span>
   if (typeof value === 'string') return <span class="json-string">"{value}"</span>
@@ -66,20 +90,29 @@ function JsonNode({ value, depth }: { value: AnyJson; depth: number }) {
       ) : (
         <span>
           {'\n'}
-          {entries.map(([key, v], i) => (
-            <span key={String(key)}>
-              {indent}
-              {!isArray && (
-                <>
-                  <span class="json-key">"{String(key)}"</span>
-                  {': '}
-                </>
-              )}
-              <JsonNode value={v} depth={depth + 1} />
-              {i < entries.length - 1 ? ',' : ''}
-              {'\n'}
-            </span>
-          ))}
+          {entries.map(([key, v], i) => {
+            const isErrKey =
+              !isArray && highlightErrors && isErrorEntry(String(key), v)
+            return (
+              <span key={String(key)}>
+                {indent}
+                {!isArray && (
+                  <>
+                    <span
+                      class={'json-key' + (isErrKey ? ' error-key' : '')}
+                      title={isErrKey ? 'Error/failure indicator' : undefined}
+                    >
+                      "{String(key)}"
+                    </span>
+                    {': '}
+                  </>
+                )}
+                <JsonNode value={v} depth={depth + 1} highlightErrors={highlightErrors} />
+                {i < entries.length - 1 ? ',' : ''}
+                {'\n'}
+              </span>
+            )
+          })}
           {closingIndent}
         </span>
       )}

@@ -12,7 +12,7 @@ import {
   type StoredEvent,
 } from '../store/signals'
 import { getColor } from '../lib/colors'
-import { formatDelta, summaryFor } from '../lib/event-helpers'
+import { formatDelta, hasErrorPayload, summaryFor } from '../lib/event-helpers'
 import { JsonView } from './JsonView'
 import { DiffView } from './DiffView'
 import { CopyButton } from './CopyButton'
@@ -33,7 +33,10 @@ function tabsFor(ev: StoredEvent): Tab[] {
 function TabPanel({ event, tabKey }: { event: StoredEvent; tabKey: string }) {
   if (tabKey === 'diff') return <DiffView payload={event.payload as any} />
   const data = tabKey === 'raw' ? event : ((event as any)[tabKey] as unknown)
-  return <JsonView value={data} />
+  // Only the Payload tab gets the red squiggle on error/fail keys —
+  // the other tabs (metadata, context, raw) frequently contain
+  // unrelated descriptive fields that would falsely trip the rule.
+  return <JsonView value={data} highlightErrors={tabKey === 'payload'} />
 }
 
 // Same per-tab copy semantics as the TimelineDrawer: hand back the
@@ -87,6 +90,7 @@ export function EventCard({
 
   const isCache = event._source === 'cache-watch'
   const isReconstructed = event._source === 'cache-recon'
+  const isError = hasErrorPayload(event)
   const summary = summaryFor(event)
   const tabs = tabsFor(event)
 
@@ -116,13 +120,15 @@ export function EventCard({
       class={
         'event-card' +
         (expanded ? ' expanded' : '') +
-        (isCache ? ' cache-event' : '')
+        (isCache ? ' cache-event' : '') +
+        (isError ? ' error-event' : '')
       }
       data-event-type={event.eventType || ''}
       data-session-id={event.sessionId || ''}
       data-index={String(idx)}
       data-cache-event={isCache ? 'true' : undefined}
       data-source={isReconstructed ? 'cache-recon' : undefined}
+      data-has-error={isError ? 'true' : undefined}
     >
       <div class="event-header" onClick={toggleExpanded}>
         <span class="expand-icon">

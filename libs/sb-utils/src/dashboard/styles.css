@@ -706,6 +706,26 @@
     animation: flashHighlight 1.5s ease-out;
   }
 
+  /* Red outline on the event-type badge for events whose payload
+     carries a populated error / fail field (see hasErrorPayload in
+     lib/event-helpers.ts). Targets the badge specifically — the
+     dashboard card and timeline drawer keep their normal chrome so
+     the page doesn't look like a wall of red on busy sessions. The
+     `box-shadow` syntax is used instead of `border` so the badge
+     keeps its existing padding (border would shift adjacent text). */
+  .event-card.error-event .event-badge,
+  .tl-drawer.error-event .event-badge {
+    box-shadow: 0 0 0 1.5px #ef4444;
+  }
+  /* Red wavy underline on payload property names whose key triggers
+     the error/fail rule. Applied per-key in JsonView when
+     `highlightErrors` is enabled (Payload tab only). */
+  .json-key.error-key {
+    text-decoration: underline wavy #ef4444;
+    text-decoration-skip-ink: none;
+    text-underline-offset: 2px;
+  }
+
   @keyframes slideIn {
     from { opacity: 0; transform: translateY(-4px); }
     to { opacity: 1; transform: translateY(0); }
