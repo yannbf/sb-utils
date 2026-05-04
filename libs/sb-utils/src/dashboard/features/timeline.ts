@@ -1474,13 +1474,14 @@ const Timeline = (function () {
       prev && prev._receivedAt && event._receivedAt != null
         ? formatDelta(event._receivedAt - prev._receivedAt)
         : '—';
-    // "since selected": signed delta from the dot the user has clicked
-    // on (selectedTimelineEvent), but only when the hovered dot is in
+    // Delta from the dot the user has clicked on
+    // (selectedTimelineEvent), shown only when the hovered dot is in
     // the same lane — otherwise the comparison is meaningless. Same
     // lane rule as previousVisibleSibling: cache-watch grouped
-    // together, telemetry grouped by sessionId. Formatted with a "+"
-    // when the hovered dot is after the selected one and "−" when
-    // before, so users can read direction at a glance.
+    // together, telemetry grouped by sessionId. The label flips
+    // between "since selected" (hovered is after) and "until selected"
+    // (hovered is before) so the direction reads naturally without a
+    // sign character to parse.
     const sel = selectedTimelineEvent.value as any;
     const sameLane =
       sel && sel !== event
@@ -1488,13 +1489,13 @@ const Timeline = (function () {
           ? sel._source === 'cache-watch'
           : sel.sessionId === event.sessionId
         : false;
-    const sinceSelectedHtml =
+    const selectedDeltaHtml =
       sameLane && sel._receivedAt != null && event._receivedAt != null
         ? (() => {
             const dt = event._receivedAt - sel._receivedAt;
-            const abs = formatDelta(Math.abs(dt));
-            const signed = dt < 0 ? '−' + abs.slice(1) : abs;
-            return '<div class="tt-row"><span>since selected</span><span class="val">' + signed + '</span></div>';
+            const label = dt >= 0 ? 'since selected' : 'until selected';
+            const val = formatDelta(Math.abs(dt));
+            return '<div class="tt-row"><span>' + label + '</span><span class="val">' + val + '</span></div>';
           })()
         : '';
     // Short payload summary (e.g. `boot` → "dev", `cache:write` →
@@ -1513,7 +1514,7 @@ const Timeline = (function () {
       '<div class="tt-row"><span>time</span><span class="val">' + formatClockTime(event._receivedAt, true) + '</span></div>' +
       '<div class="tt-row"><span>elapsed</span><span class="val">+' + formatRelTime(event._receivedAt, first, false) + '</span></div>' +
       '<div class="tt-row"><span>since prev</span><span class="val">' + sincePrev + '</span></div>' +
-      sinceSelectedHtml +
+      selectedDeltaHtml +
       '<div class="tt-hint">click for details →</div>';
     tooltipEl.style.display = 'block';
     const tRect = tooltipEl.getBoundingClientRect();
