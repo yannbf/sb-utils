@@ -1,18 +1,5 @@
 # (Fri May 01 2026)
 
-#### ⚠️ Pushed to `main`
-
-- `@hipster/sb-utils@0.0.15`
-  - improve cache writing and event recollection ([@yannbf](https://github.com/yannbf))
-
-#### Authors: 1
-
-- Yann Braga ([@yannbf](https://github.com/yannbf))
-
----
-
-# (Fri May 01 2026)
-
 #### 🐛 Bug Fix
 
 - `@hipster/sb-utils@0.0.14`

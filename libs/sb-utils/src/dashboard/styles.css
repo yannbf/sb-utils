@@ -47,6 +47,8 @@
     line-height: 1.5;
     overflow: hidden;
     height: 100vh;
+    display: flex;
+    flex-direction: column;
   }
 
   /* ── Header ──────────────────────────────────────── */
@@ -294,14 +296,16 @@
   .paused-banner button:hover { opacity: 0.85; }
 
   /* ── Layout ──────────────────────────────────────── */
+  /* body is flex column. Header + (optional) PausedBanner + this
+     fill the column. Layout takes the remaining space — no manual
+     calc(100vh - …) that drifts when the banner toggles. */
   .layout {
     display: flex;
-    height: calc(100vh - 52px);
+    flex: 1 1 0;
+    min-height: 0;
   }
-
-  .layout.has-banner {
-    height: calc(100vh - 52px - 37px);
-  }
+  .header { flex: 0 0 auto; }
+  .paused-banner { flex: 0 0 auto; }
 
   /* ── Sidebar ─────────────────────────────────────── */
   .sidebar {
@@ -347,6 +351,101 @@
     text-transform: none;
     color: var(--text-dim);
     opacity: 0.7;
+  }
+
+  /* Cache Operations section is just a stack of toggle rows. The
+     `.cache-ops-menu-*` classes are reused inline (originally written
+     for the popover that lived here) — they style the title, hint,
+     pill, and toggle switch identically whether they sit inside a
+     fixed popover or a sidebar section. */
+  .cache-ops-toggles {
+    padding: 4px 2px 2px;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .cache-ops-menu-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    cursor: pointer;
+    color: var(--text);
+  }
+  .cache-ops-menu-row + .cache-ops-menu-row {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-light);
+  }
+  .cache-ops-menu-label { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+  .cache-ops-menu-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  /* Small "N entries detected" pill next to the stale-cache toggle
+     title. Yellow to match the gear's attention badge — visually
+     consistent with the "you have stale data" state. */
+  .cache-ops-menu-pill {
+    font-family: var(--font-sans);
+    font-size: 9.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--yellow);
+    background: rgba(251, 191, 36, 0.14);
+    border: 1px solid rgba(251, 191, 36, 0.45);
+    border-radius: 4px;
+    padding: 1px 6px;
+    line-height: 1.3;
+  }
+  .cache-ops-menu-hint {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--text-dim);
+    line-height: 1.4;
+  }
+  .cache-ops-menu-hint code {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    background: var(--bg-input);
+    padding: 1px 4px;
+    border-radius: 3px;
+    border: 1px solid var(--border-light);
+    color: var(--text-muted);
+  }
+  .cache-ops-toggle {
+    flex-shrink: 0;
+    width: 32px;
+    height: 18px;
+    border-radius: 10px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    padding: 0;
+    position: relative;
+    transition: background 0.15s, border-color 0.15s;
+    margin-top: 2px;
+  }
+  .cache-ops-toggle.on {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .cache-ops-toggle-knob {
+    position: absolute;
+    top: 1px;
+    left: 1px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--text);
+    transition: transform 0.15s;
+  }
+  .cache-ops-toggle.on .cache-ops-toggle-knob {
+    transform: translateX(14px);
+    background: #fff;
   }
   .import-meta {
     font-size: 10px;
@@ -644,29 +743,31 @@
     letter-spacing: 0.01em;
   }
 
-  /* Subtle "from cache" indicator on reconstructed telemetry events.
-     Sits next to the event-type badge in both the dashboard cards and
-     the timeline drawer title. Hover reveals the full explanation. */
+  /* "from cache" indicator on reconstructed telemetry events. Light
+     yellow background + white text, paired with the same database/cache
+     SVG used by the header's Cache view tab so the visual language is
+     consistent: yellow == "this is a cache thing". */
   .event-recon-badge {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 2px 7px;
+    gap: 3px;
+    padding: 2px 6px;
     font-family: var(--font-sans);
-    font-size: 10px;
+    font-size: 8px;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--text-dim);
-    background: var(--bg-input);
-    border: 1px solid var(--border);
+    letter-spacing: 0.06em;
+    color: #fff;
+    background: rgba(251, 191, 36, 0.42);
+    border: 1px solid rgba(251, 191, 36, 0.65);
     border-radius: 4px;
     white-space: nowrap;
     cursor: help;
   }
-  .event-recon-badge svg { opacity: 0.7; flex-shrink: 0; }
+  .event-recon-badge svg { flex-shrink: 0; opacity: 0.95; }
   .event-recon-badge:hover {
-    color: var(--text-muted);
-    border-color: var(--border-hover);
+    background: rgba(251, 191, 36, 0.55);
+    border-color: rgba(251, 191, 36, 0.8);
   }
 
   .event-index {
@@ -789,6 +890,53 @@
     padding: 14px 16px;
     max-height: 500px;
     overflow: auto;
+    position: relative;
+  }
+
+  /* Per-tab copy icon — top-right of the visible tab content. Sits on
+     top of the JSON tree so the user can grab whatever's currently
+     showing (payload / metadata / context / raw / diff) in a single
+     click. Flips to a check icon for ~1.2s after copy. */
+  .tab-copy-btn {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    width: 26px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text-muted);
+    cursor: pointer;
+    z-index: 2;
+    opacity: 0.7;
+    transition: opacity 0.12s, color 0.12s, border-color 0.12s, background 0.12s;
+  }
+  .tab-copy-btn:hover {
+    opacity: 1;
+    color: var(--text);
+    border-color: var(--border-hover);
+    background: var(--bg-surface);
+  }
+  /* When the icon swaps to the check, lift the button into the
+     accent palette so the success state is unmistakable. */
+  .tab-copy-btn.copied {
+    color: var(--green);
+    border-color: var(--green);
+    opacity: 1;
+  }
+
+  /* Inside the timeline drawer the body is already a scroll container
+     (flex: 1; overflow-y: auto) and gives tab content the full drawer
+     height — clamping each tab to 500px caused unnecessary nested
+     scrollbars. Let tabs grow naturally; the drawer body scrolls. */
+  .tl-drawer .event-tab-content {
+    max-height: none;
+    overflow: visible;
   }
 
   .json-view {
@@ -1216,6 +1364,20 @@
   .tl-content-canvas.grabbing { cursor: grabbing; }
   .tl-content-canvas.hovering { cursor: pointer; }
 
+  /* Shift+drag selection overlay on the main canvas — same UX as the
+     minimap's box-select. Mirrors .tl-minimap-select; positioned
+     absolutely inside .tl-main so it scrolls with the canvas. */
+  .tl-content-select {
+    position: absolute;
+    background: rgba(108, 158, 248, 0.16);
+    border-left: 1px solid rgba(108, 158, 248, 0.8);
+    border-right: 1px solid rgba(108, 158, 248, 0.8);
+    pointer-events: none;
+    display: none;
+    z-index: 5;
+  }
+  .tl-content-select.active { display: block; }
+
   .tl-minimap-wrap {
     position: relative;
     height: 44px;
@@ -1258,13 +1420,26 @@
     font-family: var(--font-mono);
     display: none;
   }
+  /* Tooltip header lays the visible-only #N to the left of the badge,
+     so the user reads "#3 boot" left-to-right just like an event card. */
+  .tl-tooltip .tt-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+  .tl-tooltip .tt-idx {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
   .tl-tooltip .tt-badge {
     display: inline-block;
     padding: 2px 6px;
     border-radius: 3px;
     font-size: 10px;
     font-weight: 600;
-    margin-bottom: 6px;
     font-family: var(--font-mono);
   }
   .tl-tooltip .tt-row {
@@ -1282,6 +1457,48 @@
     font-size: 10px;
     border-top: 1px solid var(--border);
     padding-top: 5px;
+  }
+
+  /* Cluster preview list inside the timeline tooltip — appears when
+     the user hovers a "+N" pill. Lists the cluster's hidden events
+     so they can decide whether to expand. Caps at 10 rows; an
+     overflow row indicates the rest. */
+  .tl-tooltip .tt-cluster-list {
+    margin: 4px 0 6px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .tl-tooltip .tt-cluster-row {
+    display: grid;
+    grid-template-columns: 8px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 2px 0;
+    font-size: 11px;
+  }
+  .tl-tooltip .tt-cluster-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .tl-tooltip .tt-cluster-name {
+    color: var(--text);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+  .tl-tooltip .tt-cluster-time {
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+  .tl-tooltip .tt-cluster-more {
+    color: var(--text-dim);
+    font-style: italic;
+    padding: 2px 0;
+    font-size: 11px;
   }
 
   .tl-jump {
@@ -1324,14 +1541,46 @@
     animation: drawerIn 0.18s ease-out;
   }
   @keyframes drawerIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+  /* Floating "#N · sessionId  [from cache]" line at the top-left of the
+     drawer. Sits above the header so it doesn't crowd the badge / nav
+     buttons. The recon badge is `pointer-events: auto` so its tooltip
+     still fires. */
+  .tl-drawer-meta {
+    position: absolute;
+    top: 6px;
+    left: 14px;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: calc(100% - 28px);
+    pointer-events: none;
+  }
+  .tl-drawer-meta-id {
+    color: rgba(226, 232, 240, 0.85);
+    font-size: 9.5px;
+    font-family: var(--font-mono);
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 1;
+    min-width: 0;
+  }
+  .tl-drawer-meta .event-recon-badge {
+    pointer-events: auto;
+    flex-shrink: 0;
+  }
   .tl-drawer-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 14px;
+    padding: 22px 14px 10px;
     border-bottom: 1px solid var(--border);
     gap: 10px;
     flex-shrink: 0;
+    position: relative;
   }
   .tl-drawer-title {
     font-weight: 500;
@@ -1521,6 +1770,13 @@
     font-size: 11px;
   }
 
+  /* Stack namespace blocks with breathing room. The cache view used to
+     run them edge-to-edge, which made it hard to scan. */
+  .cache-entries {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
   .cache-namespace {
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -1546,14 +1802,14 @@
     font-size: 11px;
   }
   .cache-entry {
-    margin: 6px 8px;
+    margin: 0 8px 10px;
     border: 1px solid var(--border-light);
     border-radius: 6px;
     background: var(--bg-input);
     overflow: hidden;
   }
-  .cache-entry:first-child { margin-top: 8px; }
-  .cache-entry:last-child { margin-bottom: 8px; }
+  .cache-entry:first-child { margin-top: 10px; }
+  .cache-entry:last-child { margin-bottom: 10px; }
   .cache-entry-header {
     padding: 10px 14px;
     display: flex;
@@ -1718,6 +1974,13 @@
     padding: 12px;
   }
 
+  /* GitHub-style horizontal scroll: the entire diff (header + every
+     row) scrolls together as one strip and keeps every column aligned
+     across rows. The trick is `display: grid` on .sxs-diff itself and
+     `grid-template-columns: subgrid` on every row + header — each row
+     inherits the same column tracks the parent computed from the widest
+     content. The previous per-cell scrollbars made it impossible to
+     follow a long line across both columns at once. */
   .sxs-diff {
     font-family: var(--font-mono);
     font-size: 12px;
@@ -1725,11 +1988,15 @@
     border: 1px solid var(--border);
     border-radius: 6px;
     background: var(--bg);
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
+    display: grid;
+    grid-template-columns: 36px minmax(max-content, 1fr) 36px minmax(max-content, 1fr);
   }
   .sxs-header {
     display: grid;
-    grid-template-columns: 36px 1fr 36px 1fr;
+    grid-template-columns: subgrid;
+    grid-column: 1 / -1;
     background: var(--bg-raised);
     border-bottom: 1px solid var(--border);
     font-family: var(--font-sans);
@@ -1754,10 +2021,15 @@
   .sxs-stat-added { color: var(--green); background: var(--green-muted); }
   .sxs-stat-removed { color: var(--red); background: var(--red-muted); }
 
-  .sxs-body { overflow-x: auto; }
+  .sxs-body {
+    display: grid;
+    grid-template-columns: subgrid;
+    grid-column: 1 / -1;
+  }
   .sxs-row {
     display: grid;
-    grid-template-columns: 36px 1fr 36px 1fr;
+    grid-template-columns: subgrid;
+    grid-column: 1 / -1;
     align-items: stretch;
     min-height: 18px;
   }
@@ -1778,7 +2050,10 @@
   .sxs-cell {
     color: var(--text-muted);
     border-right: 1px solid var(--border-light);
-    overflow-x: auto;
+    /* No per-cell scrollbar — the parent .sxs-diff scrolls the whole
+       grid horizontally as a unit (GitHub-style). */
+    overflow: visible;
+    min-width: 0;
   }
   .sxs-cell:last-child { border-right: none; }
   .sxs-cell-pre {
@@ -1787,7 +2062,7 @@
     font-size: inherit;
     color: inherit;
     white-space: pre;
-    display: inline;
+    display: inline-block;
   }
   .sxs-cell.empty { background: rgba(255,255,255,0.01); }
 
@@ -1863,6 +2138,30 @@
     opacity: 0.7;
   }
 
+  /* "New file" diff mode — single right column, all green, no left side.
+     Override the parent grid to 2 columns; rows continue to subgrid so
+     header + body stay aligned across the diff. */
+  .sxs-diff-create {
+    grid-template-columns: 36px minmax(max-content, 1fr);
+  }
+  .sxs-diff-create .sxs-header-cell-single {
+    grid-column: 1 / -1;
+    border-right: none;
+  }
+  .sxs-row-create {
+    display: grid;
+    grid-template-columns: subgrid;
+    grid-column: 1 / -1;
+    align-items: stretch;
+    min-height: 18px;
+  }
+  .sxs-row-create .sxs-gutter,
+  .sxs-row-create .sxs-cell {
+    padding: 1px 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.02);
+  }
+  .sxs-row-create .sxs-cell { border-right: none; }
+
   .tl-toolbar .tl-toggle {
     height: 26px;
     padding: 0 10px;
@@ -1883,3 +2182,55 @@
     background: rgba(108,158,248,0.08);
     border-color: rgba(108,158,248,0.5);
   }
+
+  /* Snapshot mode — only applies to exported HTML files where main.tsx
+     sets `data-snapshot="true"` on <body>. Live dashboard never sees these. */
+  .snapshot-banner {
+    position: sticky; top: 0; z-index: 9999;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 8px 16px; font-family: var(--font-sans); font-size: 12px;
+    background: linear-gradient(90deg, rgba(251,191,36,0.18), rgba(251,191,36,0.05));
+    border-bottom: 1px solid rgba(251,191,36,0.4);
+    color: #fbbf24; letter-spacing: 0.4px;
+  }
+  .snapshot-banner .center { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1; justify-content: center; }
+  .snapshot-banner b { color: #fef3c7; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
+  .snapshot-banner .name { color: #fef3c7; font-weight: 500; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0; }
+  .snapshot-banner .dot { width:8px; height:8px; border-radius:50%; background:#fbbf24; box-shadow:0 0 8px rgba(251,191,36,0.6); }
+  .snapshot-banner .meta { color: rgba(255,255,255,0.6); }
+  .snapshot-banner .explain-btn {
+    margin-left: auto; flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; font-family: var(--font-sans); font-size: 11px;
+    color: #fef3c7; background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.45);
+    border-radius: 6px; cursor: pointer; letter-spacing: 0.3px;
+  }
+  .snapshot-banner .explain-btn:hover { background: rgba(251,191,36,0.22); border-color: rgba(251,191,36,0.7); }
+
+  /* Snapshot layout: banner before header pushes layout below the
+     viewport because body is height:100vh + overflow:hidden. Switch to
+     a flex column so banner + header + layout compose vertically. */
+  body[data-snapshot="true"] { display: flex; flex-direction: column; }
+  body[data-snapshot="true"] .header { flex: 0 0 auto; }
+  body[data-snapshot="true"] #layout { flex: 1 1 0; min-height: 0; height: auto !important; }
+  body[data-snapshot="true"] .layout.has-banner { height: auto !important; }
+
+  /* Hide live-only controls in snapshot mode (each is a no-op there). */
+  body[data-snapshot="true"] #pauseBtn,
+  body[data-snapshot="true"] #scrollBtn,
+  body[data-snapshot="true"] #clearBtn,
+  body[data-snapshot="true"] #pausedResumeBtn { display: none !important; }
+  body[data-snapshot="true"] #statusDot {
+    background: #fbbf24 !important;
+    box-shadow: 0 0 8px rgba(251,191,36,0.5) !important;
+    animation: none !important;
+  }
+  body[data-snapshot="true"] .tl-toolbar .tl-live { display: none !important; }
+  body[data-snapshot="true"] #dropOverlay { display: none !important; }
+  body[data-snapshot="true"] #cacheRefreshBtn,
+  body[data-snapshot="true"] #cacheChangeRootBtn,
+  body[data-snapshot="true"] #cacheClearBtn,
+  body[data-snapshot="true"] #cacheEditToggleRow { display: none !important; }
+  body[data-snapshot="true"] .cache-entry-actions [data-action="edit"],
+  body[data-snapshot="true"] .cache-entry-actions [data-action="delete"],
+  body[data-snapshot="true"] .cache-entry-actions [data-action="save-edit"],
+  body[data-snapshot="true"] .cache-entry-actions [data-action="cancel-edit"] { display: none !important; }

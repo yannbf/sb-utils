@@ -8,7 +8,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { isAgent, agent } from 'std-env'
-import { blue, bright, grey } from '../utils/colors'
+import { blue, bright, green, grey } from '../utils/colors'
 import {
   createCacheRoutes,
   resolveCacheLocation,
@@ -72,6 +72,11 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
   const events: StoredEvent[] = []
   const sseClients = new Set<SSEClient>()
   let eventCounter = 0
+  // Wall-clock time the server booted. Exposed via /config so the
+  // dashboard can mark cache entries with mtime < startedAt as "stale"
+  // (pre-existing artifacts from before this debug session) and hide
+  // them by default.
+  const startedAt = Date.now()
 
   type ImportBatch = {
     id: string
@@ -178,7 +183,8 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
   let cacheWatchHandle: { close: () => void } | null = null
 
   function ingestCacheChange(change: CacheChange) {
-    const eventType = change.operation === 'delete' ? 'cache:delete' : 'cache:write'
+    const eventType =
+      change.operation === 'delete' ? 'cache:delete' : 'cache:write'
     const index = eventCounter++
     // The dashboard reads `_source` to differentiate cache events from
     // telemetry for styling and filtering. StoredEvent is open-ended so this
@@ -209,26 +215,73 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
       process.stdout.write(JSON.stringify(stored) + '\n')
     } else if (!quiet && !options.noCache) {
       const op = change.operation.toUpperCase().padEnd(6)
-      log.info(`${grey(`#${index}`)} ${blue(`cache ${op}`)} ${change.namespace}/${change.key}`)
+      log.info(
+        `${grey(`#${index}`)} ${blue(`cache ${op}`)} ${change.namespace}/${change.key}`,
+      )
     }
 
     broadcastEvent(stored)
   }
 
-  function startCacheWatcher() {
+  function startCacheWatcher(opts: { emitColdStart?: boolean } = {}) {
     if (cacheWatchHandle) {
       cacheWatchHandle.close()
       cacheWatchHandle = null
     }
     if (options.noCacheWatch) return
-    cacheWatchHandle = watchCache(() => cacheLocation, ingestCacheChange)
+    cacheWatchHandle = watchCache(() => cacheLocation, ingestCacheChange, opts)
   }
+  // Boot-time attach: don't emit cold-start. Existing entries are
+  // pre-session by definition; the dashboard's "Show stale cache
+  // data" toggle handles the opt-in.
   startCacheWatcher()
 
-  // Load and cache dashboard HTML + CSS at startup. The CSS lives in its own
-  // file so it's reviewable and editable independently — the running server
-  // serves it as a static file, and `exportHtmlSnapshot` inlines it on the
-  // fly so the generated HTML stays a single self-contained artifact.
+  // Cache-discovery poll. If the cache wasn't found when the server
+  // booted (e.g. user started event-logger before storybook created
+  // its cache directory), re-resolve every 2s. Once it materializes,
+  // update the active location and reattach the watcher so subsequent
+  // live writes flow through. Stops itself once found, and re-arms
+  // automatically if the user switches project roots back to a
+  // location without a cache.
+  let cacheDiscoveryTimer: NodeJS.Timeout | null = null
+  function startCacheDiscovery() {
+    if (cacheDiscoveryTimer) return
+    if (cacheLocation.status === 'found') return
+    if (options.noCache || options.noCacheWatch) return
+    cacheDiscoveryTimer = setInterval(() => {
+      const next = resolveCacheLocation({
+        projectRoot: cacheLocation.projectRoot ?? null,
+      })
+      if (next.status === 'found') {
+        cacheLocation = next
+        // Mid-session discovery: emit cold-start events so the
+        // dashboard sees the just-appeared entries as legitimate
+        // discoveries, not "stale data". Their mtimes will be
+        // post-startedAt (since the directory itself didn't exist
+        // before now), so the dashboard's staleness gate keeps them
+        // visible by default.
+        startCacheWatcher({ emitColdStart: true })
+        if (cacheDiscoveryTimer) {
+          clearInterval(cacheDiscoveryTimer)
+          cacheDiscoveryTimer = null
+        }
+        if (!quiet) {
+          log.info(
+            blue('cache') +
+              ' detected at ' +
+              grey(next.cacheRoot ?? '(unknown)'),
+          )
+        }
+      }
+    }, 2000)
+    if (cacheDiscoveryTimer.unref) cacheDiscoveryTimer.unref()
+  }
+  startCacheDiscovery()
+
+  // Load and cache the prebuilt dashboard HTML at startup. Vite + the
+  // singlefile plugin emit dist/event-log-dashboard.html with all CSS + JS
+  // inlined, so the server only needs one asset. Snapshots reuse the same
+  // file (the client fetches it back and injects baked state).
   const __dirname = path.dirname(fileURLToPath(import.meta.url))
   const findAsset = (filename: string): string | null => {
     const candidates = [
@@ -245,13 +298,6 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
   }
   const cachedHtml = fs.readFileSync(htmlPath, 'utf-8')
 
-  const cssPath = findAsset('event-log-dashboard.css')
-  if (!cssPath) {
-    log.error('Could not find event-log-dashboard.css')
-    process.exit(1)
-  }
-  const cachedCss = fs.readFileSync(cssPath, 'utf-8')
-
   const app = new Hono()
 
   // Global CORS — this is a debug tool, allow all origins
@@ -262,11 +308,12 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
     return c.html(cachedHtml)
   })
 
-  // External stylesheet — kept in its own file for reviewability.
-  app.get('/event-log-dashboard.css', (c) => {
-    c.header('Content-Type', 'text/css; charset=utf-8')
-    c.header('Cache-Control', 'no-cache')
-    return c.body(cachedCss)
+  // The HTML snapshot exporter fetches this same path back to clone the
+  // current shipped dashboard, then injects baked state. Serving via a named
+  // route keeps the snapshot client code simple and decoupled from the
+  // build's filename hashing decisions.
+  app.get('/event-log-dashboard.html', (c) => {
+    return c.html(cachedHtml)
   })
 
   // Cache inspection sub-app at /cache/*
@@ -277,11 +324,24 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
       setProjectRoot: (newRoot) => {
         cacheLocation = resolveCacheLocation({ projectRoot: newRoot })
         // Re-seed the watcher against the new root so subsequent writes
-        // appear in the timeline immediately.
-        startCacheWatcher()
+        // appear in the timeline immediately. User explicitly pointed
+        // us here, so emit cold-start events to surface the new
+        // root's existing contents — the dashboard's staleness gate
+        // still hides any genuinely-stale (pre-session) entries.
+        startCacheWatcher({ emitColdStart: true })
+        // If the new root doesn't have a cache yet, re-arm discovery
+        // so the watcher attaches automatically when storybook
+        // creates it later. Likewise, stop discovery if it does have
+        // one — the watcher is already attached.
+        if (cacheLocation.status === 'found' && cacheDiscoveryTimer) {
+          clearInterval(cacheDiscoveryTimer)
+          cacheDiscoveryTimer = null
+        } else if (cacheLocation.status !== 'found') {
+          startCacheDiscovery()
+        }
         return cacheLocation
       },
-    })
+    }),
   )
 
   // GET /config — dashboard preferences resolved from CLI flags. The UI
@@ -289,7 +349,8 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
   app.get('/config', (c) =>
     c.json({
       cacheEnabledByDefault: !options.noCache,
-    })
+      startedAt,
+    }),
   )
 
   // SSE endpoint for real-time streaming
@@ -396,10 +457,11 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
     let result = events as StoredEvent[]
     if (type) result = result.filter((e) => e.eventType === type)
     if (sessionId) result = result.filter((e) => e.sessionId === sessionId)
-    // Strip server-only bookkeeping so the export is portable, matching the
-    // dashboard's client-side `exportEvents()` behavior.
+    // Strip the per-server `_index` ordinal but keep `_receivedAt` so
+    // re-importing the file preserves event timing (without it, the
+    // timeline view collapses every dot onto the moment of import).
     const cleaned = result.map((e) => {
-      const { _index, _receivedAt, ...rest } = e as StoredEvent
+      const { _index, ...rest } = e as StoredEvent
       return rest
     })
     const payload = { version: 1, explanation, events: cleaned }
@@ -495,7 +557,7 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
             : `${blue('Cache')}        ${grey('not detected — pass --project-root <path> or pick one in the dashboard')}`
         note(
           [
-            `${blue('Dashboard')}    ${url}`,
+            `${green('Dashboard')}    ${url}`,
             `${blue('Event API')}    ${url}/event-log`,
             `${blue('Cache API')}    ${url}/cache/entries`,
             `${blue('SSE stream')}   ${url}/sse`,
