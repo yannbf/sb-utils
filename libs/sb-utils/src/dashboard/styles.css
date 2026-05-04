@@ -1655,6 +1655,38 @@
     min-width: 44px;
     text-align: center;
   }
+  /* Compact timing strip below the drawer header. Mirrors the canvas
+     tooltip's clock / elapsed / since-prev rows but inline so it
+     barely costs vertical space. */
+  .tl-drawer-stats {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 14px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    line-height: 1.4;
+  }
+  .tl-drawer-stat {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+    white-space: nowrap;
+  }
+  .tl-drawer-stat-k {
+    color: var(--text-dim);
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .tl-drawer-stat-v {
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
   .tl-drawer-body { flex: 1; overflow-y: auto; }
 
   .tl-empty {

@@ -9,7 +9,8 @@
 import { useEffect, useState, useMemo } from 'preact/hooks'
 import { events, selectedTimelineEvent, type StoredEvent } from '../store/signals'
 import { getColor } from '../lib/colors'
-import { cacheKeyOf, summaryFor } from '../lib/event-helpers'
+import { cacheKeyOf, formatDelta, summaryFor } from '../lib/event-helpers'
+import { formatClockTime, formatRelTime } from '../lib/format'
 import { matchesFilters } from '../lib/filters'
 import { navigableEventsFor } from '../lib/timeline-math'
 import { JsonView } from './JsonView'
@@ -108,6 +109,32 @@ export function TimelineDrawer() {
 
   const navLabel = isCache ? 'cache operation' : 'session'
 
+  // ── Timing strip ──
+  // Mirrors the canvas tooltip's clock / elapsed / since-prev fields so
+  // the same numbers are reachable without hovering. "since selected"
+  // is intentionally omitted: the drawer always shows the selected
+  // event itself, so the row would always read "+0ms".
+  //
+  // `first` = earliest _receivedAt across ALL stored events (matches the
+  // tooltip's `dataRange()[0]` semantics — elapsed is "into the run",
+  // not "into the current filter set"). `prev` = previous same-lane
+  // event in the navigable list, which already honors filters.
+  let firstMs: number | null = null
+  for (const e of all) {
+    if (e._receivedAt == null) continue
+    if (firstMs == null || e._receivedAt < firstMs) firstMs = e._receivedAt
+  }
+  const prev = pos > 0 ? list[pos - 1] : null
+  const sincePrev =
+    prev && prev._receivedAt != null && ev?._receivedAt != null
+      ? formatDelta(ev._receivedAt - prev._receivedAt)
+      : '—'
+  const elapsed =
+    ev?._receivedAt != null && firstMs != null
+      ? '+' + formatRelTime(ev._receivedAt, firstMs, false)
+      : '—'
+  const clockTime = ev?._receivedAt != null ? formatClockTime(ev._receivedAt, true) : '—'
+
   return (
     <aside class={'tl-drawer' + (open ? ' open' : '')} id="tlDrawer">
       {ev && (
@@ -194,6 +221,22 @@ export function TimelineDrawer() {
           </button>
         </div>
       </div>
+      {ev && (
+        <div class="tl-drawer-stats" aria-label="Event timing">
+          <span class="tl-drawer-stat">
+            <span class="tl-drawer-stat-k">time</span>
+            <span class="tl-drawer-stat-v">{clockTime}</span>
+          </span>
+          <span class="tl-drawer-stat">
+            <span class="tl-drawer-stat-k">elapsed</span>
+            <span class="tl-drawer-stat-v">{elapsed}</span>
+          </span>
+          <span class="tl-drawer-stat">
+            <span class="tl-drawer-stat-k">since prev</span>
+            <span class="tl-drawer-stat-v">{sincePrev}</span>
+          </span>
+        </div>
+      )}
       <div class="tl-drawer-body" id="tlDrawerBody">
         {ev && (
           <>
