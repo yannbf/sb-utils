@@ -1,3 +1,15 @@
+# v0.0.19 (Mon May 04 2026)
+
+#### ⚠️ Pushed to `main`
+
+- add time since selected ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
 # v0.0.18 (Mon May 04 2026)
 
 #### ⚠️ Pushed to `main`

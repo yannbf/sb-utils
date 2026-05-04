@@ -2,6 +2,19 @@
 
 #### ⚠️ Pushed to `main`
 
+- `@hipster/sb-utils@0.0.19`
+  - add time since selected ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
+# (Mon May 04 2026)
+
+#### ⚠️ Pushed to `main`
+
 - `@hipster/sb-utils@0.0.18`
   - add extra filtering to timeline view ([@yannbf](https://github.com/yannbf))
   - improve timeline visualization ([@yannbf](https://github.com/yannbf))
