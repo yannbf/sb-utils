@@ -1,6 +1,6 @@
 {
   "name": "@hipster/sb-utils",
-  "version": "0.0.20",
+  "version": "0.0.21",
   "description": "Different, sometimes useful Storybook utilities",
   "type": "module",
   "license": "MIT",
