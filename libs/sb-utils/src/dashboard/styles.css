@@ -295,6 +295,20 @@
 
   .paused-banner button:hover { opacity: 0.85; }
 
+  /* "Too many tabs open" variant of the banner — same layout as
+     paused, red-toned because it's a real connection problem the user
+     needs to act on (close tabs / reload). Wired by the SSE
+     stuck-connecting detector in features/event-stream.ts. */
+  .paused-banner.too-many-tabs {
+    background: linear-gradient(180deg, rgba(248,113,113,0.10) 0%, rgba(248,113,113,0.05) 100%);
+    border-bottom-color: rgba(248,113,113,0.18);
+    color: var(--red);
+  }
+  .paused-banner.too-many-tabs button {
+    background: var(--red);
+    color: #fff;
+  }
+
   /* ── Layout ──────────────────────────────────────── */
   /* body is flex column. Header + (optional) PausedBanner + this
      fill the column. Layout takes the remaining space — no manual

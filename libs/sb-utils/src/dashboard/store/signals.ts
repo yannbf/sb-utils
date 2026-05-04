@@ -271,6 +271,15 @@ export const selectedTimelineEvent = signal<StoredEvent | null>(null)
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
 export const connectionStatus = signal<ConnectionStatus>('connecting')
 
+/**
+ * Set when the SSE has been in `connecting` state long enough that the
+ * most likely culprit is the browser's per-origin HTTP/1.1 connection
+ * cap (~6 in Chrome). Drives a banner that tells the user to close
+ * other tabs pointing at this dashboard. Cleared once SSE actually
+ * opens.
+ */
+export const tooManyTabs = signal<boolean>(false)
+
 // Synthetic events (cache reconstruction + cache-create from backfill)
 // use a high _index range that the server's eventCounter (which starts
 // at 0 and increments by ~1 per event) will never realistically reach.

@@ -15,6 +15,7 @@ import {
   paused,
   pausedWhileCount,
   connectionStatus,
+  tooManyTabs,
   appendEvents,
   setEvents,
   type StoredEvent,
@@ -22,6 +23,15 @@ import {
 import { backfillFromCache, reconstructTelemetryFromCacheWrite } from './reconstruction'
 import { refreshCacheEntries } from '../store/cache'
 import { timelineApi } from '../components/Timeline'
+
+// How long the SSE may sit in CONNECTING before we suspect the
+// browser's per-origin connection cap (~6 in Chrome HTTP/1.1) is full.
+// SSE holds a slot for the lifetime of the tab, so 6+ tabs to the same
+// dashboard origin starves the next one — the connection just queues
+// without erroring. We disambiguate "server down" from "pool full" by
+// pinging /config (which uses the same pool, so a slow ping likewise
+// signals exhaustion vs an outright failure).
+const CONNECT_TIMEOUT_MS = 4000
 
 function connect() {
   const eventSource = new EventSource('/sse')
@@ -36,9 +46,40 @@ function connect() {
     } catch {
       /* ignore */
     }
+    if (timeoutHandle != null) clearTimeout(timeoutHandle)
   }
   window.addEventListener('pagehide', cleanup)
   window.addEventListener('beforeunload', cleanup)
+
+  // Stuck-connecting detector. If onopen hasn't fired by the deadline,
+  // probe /config — if THAT also hangs while the server is reachable
+  // from elsewhere, we're almost certainly out of connection slots
+  // (other tabs holding open SSE streams). Show the "too many tabs"
+  // banner.
+  const timeoutHandle = window.setTimeout(() => {
+    if (eventSource.readyState !== EventSource.OPEN) {
+      const ctrl =
+        typeof AbortController !== 'undefined' ? new AbortController() : null
+      const probeTimeout = window.setTimeout(() => ctrl?.abort(), 3000)
+      fetch('/config', { signal: ctrl?.signal })
+        .then(() => {
+          // /config came back fine, so the server is alive and the
+          // pool isn't fully starved. Don't blame open tabs.
+          tooManyTabs.value = false
+        })
+        .catch(() => {
+          // /config also stuck/aborted while the SSE has been queueing
+          // → connection cap is almost certainly the cause. (The
+          // alternative — total server outage — would be reflected by
+          // the dot's `disconnected` state from the EventSource error
+          // handler shortly after.)
+          if (eventSource.readyState !== EventSource.OPEN) {
+            tooManyTabs.value = true
+          }
+        })
+        .finally(() => clearTimeout(probeTimeout))
+    }
+  }, CONNECT_TIMEOUT_MS)
 
   eventSource.onmessage = (e) => {
     const event = JSON.parse(e.data) as StoredEvent
@@ -46,6 +87,8 @@ function connect() {
   }
   eventSource.onopen = () => {
     connectionStatus.value = 'connected'
+    tooManyTabs.value = false
+    if (timeoutHandle != null) clearTimeout(timeoutHandle)
     void recoverMissedEvents()
   }
   eventSource.onerror = () => {

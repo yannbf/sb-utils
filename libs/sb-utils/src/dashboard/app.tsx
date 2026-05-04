@@ -9,6 +9,7 @@ import { DropOverlay } from './components/DropOverlay'
 import { Modal } from './components/Modal'
 import { Header } from './components/Header'
 import { PausedBanner } from './components/PausedBanner'
+import { TooManyTabsBanner } from './components/TooManyTabsBanner'
 import { Sidebar } from './components/Sidebar'
 import { EventList } from './components/EventList'
 import { Timeline } from './components/Timeline'
@@ -23,6 +24,7 @@ export function App() {
       <DropOverlay />
       <Modal />
       <Header />
+      <TooManyTabsBanner />
       <PausedBanner />
       <div class="layout" id="layout">
         <Sidebar />
