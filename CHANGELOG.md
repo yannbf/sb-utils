@@ -2,6 +2,19 @@
 
 #### ⚠️ Pushed to `main`
 
+- `@hipster/sb-utils@0.0.22`
+  - fix timeline keyboard navigation ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
+# (Mon May 04 2026)
+
+#### ⚠️ Pushed to `main`
+
 - `@hipster/sb-utils@0.0.21`
   - improve timeline vis and fitting ([@yannbf](https://github.com/yannbf))
   - drawer improvements ([@yannbf](https://github.com/yannbf))

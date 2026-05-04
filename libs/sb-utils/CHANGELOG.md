@@ -1,3 +1,15 @@
+# v0.0.22 (Mon May 04 2026)
+
+#### ⚠️ Pushed to `main`
+
+- fix timeline keyboard navigation ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
 # v0.0.21 (Mon May 04 2026)
 
 #### ⚠️ Pushed to `main`
