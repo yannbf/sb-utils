@@ -8,6 +8,7 @@
 import { signal } from '@preact/signals'
 import { useEffect } from 'preact/hooks'
 import { pushToast } from '../store/signals'
+import { timelineApi } from './Timeline'
 
 const dragActive = signal(false)
 
@@ -74,6 +75,12 @@ export function DropOverlay() {
           return
         }
         pushToast('Imported ' + data.imported + ' events from ' + file.name)
+        // Re-arm the timeline's auto-fit so the freshly-imported set
+        // is visible from the left edge once the SSE delivers it. The
+        // imported events arrive asynchronously over SSE; fitAll()
+        // runs immediately AND flips `autoFit` on, so subsequent
+        // renders during that delivery keep refitting.
+        timelineApi.value?.fitAll()
       } catch (err) {
         pushToast('Import failed: ' + ((err as Error)?.message ?? 'network error'))
       }

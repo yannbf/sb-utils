@@ -72,12 +72,27 @@ const Timeline = (function () {
     selectedIdx: null,
     panDrag: null,
     minimapDrag: null,
+    // While `autoFit` is true, every render re-runs `fitAll()`. Stays
+    // true through the entire boot/backfill burst (cache writes,
+    // reconstructed telemetry, late SSE arrivals) so the view always
+    // shows everything from the left edge while events keep landing.
+    // Goes false the moment the user pans / zooms / box-selects, so
+    // their interaction isn't fought by the next ingestion. Re-armed
+    // by an explicit "Fit all" click and after a JSON-file import
+    // (where the user wants to see the freshly-loaded set).
+    autoFit: true,
     // Mirror of the `collapseTimelineGaps` signal — initial value
     // pulled from the signal so persisted prefs / snapshot bake take
     // effect on boot. `toggleCollapseGaps` keeps both in sync.
     collapseGaps: collapseTimelineGaps.value,
     segments: null,
   };
+  // Single point that interactions call to opt out of further
+  // auto-fitting. Cheaper to read in handlers than re-implementing
+  // the "if autoFit drop it" guard at every site.
+  function disableAutoFit() {
+    st.autoFit = false;
+  }
 
   let wrapEl: any, axisCanvas: any, contentCanvas: any, minimapCanvas: any
   let minimapSelectEl: any, mainEl: any, tooltipEl: any, jumpBtn: any
@@ -323,17 +338,67 @@ const Timeline = (function () {
     rebuildSegments();
     const segs = st.segments;
     const totalD = totalDisp();
-    // Generous side padding so the first / last events (and their
-    // rotated labels — which extend down-LEFT from each dot) sit
-    // inside the canvas instead of kissing the sticky label column
-    // or the right edge. 8 % keeps the data range comfortable; the
-    // 2000-ms floor handles tiny ranges where 8 % would still squash
-    // labels behind the column.
-    const pad = Math.max(2000, totalD * 0.08);
-    st.viewStartDisp = segs[0].dispStart - pad;
-    st.viewEndDisp = segs[segs.length - 1].dispEnd + pad;
+    // The labels rotate -45° with right-edge anchored at the dot, so
+    // they hang down-and-to-the-LEFT. The first event's label runs
+    // outside the data range; without extra left-pad it would overlap
+    // (or be clipped behind) the sticky lane-label column. Translate
+    // the longest visible label's pixel width into display-time using
+    // the live canvas width, then take cos(45°) ≈ 0.707 of it as the
+    // horizontal extent. Falls back to the standard 8 % / 2 s pad
+    // when we don't have a useful width yet.
+    const symPad = Math.max(2000, totalD * 0.08);
+    let leftPad = symPad;
+    // Read the actual visible width of the timeline area, NOT
+    // `contentCanvas.clientWidth` — that lags one render cycle behind
+    // because resize() runs AFTER fitAll() in render(). On first paint
+    // it can still be the canvas's default 300px, which would inflate
+    // ms-per-px and balloon the left pad to occupy half the canvas.
+    const liveW =
+      (mainEl && mainEl.clientWidth) ||
+      (wrapEl && wrapEl.clientWidth) ||
+      contentCanvas?.clientWidth ||
+      0;
+    const usableW = liveW > LABEL_COL_W ? liveW - LABEL_COL_W : 0;
+    if (usableW > 0 && segs && segs.length > 0 && totalD > 0) {
+      const labelW = computeMaxLabelW();
+      const msPerPx = (totalD + 2 * symPad) / usableW;
+      const labelMs = Math.ceil(labelW * 0.707 * msPerPx);
+      // 12 px breathing room between the label tip and the lane column.
+      const wanted = labelMs + Math.ceil(12 * msPerPx);
+      // Hard cap the label-driven pad at 25 % of the data span so a
+      // huge label on a tightly-packed timeline can't push the data
+      // into the right half of the canvas. The label may then clip a
+      // little behind the lane column, which is the lesser evil.
+      leftPad = Math.max(symPad, Math.min(wanted, totalD * 0.25));
+    }
+    st.viewStartDisp = segs[0].dispStart - leftPad;
+    st.viewEndDisp = segs[segs.length - 1].dispEnd + symPad;
     st.followTail = true;
+    // Re-arm so subsequent renders during the boot/backfill burst
+    // continue to fit. Goes off again on the next user interaction.
+    st.autoFit = true;
     invalidate();
+  }
+  // Widest visible event-type label across all lanes. Matches the
+  // ggplot-style label rendering in drawContent — used here just to
+  // size the left pad in `fitAll` so the first label doesn't overlap
+  // the sticky lane column. Reuses `getTextWidth` (cached + correct
+  // 10px monospace font matching drawContent). Returns 0 when no
+  // events are visible yet or the canvas isn't ready.
+  function computeMaxLabelW(): number {
+    if (!contentCtx) return 0;
+    const lanes = visibleSessions();
+    if (lanes.length === 0) return 0;
+    let max = 0;
+    for (const lane of lanes) {
+      for (const e of lane.events) {
+        const raw = (e as any).eventType || 'unknown';
+        const text = lane.kind === 'cache' ? raw.replace(/^cache:/, '') || 'cache' : raw;
+        const w = getTextWidth(text);
+        if (w > max) max = w;
+      }
+    }
+    return max;
   }
 
   function timeToX(t, width) {
@@ -414,9 +479,34 @@ const Timeline = (function () {
     rebuildSegments();
     renderEmptyState();
 
-    if (hasEvents && st.viewStartDisp === 0 && st.viewEndDisp === 0) fitAll();
+    // Per-render lane height: scales with the widest visible label
+    // so long names like "ai-setup-self-healing-scoring" don't bleed
+    // into the next lane. Walks every visible event once; cheap.
+    LANE_H = computeLaneH();
 
-    if (st.followTail && hasEvents) {
+    // Size the canvases first so `fitAll`'s pixel→ms conversion has a
+    // real width to work with. Without this, the auto-fit on first
+    // paint reads a stale clientWidth (often the canvas default 300px)
+    // and the label-driven left pad balloons to half the viewport.
+    resize();
+
+    // Auto-fit while the user hasn't grabbed the view yet. Catches all
+    // late-arriving events during boot (cache backfill + reconstructed
+    // telemetry can land in waves over a couple seconds) so the
+    // timeline doesn't end up with the first batch crammed at the right
+    // edge while everything to its left sits empty.
+    //
+    // followTail is mutually exclusive with autoFit on the same render:
+    // fitAll already positions the view so the latest event sits inside
+    // the right pad, and followTail's "shift right edge to lastDisp +
+    // 2 % of range" math would *re*-anchor the view to that tail using
+    // the FULL fitted range (data + leftPad + symPad), pushing the
+    // data block into the right half of the canvas. Skipping the
+    // followTail step on auto-fit renders keeps the data anchored at
+    // the left, which is what the user actually wants.
+    if (hasEvents && st.autoFit) {
+      fitAll();
+    } else if (st.followTail && hasEvents) {
       const lastDisp = st.segments[st.segments.length - 1].dispEnd;
       const range = st.viewEndDisp - st.viewStartDisp;
       const pad = range * 0.02;
@@ -424,12 +514,6 @@ const Timeline = (function () {
       st.viewStartDisp = st.viewEndDisp - range;
     }
 
-    // Per-render lane height: scales with the widest visible label
-    // so long names like "ai-setup-self-healing-scoring" don't bleed
-    // into the next lane. Walks every visible event once; cheap.
-    LANE_H = computeLaneH();
-
-    resize();
     drawAxis();
     drawContent();
     drawMinimap();
@@ -764,10 +848,17 @@ const Timeline = (function () {
         return tw;
       };
 
+      // Smallest x at which a dot is fully visible (i.e. its left edge
+      // clears the sticky lane label column drawn last on top of
+      // everything). Used to anchor partially-clipped first dots —
+      // singletons or cluster rep dots — so they don't get hidden
+      // behind the column while a "+N" pill survives the clamp,
+      // leaving an orphan-pill at the start of the lane.
+      const minVisibleX = LABEL_COL_W + DOT_R;
       for (const grp of groups) {
         if (grp.length === 1) {
           const { e, x } = grp[0];
-          drawEventDot(e, x, false);
+          drawEventDot(e, Math.max(x, minVisibleX), false);
           continue;
         }
 
@@ -781,7 +872,12 @@ const Timeline = (function () {
         const cid = lane.sid + ':' + grp[0].e._index;
         const xc = (grp[0].x + grp[grp.length - 1].x) / 2;
         const repIndex = grp.findIndex((g) => g.e._index === st.selectedIdx);
-        const { e: first, x: firstX } = repIndex >= 0 ? grp[repIndex] : grp[0];
+        const { e: first, x: rawFirstX } = repIndex >= 0 ? grp[repIndex] : grp[0];
+        // Same clamp as singletons so the cluster's rep dot stays
+        // visible. Pill placement below uses the clamped value so the
+        // pill sits to the right of the (visible) dot rather than
+        // being pushed past it by its own LABEL_COL_W + 4 clamp.
+        const firstX = Math.max(rawFirstX, minVisibleX);
         const tw = drawEventDot(first, firstX, false);
         const more = grp.length - 1;
         const pillText = '+' + more;
@@ -1149,12 +1245,23 @@ const Timeline = (function () {
     }
     if (st.panDrag) {
       const dx = e.clientX - st.panDrag.x;
+      const dy = e.clientY - st.panDrag.y;
       const w = contentCanvas.clientWidth;
       const dispPerPx = (st.panDrag.end - st.panDrag.start) / (w - LABEL_COL_W);
       const delta = -dx * dispPerPx;
       st.viewStartDisp = st.panDrag.start + delta;
       st.viewEndDisp = st.panDrag.end + delta;
       st.followTail = false;
+      // Vertical drag → scroll the lanes container in the same
+      // grab-and-pull direction the user expects (drag down with the
+      // cursor brings content from the top into view, i.e. scrollTop
+      // decreases). Bounded by the browser to [0, scrollHeight - clientHeight],
+      // so a no-op when there's nothing to scroll. We always update
+      // scrollTop — any horizontal-only intent still gets a free
+      // vertical correction toward the user's start position.
+      if (mainEl) {
+        mainEl.scrollTop = st.panDrag.scrollTop - dy;
+      }
       invalidate();
       return;
     }
@@ -1202,14 +1309,26 @@ const Timeline = (function () {
       st.contentBoxSelect = { startX: x, currentX: x };
       updateContentSelectOverlay();
       contentCanvas.style.cursor = 'crosshair';
+      disableAutoFit();
       return;
     }
     const cluster = findClusterAt(e.clientX, e.clientY);
     const hit = cluster ? null : findEventAt(e.clientX, e.clientY);
     const lane = findLaneLabelAt(e.clientX, e.clientY);
     if (cluster || hit || lane) return;
-    st.panDrag = { x: e.clientX, start: st.viewStartDisp, end: st.viewEndDisp, moved: false };
+    // Capture both axes' starting state so the same drag can pan the
+    // time view horizontally AND scroll lanes vertically — useful when
+    // there are more sessions than fit in the .tl-main viewport.
+    st.panDrag = {
+      x: e.clientX,
+      y: e.clientY,
+      start: st.viewStartDisp,
+      end: st.viewEndDisp,
+      scrollTop: mainEl ? mainEl.scrollTop : 0,
+      moved: false,
+    };
     contentCanvas.classList.add('grabbing');
+    disableAutoFit();
   }
   function onContentClick(e) {
     // Cluster pills zoom into the cluster's time range; the dots
@@ -1232,6 +1351,7 @@ const Timeline = (function () {
   }
   function onContentWheel(e) {
     e.preventDefault();
+    disableAutoFit();
     // Clear any drag state that lingered past a missed mouseup
     // (released outside the window, focus lost, etc.). Without this
     // the next pan-drag mousemove would keep overwriting whatever
@@ -1379,6 +1499,7 @@ const Timeline = (function () {
     const rect = minimapCanvas.getBoundingClientRect();
     const w = rect.width;
     const x = e.clientX - rect.left;
+    disableAutoFit();
     // Shift+drag → box-select a time window to zoom into.
     if (e.shiftKey) {
       e.preventDefault();
@@ -1451,6 +1572,7 @@ const Timeline = (function () {
   }
   function onMinimapWheel(e) {
     e.preventDefault();
+    disableAutoFit();
     const rect = minimapCanvas.getBoundingClientRect();
     const w = rect.width;
     const [first, last] = dataRange();
