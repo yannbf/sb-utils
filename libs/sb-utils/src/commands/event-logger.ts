@@ -58,7 +58,10 @@ export type EventLoggerOptions = {
 }
 
 export async function eventLogger(options: EventLoggerOptions): Promise<void> {
-  const { port, maxEvents } = options
+  const { maxEvents } = options
+  // Mutable so the EADDRINUSE retry loop in startListening() can bump it
+  // without re-threading every consumer (URL string, ready payload, etc.).
+  let port = options.port
 
   // Auto-enable JSON mode when running inside an AI agent
   const detectedAgent = isAgent ? agent : undefined
@@ -511,7 +514,15 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
 
   let server: ServerType
 
-  try {
+  // Auto-bump the port when EADDRINUSE: another `event-logger` (or any
+  // server) is already on it. We try up to MAX_PORT_RETRIES higher
+  // ports before giving up. Bumping is silent in jsonMode (the agent
+  // sees the actual `dashboard` URL in the ready payload anyway) and
+  // logs a single "trying N+1..." line for humans.
+  const MAX_PORT_RETRIES = 10
+  let portRetries = 0
+
+  const startListening = (): void => {
     server = serve({ fetch: app.fetch, port }, () => {
       const url = `http://localhost:${port}`
 
@@ -588,17 +599,44 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
         })
       }
     })
-  } catch (err: unknown) {
-    const error = err as NodeJS.ErrnoException
-    if (error.code === 'EADDRINUSE') {
-      log.error(
-        `Port ${port} is already in use. Try a different port with --port <port>`,
-      )
-    } else {
-      log.error(`Failed to start server: ${error.message}`)
-    }
-    process.exit(1)
+
+    // EADDRINUSE arrives asynchronously on the underlying http.Server's
+    // `error` event — the synchronous serve() call above does not throw.
+    // Without this listener the process crashes with an "Unhandled
+    // 'error' event". Listening here lets us retry on the next port up.
+    server.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE' && portRetries < MAX_PORT_RETRIES) {
+        const busy = port
+        port = port + 1
+        portRetries++
+        if (jsonMode) {
+          process.stderr.write(
+            JSON.stringify({ status: 'port-busy', busy, retrying: port }) + '\n',
+          )
+        } else if (!quiet) {
+          log.warn(
+            `Port ${busy} is in use — trying ${port}...`,
+          )
+        }
+        try {
+          server.close()
+        } catch {
+          /* ignore */
+        }
+        startListening()
+        return
+      }
+      if (err.code === 'EADDRINUSE') {
+        log.error(
+          `Could not find a free port after ${MAX_PORT_RETRIES + 1} attempts (last tried ${port}). Pass --port <port> to pick one explicitly.`,
+        )
+      } else {
+        log.error(`Failed to start server: ${err.message}`)
+      }
+      process.exit(1)
+    })
   }
+  startListening()
 
   // Graceful shutdown
   const shutdown = () => {
