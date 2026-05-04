@@ -8,6 +8,7 @@
  */
 
 import { signal, computed } from '@preact/signals'
+import { cacheEntries } from './cache'
 
 export type StoredEvent = {
   eventType: string
@@ -79,13 +80,27 @@ export const collapseTimelineGaps = signal(true)
 export const serverStartedAt = signal<number | null>(null)
 
 /**
- * Number of cache entries with mtime < serverStartedAt that the
- * backfill detected on the most recent run. Drives the gear badge
- * (yellow when stale data exists and no toggle is set) and the
- * conditional rendering of the "Show stale cache data" row in the
- * gear popover. Reset to 0 between backfill runs.
+ * Number of cache entries currently considered stale (mtime <
+ * serverStartedAt). Drives the "Show stale cache data" row's pill
+ * + visibility, and the cache-ops pill's "what would surface if
+ * the user flipped the toggle on" math.
+ *
+ * Derived rather than stored: when storybook overwrites a previously
+ * stale entry, that entry's mtime ticks past startedAt and it stops
+ * being stale. A snapshot-style write of this count at boot would
+ * miss those transitions; a computed always reflects the current
+ * cacheEntries snapshot.
  */
-export const staleCacheCount = signal(0)
+export const staleCacheCount = computed<number>(() => {
+  const cutoff = serverStartedAt.value
+  if (cutoff == null) return 0
+  let n = 0
+  for (const entry of cacheEntries.value) {
+    const ts = typeof entry?.mtime === 'number' ? entry.mtime : null
+    if (ts != null && ts < cutoff) n++
+  }
+  return n
+})
 
 // ── Reconstruction flag ──────────────────────────────────
 export const realTelemetryDetected = signal(false)
@@ -199,6 +214,24 @@ export const sessionMap = computed<Record<string, SessionInfo>>(() => {
 export const telemetryCount = computed(() => {
   let n = 0
   for (const e of events.value) if (e._source !== 'cache-watch') n++
+  return n
+})
+
+/**
+ * Count of cache operations the user would see if they flipped the
+ * "Show cache operations" toggle on. Counts events (cache:write /
+ * cache:delete), NOT entries on disk: a single entry can be touched
+ * many times by a workload and each touch is its own operation.
+ *
+ * The current staleness state is already baked into `events.value` —
+ * when `showStaleCache` is off, stale synthetic events are filtered
+ * at ingestion time and `setShowStaleCache(false)` drops them — so
+ * counting cache-watch events directly here gives the right number
+ * for both states without re-applying the stale gate.
+ */
+export const cacheOperationsCount = computed(() => {
+  let n = 0
+  for (const e of events.value) if (e._source === 'cache-watch') n++
   return n
 })
 

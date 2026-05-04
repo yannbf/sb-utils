@@ -17,7 +17,6 @@ import {
   cacheAllHidden,
   collapseTimelineGaps,
   serverStartedAt,
-  staleCacheCount,
   paused,
   pausedWhileCount,
   appendEvent,
@@ -26,6 +25,7 @@ import {
   type StoredEvent,
 } from '../store/signals'
 import { timelineApi } from '../components/Timeline'
+import { cacheEntries, cacheInfo } from '../store/cache'
 import { rotateSessionIfChanged } from '../lib/session-storage'
 
 type CacheWriteEvent = {
@@ -225,21 +225,29 @@ export async function backfillFromCache(): Promise<void> {
     const data = await cacheRes.json()
     const entries: any[] = data && Array.isArray(data.entries) ? data.entries : []
 
-    // Count stale entries (mtime < startedAt) regardless of whether
-    // they're being ingested. The sidebar gear uses this to decide
-    // whether to show the "Show stale cache data" toggle and to flag
-    // its badge yellow when stale data exists but no mode is on.
-    const cutoff = serverStartedAt.value
-    if (cutoff != null) {
-      let stale = 0
-      for (const entry of entries) {
-        const ts = typeof entry?.mtime === 'number' ? entry.mtime : null
-        if (ts != null && ts < cutoff) stale++
+    // Hand the raw list to the cacheEntries signal so the sidebar's
+    // "Show cache operations" toggle can show "N entries detected"
+    // without paying for a second `/cache/entries` round-trip via
+    // refreshCacheEntries. Live cache:write events keep this in sync
+    // through the SSE handler. Mirror cacheStatus / paths into
+    // cacheInfo so refreshCacheEntries doesn't have to re-derive
+    // them from a follow-up /cache/info fetch.
+    cacheEntries.value = entries
+    if (data && typeof data === 'object') {
+      const { cacheStatus, projectRoot, cacheRoot, version } = data as {
+        cacheStatus?: string
+        projectRoot?: string | null
+        cacheRoot?: string | null
+        version?: string | null
       }
-      staleCacheCount.value = stale
-    } else {
-      staleCacheCount.value = 0
+      if (cacheStatus) {
+        cacheInfo.value = { cacheStatus, projectRoot, cacheRoot, version }
+      }
     }
+
+    // staleCacheCount is now a computed signal off cacheEntries +
+    // serverStartedAt (see store/signals.ts) — populating cacheEntries
+    // above is enough to drive it. No manual write required.
     if (entries.length === 0) return
 
     const sorted = entries.slice().sort((a, b) => (a.mtime || 0) - (b.mtime || 0))

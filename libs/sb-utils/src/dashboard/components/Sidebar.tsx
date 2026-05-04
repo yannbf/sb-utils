@@ -22,6 +22,7 @@ import {
   sessionMap,
   imports,
   telemetryCount,
+  cacheOperationsCount,
 } from '../store/signals'
 import { actions } from '../store/actions'
 import { getColor } from '../lib/colors'
@@ -163,6 +164,12 @@ function CacheOpsSection() {
   const reconstruct = reconstructFromCache.value
   const stale = showStaleCache.value
   const staleCount = staleCacheCount.value
+  // Count the OPERATIONS the user would see on flipping the toggle
+  // on — that's events, not entries-on-disk. A single entry can be
+  // touched many times and each touch is its own row. cacheOperationsCount
+  // already reflects the current staleness state (events.value is
+  // re-filtered on stale toggle, ingestion drops stale by default).
+  const opsCount = cacheOperationsCount.value
   // The "Show stale cache data" row only renders when stale entries
   // actually exist OR the toggle is currently on (so the user can
   // turn it off). If we hid it on `stale=true && staleCount==0`
@@ -176,6 +183,11 @@ function CacheOpsSection() {
         <CacheOpsToggle
           id="cacheOpsShowToggle"
           title="Show cache operations"
+          pill={
+            opsCount > 0
+              ? `${opsCount} ${opsCount === 1 ? 'operation' : 'operations'} detected`
+              : null
+          }
           hint="Surface cache:write / cache:delete events in the dashboard, timeline, and counts."
           on={showOps}
           onToggle={() => actions().toggleCacheAllHidden()}
@@ -184,6 +196,7 @@ function CacheOpsSection() {
           <CacheOpsToggle
             id="cacheOpsStaleToggle"
             title="Show stale cache data"
+            pillTone="warning"
             pill={
               staleCount > 0
                 ? `${staleCount} ${staleCount === 1 ? 'entry' : 'entries'} detected`
@@ -220,6 +233,7 @@ function CacheOpsToggle({
   title,
   hint,
   pill,
+  pillTone = 'info',
   on,
   onToggle,
 }: {
@@ -227,6 +241,10 @@ function CacheOpsToggle({
   title: string
   hint: preact.ComponentChildren
   pill?: string | null
+  /** `info` (blue, default) for neutral counts like "N entries
+   * detected" on the cache-ops toggle. `warning` (yellow) for
+   * states the user might want to act on, like stale data. */
+  pillTone?: 'info' | 'warning'
   on: boolean
   onToggle: () => void
 }) {
@@ -235,7 +253,11 @@ function CacheOpsToggle({
       <span class="cache-ops-menu-label">
         <span class="cache-ops-menu-title">
           {title}
-          {pill && <span class="cache-ops-menu-pill">{pill}</span>}
+          {pill && (
+            <span class={'cache-ops-menu-pill cache-ops-menu-pill-' + pillTone}>
+              {pill}
+            </span>
+          )}
         </span>
         <span class="cache-ops-menu-hint">{hint}</span>
       </span>

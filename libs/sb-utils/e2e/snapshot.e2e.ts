@@ -196,7 +196,7 @@ test.describe('HTML snapshot export', () => {
       undefined,
       { timeout: 5_000 },
     )
-    await expect(page.locator('.cache-ops-menu-pill')).toContainText(
+    await expect(page.locator('label.cache-ops-menu-row:has(#cacheOpsStaleToggle) .cache-ops-menu-pill')).toContainText(
       /\d+ entr(?:y|ies) detected/,
       { timeout: 5_000 },
     )
@@ -220,7 +220,7 @@ test.describe('HTML snapshot export', () => {
     await snap.goto('file://' + snapPath)
     await expect.poll(() => snap.evaluate(() => (window as any).__SNAPSHOT__)).toBe(true)
 
-    await expect(snap.locator('.cache-ops-menu-pill')).toContainText(
+    await expect(snap.locator('label.cache-ops-menu-row:has(#cacheOpsStaleToggle) .cache-ops-menu-pill')).toContainText(
       /\d+ entr(?:y|ies) detected/,
       { timeout: 5_000 },
     )

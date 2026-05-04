@@ -33,6 +33,10 @@ export const cacheInfo = signal<CacheInfo>({
 export const cacheEntries = signal<CacheEntry[]>([])
 
 const initialEditMode = (() => {
+  // signals.ts imports from this file, so this IIFE now runs in
+  // unit-test (node) contexts as well as the browser. Guard the
+  // browser-only globals so the import doesn't throw under Vitest.
+  if (typeof window === 'undefined') return false
   if ((window as any).__SNAPSHOT__) return false
   try {
     return localStorage.getItem('sbutils.eventlog.cache.editMode') === '1'
@@ -67,13 +71,28 @@ export async function refreshCacheInfo(): Promise<void> {
 }
 
 export async function refreshCacheEntries(): Promise<void> {
-  if (cacheInfo.value.cacheStatus !== 'found') {
-    cacheEntries.value = []
-    return
-  }
   try {
     const res = await fetch('/cache/entries')
     const data = await res.json()
+    // The /cache/entries response carries cacheStatus / projectRoot /
+    // cacheRoot / version too — mirror them into cacheInfo so the
+    // sidebar pill keeps refreshing even when the user never visits
+    // the dedicated Cache view (i.e. cacheInfo would otherwise stay
+    // at its initial 'not-found' state). Previously this function
+    // gated on cacheInfo.cacheStatus === 'found' and silently wrote
+    // []; that meant every live cache:write SSE event wiped the
+    // count rather than growing it.
+    if (data && typeof data === 'object') {
+      const { cacheStatus, projectRoot, cacheRoot, version } = data as {
+        cacheStatus?: string
+        projectRoot?: string | null
+        cacheRoot?: string | null
+        version?: string | null
+      }
+      if (cacheStatus) {
+        cacheInfo.value = { cacheStatus, projectRoot, cacheRoot, version }
+      }
+    }
     cacheEntries.value = Array.isArray(data?.entries) ? data.entries : []
   } catch {
     cacheEntries.value = []

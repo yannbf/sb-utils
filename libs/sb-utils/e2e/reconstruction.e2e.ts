@@ -264,7 +264,9 @@ test.describe('reconstruction toggle (opt-in via sidebar)', () => {
       { timeout: 5_000 },
     )
     // The pill renders next to the "Show stale cache data" title.
-    await expect(page.locator('.cache-ops-menu-pill')).toContainText(
+    await expect(
+      page.locator('label.cache-ops-menu-row:has(#cacheOpsStaleToggle) .cache-ops-menu-pill'),
+    ).toContainText(
       /\d+ entr(?:y|ies) detected/,
       { timeout: 5_000 },
     )
