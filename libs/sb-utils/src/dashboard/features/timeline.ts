@@ -1184,7 +1184,18 @@ const Timeline = (function () {
     // Shift+drag inside the content area starts a time-range
     // box-select. Releasing with a non-trivial width zooms the main
     // view to that range — same UX as shift+drag on the minimap.
+    //
+    // Exception: shift+click on a dot when there's already a
+    // selected anchor event is a *range type-filter* gesture (handled
+    // in onContentClick). In that case skip the box-select setup so
+    // the click event sees a clean state.
     if (e.shiftKey && x >= LABEL_COL_W) {
+      const anchor = selectedTimelineEvent.value;
+      const dotHit = anchor ? findEventAt(e.clientX, e.clientY) : null;
+      if (anchor && dotHit && dotHit.event !== anchor) {
+        e.preventDefault();
+        return;
+      }
       e.preventDefault();
       st.contentBoxSelect = { startX: x, currentX: x };
       updateContentSelectOverlay();
@@ -1205,7 +1216,19 @@ const Timeline = (function () {
     const cluster = findClusterAt(e.clientX, e.clientY);
     if (cluster) { zoomIntoCluster(cluster); return; }
     const hit = findEventAt(e.clientX, e.clientY);
-    if (hit) { openDrawer(hit.event); return; }
+    if (hit) {
+      // Shift+click on a second dot, when an anchor is already
+      // selected, isolates the event types that occur in the
+      // chronological range between the two clicks. The clicked dot
+      // becomes the new anchor so a follow-up shift+click extends
+      // (or contracts) the range relative to it.
+      const anchor = selectedTimelineEvent.value;
+      if (e.shiftKey && anchor && hit.event !== anchor) {
+        applyRangeTypeFilter(anchor, hit.event);
+      }
+      openDrawer(hit.event);
+      return;
+    }
     const lane = findLaneLabelAt(e.clientX, e.clientY);
     if (lane) {
       // Cache lane has no session-filter equivalent — clicking its label
@@ -1216,6 +1239,31 @@ const Timeline = (function () {
       applyFiltersInPlace();
       invalidate();
     }
+  }
+  // Hide every telemetry event type that does NOT occur in the
+  // chronological range [a._receivedAt, b._receivedAt]. Cache:*
+  // events live in their own sidebar section (governed by
+  // cacheAllHidden) and aren't swept in or out by this gesture.
+  function applyRangeTypeFilter(a: any, b: any): void {
+    const tA = a && a._receivedAt;
+    const tB = b && b._receivedAt;
+    if (tA == null || tB == null) return;
+    const lo = Math.min(tA, tB);
+    const hi = Math.max(tA, tB);
+    const inRange = new Set<string>();
+    const known = new Set<string>();
+    for (const ev of state.events) {
+      if (ev._source === 'cache-watch') continue;
+      const t = ev._receivedAt;
+      const typ = ev.eventType || 'unknown';
+      known.add(typ);
+      if (t == null) continue;
+      if (t >= lo && t <= hi) inRange.add(typ);
+    }
+    const hide = new Set<string>();
+    for (const typ of known) if (!inRange.has(typ)) hide.add(typ);
+    state.hiddenTypes = hide;
+    invalidate();
   }
   function onContentWheel(e) {
     e.preventDefault();
