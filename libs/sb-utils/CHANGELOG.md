@@ -1,3 +1,15 @@
+# v0.0.17 (Mon May 04 2026)
+
+#### ⚠️ Pushed to `main`
+
+- improve cache operations detection logic ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
 # v0.0.16 (Mon May 04 2026)
 
 #### 🐛 Bug Fix

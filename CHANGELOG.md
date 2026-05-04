@@ -1,5 +1,18 @@
 # (Mon May 04 2026)
 
+#### ⚠️ Pushed to `main`
+
+- `@hipster/sb-utils@0.0.17`
+  - improve cache operations detection logic ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
+# (Mon May 04 2026)
+
 #### 🐛 Bug Fix
 
 - `@hipster/sb-utils@0.0.16`
