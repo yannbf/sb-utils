@@ -212,13 +212,15 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
     events.push(stored)
 
     if (jsonMode) {
+      // AI agents consume the NDJSON stream — they get every cache
+      // event so their automation can see the full picture.
       process.stdout.write(JSON.stringify(stored) + '\n')
-    } else if (!quiet && !options.noCache) {
-      const op = change.operation.toUpperCase().padEnd(6)
-      log.info(
-        `${grey(`#${index}`)} ${blue(`cache ${op}`)} ${change.namespace}/${change.key}`,
-      )
     }
+    // Human CLI output intentionally omits cache operations: they're
+    // chatty (every Storybook write triggers one) and the dashboard is
+    // the proper UI for inspecting them. Telemetry events still get a
+    // line in the human log, and `noCache` / `noCacheWatch` still
+    // gate the watcher itself.
 
     broadcastEvent(stored)
   }

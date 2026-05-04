@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { hasErrorPayload } from '../src/dashboard/lib/event-helpers'
+import { hasErrorPayload, summaryFor } from '../src/dashboard/lib/event-helpers'
+import type { StoredEvent } from '../src/dashboard/store/signals'
 
 describe('hasErrorPayload', () => {
   it('returns false for events with no payload', () => {
@@ -85,11 +86,57 @@ describe('hasErrorPayload', () => {
     ).toBe(false)
   })
 
+  it('skips cache:write events even when they contain error-like fields', () => {
+    expect(
+      hasErrorPayload({
+        _source: 'cache-watch',
+        payload: { content: { error: 'boom' }, key: 'x', namespace: 'y' },
+      }),
+    ).toBe(false)
+  })
+
+  it('does flag reconstructed telemetry (cache-recon) when payload has errors', () => {
+    expect(
+      hasErrorPayload({ _source: 'cache-recon', payload: { error: 'boom' } }),
+    ).toBe(true)
+  })
+
   it('survives self-referential payloads without infinite loop', () => {
     const a: any = { name: 'root' }
     a.self = a
     expect(hasErrorPayload({ payload: a })).toBe(false)
     a.error = 'boom'
     expect(hasErrorPayload({ payload: a })).toBe(true)
+  })
+})
+
+const ev = (payload: Record<string, unknown>): StoredEvent =>
+  ({ eventType: 'x', _index: 0, _receivedAt: 0, payload }) as StoredEvent
+
+describe('summaryFor', () => {
+  it('boot: surfaces eventType (e.g. "dev")', () => {
+    expect(summaryFor(ev({ eventType: 'dev' }))).toBe('dev')
+  })
+
+  it('init-step: surfaces step + result', () => {
+    expect(summaryFor(ev({ step: 'playwright-install', result: 'installed' }))).toBe(
+      'playwright-install · installed',
+    )
+  })
+
+  it('onboarding-checklist-status: surfaces item + status', () => {
+    expect(summaryFor(ev({ item: 'moreStories', status: 'done' }))).toBe(
+      'moreStories · done',
+    )
+  })
+
+  it('still surfaces error message via the error branch', () => {
+    expect(summaryFor(ev({ error: { message: 'boom' } }))).toBe('error: boom')
+    expect(summaryFor(ev({ error: 'flat' }))).toBe('error: flat')
+  })
+
+  it('returns empty string for events with no descriptive fields', () => {
+    expect(summaryFor(ev({ unrelated: 1 }))).toBe('')
+    expect(summaryFor(null)).toBe('')
   })
 })

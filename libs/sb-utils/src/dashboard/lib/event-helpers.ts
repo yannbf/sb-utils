@@ -38,8 +38,18 @@ export function cacheKeyOf(event: StoredEvent | null | undefined): string | null
  * secondary info next to the event-type badge — on cards, in the
  * timeline tooltip, and in the drawer header. Cache events get
  * `<namespace>/<key>`; telemetry events get a `·`-joined list of
- * common descriptive fields (eventType / type / name / status /
- * error). Returns an empty string when there's nothing useful.
+ * common descriptive fields. Returns an empty string when there's
+ * nothing useful.
+ *
+ * Field set is intentionally generic so new event types pick up a
+ * sensible label without per-type code:
+ *   - `eventType` (e.g. boot's "dev")
+ *   - `step` (e.g. init-step's "playwright-install")
+ *   - `item` (e.g. onboarding-checklist-status's "moreStories")
+ *   - `type` / `name`
+ *   - `status` / `result` (init-step's "installed",
+ *     onboarding-checklist-status's "done")
+ *   - `error` (special-cased to surface the message)
  */
 export function summaryFor(ev: StoredEvent | null | undefined): string {
   if (!ev) return ''
@@ -51,9 +61,12 @@ export function summaryFor(ev: StoredEvent | null | undefined): string {
   const p = ev.payload as Record<string, unknown> | undefined
   if (p) {
     if (p.eventType) parts.push(String(p.eventType))
+    if (p.step) parts.push(String(p.step))
+    if (p.item) parts.push(String(p.item))
     if (p.type) parts.push(String(p.type))
     if (p.name) parts.push(String(p.name))
     if (p.status) parts.push(String(p.status))
+    if (p.result) parts.push(String(p.result))
     if (p.error) {
       const err = p.error as { message?: string } | string
       parts.push(
@@ -105,10 +118,17 @@ export function isErrorEntry(key: string, value: unknown): boolean {
  * (with a depth cap and a visited-set against cycles) because real
  * error info is often nested — e.g. `payload.analysis.uniqueErrorCount`
  * or `payload.result.categorizedErrors`.
+ *
+ * Cache:* events are intentionally excluded — their payload often
+ * carries content fields that mention errors descriptively (e.g. an
+ * `errorMessage` key written into the cache by some other process)
+ * without indicating that the cache operation itself failed. Only
+ * real telemetry (and reconstructed telemetry) gets the highlight.
  */
 export function hasErrorPayload(
-  ev: { payload?: unknown } | null | undefined,
+  ev: { payload?: unknown; _source?: string } | null | undefined,
 ): boolean {
+  if (ev?._source === 'cache-watch') return false
   const p = ev?.payload
   if (!p || typeof p !== 'object') return false
   const seen = new WeakSet<object>()

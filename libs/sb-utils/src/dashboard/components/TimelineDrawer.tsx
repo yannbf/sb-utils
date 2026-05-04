@@ -50,13 +50,43 @@ export function TimelineDrawer() {
 
   // Tabs default to the first one available; reset when the selected
   // event changes (e.g. user navigates prev/next or clicks a different
-  // dot on the canvas).
+  // dot on the canvas). For error-flagged telemetry events we jump
+  // straight to the Payload tab — the user almost always wants to see
+  // the squiggle without an extra click.
   const tabs = useMemo(() => (ev ? tabsFor(ev) : []), [ev])
+  const isErrorEv = ev ? hasErrorPayload(ev) : false
   const [active, setActive] = useState(tabs[0]?.key ?? 'raw')
   useEffect(() => {
     if (tabs.length === 0) return
+    if (isErrorEv && tabs.some((t) => t.key === 'payload')) {
+      setActive('payload')
+      return
+    }
     if (!tabs.some((t) => t.key === active)) setActive(tabs[0].key)
   }, [ev])
+
+  // After the payload tab renders for an error event, scroll the
+  // first error-keyed property into view inside the drawer body so
+  // users land on the squiggle. Runs after layout (rAF) so the
+  // .error-key element actually exists in the DOM, and uses the
+  // drawer body as the scroll container so the tabs/header don't
+  // scroll out of view.
+  useEffect(() => {
+    if (!ev || !isErrorEv || active !== 'payload') return
+    const raf = requestAnimationFrame(() => {
+      const body = document.getElementById('tlDrawerBody')
+      const target = body?.querySelector('.error-key') as HTMLElement | null
+      if (!body || !target) return
+      const bodyRect = body.getBoundingClientRect()
+      const targetRect = target.getBoundingClientRect()
+      // Position the squiggle ~80px below the body's top so it's
+      // visible but the surrounding context above is also readable.
+      const desiredTopWithinBody = 80
+      const delta = targetRect.top - bodyRect.top - desiredTopWithinBody
+      body.scrollTop += delta
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [ev, isErrorEv, active])
 
   // ── Navigation ──
   // Honor the active sidebar filters so prev/next can't land on a dot
@@ -265,7 +295,7 @@ export function TimelineDrawer() {
                 ) : (
                   <JsonView
                     value={t.key === 'raw' ? ev : ((ev as any)[t.key] as unknown)}
-                    highlightErrors={t.key === 'payload'}
+                    highlightErrors={t.key === 'payload' && !isCache}
                   />
                 )}
               </div>

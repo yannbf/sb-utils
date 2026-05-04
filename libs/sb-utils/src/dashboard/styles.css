@@ -746,6 +746,23 @@
     transition: background var(--transition);
   }
 
+  /* Allow text selection on the descriptive labels in the card header
+     (badge / summary / session / index / time / delta) while keeping
+     the row's pointer cursor — the row is still primarily a
+     click-to-expand affordance, so the I-beam would mis-signal. The
+     click handler in EventCard skips the toggle when a non-collapsed
+     selection sits inside the header so dragging to select doesn't
+     snap the card shut on mouseup. */
+  .event-header .event-badge,
+  .event-header .event-summary,
+  .event-header .event-session,
+  .event-header .event-index,
+  .event-header .event-time,
+  .event-header .event-delta {
+    user-select: text;
+    cursor: pointer;
+  }
+
   .event-header:hover { background: rgba(255,255,255,0.02); }
 
   .expand-icon {
@@ -1588,7 +1605,7 @@
      still fires. */
   .tl-drawer-meta {
     position: absolute;
-    top: 6px;
+    top: 2px;
     left: 14px;
     z-index: 1;
     display: inline-flex;

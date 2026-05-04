@@ -33,10 +33,13 @@ function tabsFor(ev: StoredEvent): Tab[] {
 function TabPanel({ event, tabKey }: { event: StoredEvent; tabKey: string }) {
   if (tabKey === 'diff') return <DiffView payload={event.payload as any} />
   const data = tabKey === 'raw' ? event : ((event as any)[tabKey] as unknown)
-  // Only the Payload tab gets the red squiggle on error/fail keys —
-  // the other tabs (metadata, context, raw) frequently contain
-  // unrelated descriptive fields that would falsely trip the rule.
-  return <JsonView value={data} highlightErrors={tabKey === 'payload'} />
+  // Only telemetry payload tabs get the red squiggle on error/fail
+  // keys. Cache events are skipped (their content often carries
+  // unrelated descriptive `error*` fields) and the other tabs
+  // (metadata / context / raw) carry too many descriptive fields to
+  // highlight without false positives.
+  const highlight = tabKey === 'payload' && event._source !== 'cache-watch'
+  return <JsonView value={data} highlightErrors={highlight} />
 }
 
 // Same per-tab copy semantics as the TimelineDrawer: hand back the
@@ -130,7 +133,22 @@ export function EventCard({
       data-source={isReconstructed ? 'cache-recon' : undefined}
       data-has-error={isError ? 'true' : undefined}
     >
-      <div class="event-header" onClick={toggleExpanded}>
+      <div
+        class="event-header"
+        onClick={(e) => {
+          // Allow text selection inside the header without expanding
+          // the card on mouseup. If the user has just dragged a
+          // selection, getSelection().isCollapsed is false — treat the
+          // click as "finish selecting", not "toggle". A bare click on
+          // text leaves the selection collapsed and toggles normally.
+          const sel = typeof window !== 'undefined' ? window.getSelection?.() : null
+          if (sel && !sel.isCollapsed) {
+            const t = e.target as Node | null
+            if (t && sel.containsNode(t, true)) return
+          }
+          toggleExpanded()
+        }}
+      >
         <span class="expand-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M9 18l6-6-6-6" />

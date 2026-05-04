@@ -92,12 +92,23 @@ export function toggleHiddenImport(id: string): void {
   bridges.invalidateTimeline()
 }
 export function toggleCacheAllHidden(): void {
+  const wasHidden = cacheAllHidden.value
   cacheAllHidden.value = !cacheAllHidden.value
   // Persist the user-facing "Show cache operations" state. Stored as
   // the inverse of the internal flag so the pref reads as the toggle
   // label: `showCacheOperations=1` means cache is visible.
   writePref('showCacheOperations', cacheAllHidden.value ? '0' : '1')
-  bridges.invalidateTimeline()
+  // Going hidden→visible: re-run the backfill so any cache entries
+  // that were skipped at boot (e.g. stale ones the user now wants to
+  // see, or entries Storybook wrote between boot and toggle) show up
+  // without a refresh. Idempotent — ingestSyntheticCacheCreate dedupes
+  // on (file, mtime). Going the other direction is a pure
+  // visibility flip and doesn't need a refetch.
+  if (wasHidden) {
+    void backfillFromCache().then(() => bridges.invalidateTimeline())
+  } else {
+    bridges.invalidateTimeline()
+  }
 }
 
 /**
