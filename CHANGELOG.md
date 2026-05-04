@@ -1,3 +1,21 @@
+# (Mon May 04 2026)
+
+#### 🐛 Bug Fix
+
+- `@hipster/sb-utils@0.0.16`
+  - Refactor event logger to use Preact [#20](https://github.com/yannbf/sb-utils/pull/20) ([@yannbf](https://github.com/yannbf))
+
+#### ⚠️ Pushed to `main`
+
+- `@hipster/sb-utils@0.0.16`
+  - fix release ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
 # (Fri May 01 2026)
 
 #### 🐛 Bug Fix
