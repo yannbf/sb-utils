@@ -1,3 +1,20 @@
+# v0.0.20 (Mon May 04 2026)
+
+#### ⚠️ Pushed to `main`
+
+- port handling ([@yannbf](https://github.com/yannbf))
+- handle many connections ([@yannbf](https://github.com/yannbf))
+- improved error detection ([@yannbf](https://github.com/yannbf))
+- add error detection ([@yannbf](https://github.com/yannbf))
+- add more info to timeline drawer ([@yannbf](https://github.com/yannbf))
+- fix since prev for elements before selected ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
 # v0.0.19 (Mon May 04 2026)
 
 #### ⚠️ Pushed to `main`
