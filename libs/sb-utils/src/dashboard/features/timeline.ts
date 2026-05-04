@@ -1821,6 +1821,12 @@ const Timeline = (function () {
     st.viewStartDisp = next.viewStartDisp;
     st.viewEndDisp = next.viewEndDisp;
     st.followTail = false;
+    // The user explicitly navigated to (or clicked on) a dot — the
+    // pan we just computed must NOT be overwritten by the next
+    // render's auto-fit. Without this, opening the drawer on a fresh
+    // boot (when autoFit is still on) makes keyboard prev/next pan
+    // briefly and snap back to the fitted view.
+    disableAutoFit();
   }
 
   // Drawer prev/next/close UX is owned by TimelineDrawer.tsx (it reads
