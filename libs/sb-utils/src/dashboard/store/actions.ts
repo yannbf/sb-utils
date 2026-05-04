@@ -14,7 +14,7 @@ export {
   toggleHiddenSession,
   toggleHiddenImport,
   toggleCacheAllHidden,
-  toggleTelemetryAllHidden,
+  toggleAllEventTypesHidden,
   setReconstructFromCache,
   setShowStaleCache,
   deleteEventsByType,

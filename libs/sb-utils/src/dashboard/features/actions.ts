@@ -26,7 +26,7 @@ import {
   hiddenSessions,
   hiddenImports,
   cacheAllHidden,
-  telemetryAllHidden,
+  typeCounts,
   realTelemetryDetected,
   reconstructFromCache,
   showStaleCache,
@@ -170,8 +170,24 @@ export function setReconstructFromCache(on: boolean): void {
     bridges.invalidateTimeline()
   }
 }
-export function toggleTelemetryAllHidden(): void {
-  telemetryAllHidden.value = !telemetryAllHidden.value
+/**
+ * "All events" master eye in the sidebar. If any visible type is
+ * still showing, this hides every type at once. If everything is
+ * already hidden, it shows everything. Either way, each individual
+ * row's eye reflects the new state — so users can hide all and then
+ * un-hide a single type as a one-click "isolate" gesture, which
+ * was the gap with the old `telemetryAllHidden` boolean (it sat
+ * alongside `hiddenTypes` and the per-row eyes never updated).
+ */
+export function toggleAllEventTypesHidden(): void {
+  // Cache:* events have their own toggle in the Cache Operations
+  // section. Don't sweep them in/out as part of "All events".
+  const allTypes = Object.keys(typeCounts.value).filter(
+    (t) => !['cache:write', 'cache:delete'].includes(t),
+  )
+  const hidden = hiddenTypes.value
+  const allHidden = allTypes.length > 0 && allTypes.every((t) => hidden.has(t))
+  hiddenTypes.value = allHidden ? new Set() : new Set(allTypes)
   bridges.invalidateTimeline()
 }
 
@@ -303,7 +319,6 @@ export async function clearAll(): Promise<void> {
   hiddenSessions.value = new Set()
   hiddenImports.value = new Set()
   cacheAllHidden.value = true
-  telemetryAllHidden.value = false
   activeFilter.value = 'all'
   activeSession.value = null
   activeImport.value = null

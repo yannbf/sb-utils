@@ -14,7 +14,7 @@
 
 import { effect } from '@preact/signals'
 import { escapeHtml, formatGapDuration as _formatGapDurationLib } from '../lib/format'
-import { formatDelta } from '../lib/event-helpers'
+import { formatDelta, summaryFor } from '../lib/event-helpers'
 import { writePref } from './../lib/session-storage'
 import { getColor } from '../lib/colors'
 import { matchesFilters as _matchesFilters } from '../lib/filters'
@@ -32,13 +32,30 @@ export function setupTimeline(state: any, applyFiltersInPlace: () => void, conta
   const matchesFilters = (e: any) => _matchesFilters(e)
 
 const Timeline = (function () {
-  const LANE_H = 44;
+  // Lane row height. Computed per render based on the widest
+  // visible label across all lanes — `currentLaneH` stays in sync
+  // with the longest event name times sin(45°) plus a base offset
+  // for the dot row. Floored to keep short-label timelines from
+  // collapsing, capped to keep one absurdly long label from
+  // tripling the canvas. Set in `render()`; everything below reads
+  // through it. Initial value matches the floor so first-paint
+  // resize math doesn't divide by zero.
+  const LANE_H_MIN = 60;
+  const LANE_H_MAX = 220;
+  let LANE_H = LANE_H_MIN;
   const AXIS_H = 26;
   const LABEL_COL_W = 130;
   const DOT_R = 4;
   const LIFESPAN_H = 10;
   const GAP_SEG_DISP_MS = 400;
   const MINIMAP_HANDLE_HIT = 7;
+  // Rotation angle for event labels under each dot. Negative so the
+  // canvas rotates counter-clockwise on screen, matching the
+  // ggplot/matplotlib convention: text reads left-to-right ascending
+  // at 45°, anchored at its RIGHT edge so the end of the label
+  // touches the dot. The body of the label hangs down-and-to-the-
+  // left, occupying its own diagonal column.
+  const LABEL_ANGLE = -Math.PI / 4;
   // Two consecutive in-lane dots within this many CSS pixels collapse
   // into a single "+N" cluster puck. Picked so dots that would
   // visually touch (radius 4) get grouped, not when they merely sit
@@ -126,6 +143,26 @@ const Timeline = (function () {
       }
     });
 
+    // Browser-level focus loss is the usual cause of stuck pan/box
+    // state — the user drags out of the window, releases, the
+    // mouseup never reaches us. Clearing on blur restores wheel-zoom
+    // responsiveness without waiting for the next click.
+    window.addEventListener('blur', () => {
+      if (st.panDrag) {
+        st.panDrag = null;
+        contentCanvas.classList.remove('grabbing');
+      }
+      if (st.contentBoxSelect) {
+        st.contentBoxSelect = null;
+        updateContentSelectOverlay();
+      }
+      if (st.minimapDrag) {
+        st.minimapDrag = null;
+        minimapSelectEl.classList.remove('active');
+        minimapCanvas.style.cursor = 'grab';
+      }
+    });
+
     fitBtn.addEventListener('click', fitAll);
     jumpBtn.addEventListener('click', () => { st.followTail = true; fitAll(); });
     // Drawer prev/next/close buttons are owned by TimelineDrawer.tsx.
@@ -165,11 +202,27 @@ const Timeline = (function () {
     // single lane labeled "Cache". Sits above the per-session lanes.
     const CACHE_LANE_ID = '__cache__';
     let cacheLane: any = null;
+    // Imports the user has hidden via the sidebar's Imports section.
+    // The dashboard filter (`matchesFilters`) already drops them;
+    // the timeline needs the same gate here so JSON imports actually
+    // disappear from lanes / lifespan bars instead of just from the
+    // dashboard list.
+    const importHidden = (ev: any) => {
+      const id = ev?._import?.id
+      return id ? state.hiddenImports.has(id) : false
+    }
+
     for (const e of state.events) {
       // Cache events feed the cache lane regardless of sessionId.
       if (e._source === 'cache-watch') {
         // "Show cache operations" toggle hides every cache dot.
         if (state.cacheAllHidden) continue;
+        // Hidden cache:* types stay out of the lane entirely — they
+        // don't extend the lane's lifespan bar or show as faded
+        // dots. The user wants "hide" to drop the event, not just
+        // dim it (the dim/focus path is for `activeFilter`).
+        if (state.hiddenTypes.has(e.eventType)) continue;
+        if (importHidden(e)) continue;
         if (!cacheLane) {
           cacheLane = {
             sid: CACHE_LANE_ID,
@@ -181,13 +234,17 @@ const Timeline = (function () {
         }
         if (e._receivedAt < cacheLane.first) cacheLane.first = e._receivedAt;
         if (e._receivedAt > cacheLane.last) cacheLane.last = e._receivedAt;
-        if (!state.hiddenTypes.has(e.eventType)) cacheLane.events.push(e);
+        cacheLane.events.push(e);
         continue;
       }
-      // Master "All events" eye toggle hides every telemetry dot.
-      if (state.telemetryAllHidden) continue;
       if (!e.sessionId) continue;
       if (state.hiddenSessions.has(e.sessionId)) continue;
+      // Same rule for telemetry: hidden types drop entirely. With
+      // hiddenTypes populated to "everything but boot", the timeline
+      // collapses to just boot dots and a lane bar that spans only
+      // those — matching what the user wants to read off.
+      if (state.hiddenTypes.has(e.eventType)) continue;
+      if (importHidden(e)) continue;
       let entry = map.get(e.sessionId);
       if (!entry) {
         entry = { sid: e.sessionId, kind: 'session', first: e._receivedAt, last: e._receivedAt, events: [] };
@@ -195,7 +252,7 @@ const Timeline = (function () {
       }
       if (e._receivedAt < entry.first) entry.first = e._receivedAt;
       if (e._receivedAt > entry.last) entry.last = e._receivedAt;
-      if (!state.hiddenTypes.has(e.eventType)) entry.events.push(e);
+      entry.events.push(e);
     }
     const sessionLanes = Array.from(map.values()).sort((a, b) => a.first - b.first);
     return cacheLane ? [cacheLane, ...sessionLanes] : sessionLanes;
@@ -266,7 +323,13 @@ const Timeline = (function () {
     rebuildSegments();
     const segs = st.segments;
     const totalD = totalDisp();
-    const pad = Math.max(500, totalD * 0.04);
+    // Generous side padding so the first / last events (and their
+    // rotated labels — which extend down-LEFT from each dot) sit
+    // inside the canvas instead of kissing the sticky label column
+    // or the right edge. 8 % keeps the data range comfortable; the
+    // 2000-ms floor handles tiny ranges where 8 % would still squash
+    // labels behind the column.
+    const pad = Math.max(2000, totalD * 0.08);
     st.viewStartDisp = segs[0].dispStart - pad;
     st.viewEndDisp = segs[segs.length - 1].dispEnd + pad;
     st.followTail = true;
@@ -360,6 +423,11 @@ const Timeline = (function () {
       st.viewEndDisp = lastDisp + pad;
       st.viewStartDisp = st.viewEndDisp - range;
     }
+
+    // Per-render lane height: scales with the widest visible label
+    // so long names like "ai-setup-self-healing-scoring" don't bleed
+    // into the next lane. Walks every visible event once; cheap.
+    LANE_H = computeLaneH();
 
     resize();
     drawAxis();
@@ -549,7 +617,11 @@ const Timeline = (function () {
       const lane = sessions[i];
       const yTop = i * LANE_H;
       const yDot = yTop + 11;
-      const yLabel = yTop + 22 + 11;
+      // Anchor for rotated labels: just below the dot's outer edge
+      // so the rotated text starts where the eye expects it. Padding
+      // beyond the selection halo (DOT_R + 8) so selected labels
+      // don't kiss the ring.
+      const yLabel = yDot + DOT_R + 8;
 
       contentCtx.fillStyle = 'rgba(255,255,255,0.025)';
       contentCtx.fillRect(LABEL_COL_W, yTop + LANE_H - 1, w - LABEL_COL_W, 1);
@@ -570,7 +642,12 @@ const Timeline = (function () {
       const sessionAlpha = dimSession ? 0.3 : 1;
       const laneHits: any[] = [];
       const laneClusterHits: any[] = [];
-      let lastLabelRight = -Infinity;
+      // Track the last rendered label's anchor x so we can suppress
+      // labels for events whose dots are visually right on top of
+      // the last drawn one (cluster-tight, sub-pixel spacing). Pure
+      // overlap heuristic — anything wider just gets the natural
+      // diagonal-column layout from LABEL_ANGLE.
+      let lastLabelX = -Infinity;
       // Selected/hovered label is drawn AFTER the lane's normal labels
       // so its pill background can cover any neighbor that overlaps it
       // in source order. Captured here, painted below.
@@ -655,19 +732,20 @@ const Timeline = (function () {
         const text =
           lane.kind === 'cache' ? rawType.replace(/^cache:/, '') || 'cache' : rawType;
         const tw = getTextWidth(text);
-        const labelLeft = x - tw / 2;
-        // Force-positioned (expanded) labels never collide-dim — that's
-        // the whole point of expansion: every label readable.
-        const collides = !forcePos && labelLeft < lastLabelRight + 4;
-        contentCtx.textAlign = 'center';
+        // Suppression heuristic: skip labels for events whose dots
+        // sit on top of the previous one (sub-cluster-threshold
+        // spacing). Prevents two labels from rendering at the same
+        // anchor and creating visual mush. Force-positioned
+        // (expanded) labels never get suppressed.
+        const overlap = !forcePos && x - lastLabelX < 4;
         if (isSelected || isHover) {
           emphasized.push({ text, x, y: yLabel, tw, isSelected });
-        } else {
-          contentCtx.globalAlpha = sessionAlpha * (matches ? (collides ? 0.35 : 1) : 0.15);
-          contentCtx.fillStyle = collides ? 'rgba(155,168,185,0.9)' : '#9ba8b9';
-          contentCtx.fillText(text, x, yLabel);
+        } else if (!overlap) {
+          contentCtx.globalAlpha = sessionAlpha * (matches ? 1 : 0.2);
+          contentCtx.fillStyle = '#9ba8b9';
+          drawRotatedLabel(text, x, yLabel);
         }
-        if (!collides) lastLabelRight = x + tw / 2;
+        if (!overlap) lastLabelX = x;
 
         laneHits.push({ x, y: yDot, idx: e._index, event: e });
         return tw;
@@ -698,8 +776,17 @@ const Timeline = (function () {
         const pillW = Math.max(20, contentCtx.measureText(pillText).width as number + 10);
         contentCtx.font = '10px ui-monospace, SFMono-Regular, Menlo, monospace';
         const pillH = 14;
-        const pillX = firstX + tw / 2 + 6;
-        const pillY = yLabel - pillH / 2;
+        // Anchor the pill just to the right of the dot — rotated
+        // labels extend down-LEFT now, so this slot is empty. If the
+        // dot sits at the right edge of the canvas, fall back to
+        // placing the pill to the LEFT of the dot so it stays inside
+        // the viewport. As a final guard, clamp within the visible
+        // canvas region.
+        let pillX = firstX + DOT_R + 6;
+        if (pillX + pillW > w - 4) pillX = firstX - DOT_R - 6 - pillW;
+        if (pillX < LABEL_COL_W + 4) pillX = LABEL_COL_W + 4;
+        if (pillX + pillW > w - 4) pillX = w - pillW - 4;
+        const pillY = yDot - pillH / 2;
         const containsHover = grp.some((g) => g.e._index === st.hoveredIdx);
         const containsSelected = grp.some((g) => g.e._index === st.selectedIdx);
 
@@ -737,7 +824,10 @@ const Timeline = (function () {
         contentCtx.font = '10px ui-monospace, SFMono-Regular, Menlo, monospace';
         contentCtx.textBaseline = 'middle';
 
-        lastLabelRight = pillX + pillW;
+        // Treat the pill's left edge as where the previous label
+        // anchor sat — the next event can still draw its rotated
+        // label as long as its dot isn't right on top of this one.
+        lastLabelX = pillX;
 
         laneClusterHits.push({
           x: pillX + pillW / 2,
@@ -758,20 +848,24 @@ const Timeline = (function () {
       // labels drawn earlier in the loop so the active label always
       // wins. Both states share the same dark pill + bright text so
       // the label stays readable; the selection vs hover distinction
-      // already lives on the dot itself (rings).
+      // already lives on the dot itself (rings). The pill rotates
+      // along with the text so it actually tracks the diagonal label.
       for (const lab of emphasized) {
         const padX = 4;
         const padY = 2;
+        contentCtx.save();
+        contentCtx.translate(lab.x, lab.y);
+        contentCtx.rotate(LABEL_ANGLE);
         contentCtx.globalAlpha = 1;
+        // Text body extends from local x=-tw to x=0 (textAlign='right'),
+        // so the pill rect lives in the same range with padding.
         contentCtx.fillStyle = 'rgba(10,14,20,0.92)';
-        contentCtx.fillRect(
-          lab.x - lab.tw / 2 - padX,
-          lab.y - 7 - padY,
-          lab.tw + padX * 2,
-          14 + padY,
-        );
+        contentCtx.fillRect(-lab.tw - padX, -7 - padY, lab.tw + padX * 2, 14 + padY);
         contentCtx.fillStyle = '#e6edf6';
-        contentCtx.fillText(lab.text, lab.x, lab.y);
+        contentCtx.textAlign = 'right';
+        contentCtx.textBaseline = 'middle';
+        contentCtx.fillText(lab.text, 0, 0);
+        contentCtx.restore();
       }
 
       hitMap.push({
@@ -835,13 +929,23 @@ const Timeline = (function () {
       contentCtx.font = '11px ui-monospace, SFMono-Regular, Menlo, monospace';
       contentCtx.textAlign = 'left';
       const laneLabel = lane.kind === 'cache' ? 'Cache' : lane.sid.slice(0, 8);
-      contentCtx.fillText(laneLabel, 12, yTop + LANE_H / 2 - 6);
+      contentCtx.fillText(laneLabel, 12, yTop + LANE_H / 2 - 14);
       contentCtx.fillStyle = dimSession ? 'rgba(95,112,133,0.6)' : '#5f7085';
       contentCtx.font = '10px ui-monospace, SFMono-Regular, Menlo, monospace';
       const subLabel = lane.kind === 'cache'
         ? lane.events.length + ' op' + (lane.events.length !== 1 ? 's' : '')
         : lane.events.length + ' event' + (lane.events.length !== 1 ? 's' : '');
-      contentCtx.fillText(subLabel, 12, yTop + LANE_H / 2 + 8);
+      contentCtx.fillText(subLabel, 12, yTop + LANE_H / 2);
+      // Visible duration (first → last across the events that pass
+      // the current hidden-types filter — see visibleSessions).
+      // Surfaces "how long is the run I'm looking at?" right next to
+      // the count, without the user having to reach for the axis.
+      if (lane.events.length >= 2) {
+        const span = lane.last - lane.first;
+        if (span > 0) {
+          contentCtx.fillText(formatGapDuration(span), 12, yTop + LANE_H / 2 + 14);
+        }
+      }
     }
   }
 
@@ -909,6 +1013,47 @@ const Timeline = (function () {
     const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
     return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
   }
+  // Lane height needed to fit the widest visible event label, given
+  // labels render rotated -45° below each dot. The diagonal vertical
+  // extent of a label is `width * sin(45°) ≈ width * 0.707`; add a
+  // base offset for the dot row + small padding. Floored / capped to
+  // keep the timeline from collapsing on short-label datasets and
+  // from blowing up on absurdly long ones.
+  function computeLaneH(): number {
+    const sessions = visibleSessions();
+    if (sessions.length === 0) return LANE_H_MIN;
+    let maxLabelW = 0;
+    for (const lane of sessions) {
+      for (const e of lane.events) {
+        const raw = e.eventType || 'unknown';
+        const text =
+          lane.kind === 'cache' ? raw.replace(/^cache:/, '') || 'cache' : raw;
+        const w = getTextWidth(text);
+        if (w > maxLabelW) maxLabelW = w;
+      }
+    }
+    // 24px reserves the dot row (yDot=11 + DOT_R+8 anchor offset);
+    // 12px is breathing room before the next lane's dot row.
+    const needed = 24 + maxLabelW * 0.7071 + 12;
+    return Math.max(LANE_H_MIN, Math.min(LANE_H_MAX, Math.round(needed)));
+  }
+
+  // Draw an event label rotated by LABEL_ANGLE, anchored at (x, y).
+  // textAlign='right' so the END of the text sits at the anchor —
+  // the body hangs down-and-to-the-left into its own diagonal lane.
+  // Caller is responsible for setting fillStyle + globalAlpha; this
+  // helper only handles the save/translate/rotate/baseline plumbing
+  // so per-event call sites stay readable.
+  function drawRotatedLabel(text: string, x: number, y: number): void {
+    contentCtx.save();
+    contentCtx.translate(x, y);
+    contentCtx.rotate(LABEL_ANGLE);
+    contentCtx.textAlign = 'right';
+    contentCtx.textBaseline = 'middle';
+    contentCtx.fillText(text, 0, 0);
+    contentCtx.restore();
+  }
+
   function getTextWidth(text: string): number {
     const cached = textWidthCache.get(text);
     if (cached != null) return cached;
@@ -1074,6 +1219,21 @@ const Timeline = (function () {
   }
   function onContentWheel(e) {
     e.preventDefault();
+    // Clear any drag state that lingered past a missed mouseup
+    // (released outside the window, focus lost, etc.). Without this
+    // the next pan-drag mousemove would keep overwriting whatever
+    // the wheel handler sets, making the wheel feel "stuck" until
+    // the user clicks anywhere to flush the drag. Reproduces if you
+    // pan across the canvas, drag the cursor off the browser window,
+    // and release out there.
+    if (st.panDrag) {
+      st.panDrag = null;
+      contentCanvas.classList.remove('grabbing');
+    }
+    if (st.contentBoxSelect) {
+      st.contentBoxSelect = null;
+      updateContentSelectOverlay();
+    }
     const rect = contentCanvas.getBoundingClientRect();
     const cx = e.clientX - rect.left;
     if (cx < LABEL_COL_W) return;
@@ -1127,6 +1287,20 @@ const Timeline = (function () {
           const srcEnd = first + (x2 / d.rectWidth) * range;
           st.viewStartDisp = srcToDisp(srcStart);
           st.viewEndDisp = srcToDisp(srcEnd);
+          st.followTail = false;
+          invalidate();
+        } else if (d.hadSeekIntent) {
+          // No real drag — fall back to "center the view on this
+          // click" so a plain click in the unselected zone keeps
+          // its old jump-to-here behavior.
+          const [first, last] = dataRange();
+          const range = Math.max(1, last - first);
+          const centerSrc = first + (d.startX / d.rectWidth) * range;
+          const viewStartSrc = dispToSrc(st.viewStartDisp);
+          const viewEndSrc = dispToSrc(st.viewEndDisp);
+          const vrSrc = viewEndSrc - viewStartSrc;
+          st.viewStartDisp = srcToDisp(centerSrc - vrSrc / 2);
+          st.viewEndDisp = srcToDisp(centerSrc + vrSrc / 2);
           st.followTail = false;
           invalidate();
         }
@@ -1206,12 +1380,22 @@ const Timeline = (function () {
     const viewStartSrc = dispToSrc(st.viewStartDisp);
     const viewEndSrc = dispToSrc(st.viewEndDisp);
     if (mode === 'seek') {
-      const centerSrc = first + (x / w) * range;
-      const vrSrc = viewEndSrc - viewStartSrc;
-      st.viewStartDisp = srcToDisp(centerSrc - vrSrc / 2);
-      st.viewEndDisp = srcToDisp(centerSrc + vrSrc / 2);
-      st.followTail = false;
-      invalidate();
+      // Click in the unselected area starts a box-select drag —
+      // same affordance as shift+drag, just without the shift. If
+      // the user releases without moving (no actual drag), the up
+      // handler falls back to the legacy "center the view on this
+      // click" behavior. `hadSeekIntent` flags that fallback so a
+      // shift+drag with zero width DOESN'T jump the view.
+      e.preventDefault();
+      st.minimapDrag = {
+        mode: 'box-select',
+        startX: x,
+        currentX: x,
+        rectWidth: w,
+        hadSeekIntent: true,
+      };
+      updateMinimapSelectOverlay();
+      minimapCanvas.style.cursor = 'crosshair';
       return;
     }
     st.minimapDrag = {
@@ -1290,10 +1474,18 @@ const Timeline = (function () {
       prev && prev._receivedAt && event._receivedAt != null
         ? formatDelta(event._receivedAt - prev._receivedAt)
         : '—';
+    // Short payload summary (e.g. `boot` → "dev", `cache:write` →
+    // "namespace/key"). Same string the dashboard cards show next
+    // to the badge — keeps the two views consistent.
+    const summary = summaryFor(event);
+    const summaryHtml = summary
+      ? '<span class="tt-summary">' + escapeHtml(summary) + '</span>'
+      : '';
     tooltipEl.innerHTML =
       '<div class="tt-head">' +
       '<span class="tt-idx">#' + (displayIdx || event._index) + '</span>' +
       '<div class="tt-badge" style="background:' + color.bg + '; color:' + color.fg + '">' + escapeHtml(badgeText) + '</div>' +
+      summaryHtml +
       '</div>' +
       '<div class="tt-row"><span>time</span><span class="val">' + formatClockTime(event._receivedAt, true) + '</span></div>' +
       '<div class="tt-row"><span>elapsed</span><span class="val">+' + formatRelTime(event._receivedAt, first, false) + '</span></div>' +

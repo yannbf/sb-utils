@@ -14,7 +14,6 @@ import {
   hiddenSessions,
   hiddenImports,
   cacheAllHidden,
-  telemetryAllHidden,
   reconstructFromCache,
   showStaleCache,
   staleCacheCount,
@@ -51,13 +50,17 @@ function EventTypesSection() {
   const counts = typeCounts.value
   const total = telemetryCount.value
   const hidden = hiddenTypes.value
-  const allHidden = telemetryAllHidden.value
   const isAllActive = activeFilter.value === 'all'
   const types = Object.keys(counts).filter((t) => {
     // Don't list cache:write/cache:delete in the Event Types section —
     // they live in the Cache Operations section.
     return !['cache:write', 'cache:delete'].includes(t)
   })
+  // "All hidden" derives from individual hidden state so the master
+  // eye and the per-row eyes always agree. Lets the user click
+  // "Hide all" to populate `hiddenTypes` with every type, then click
+  // a single row to un-hide just that one — the "isolate" gesture.
+  const allHidden = types.length > 0 && types.every((t) => hidden.has(t))
 
   return (
     <div class="sidebar-section">
@@ -88,10 +91,10 @@ function EventTypesSection() {
             <button
               class="item-action eye-btn"
               id="eventsAllEyeBtn"
-              title="Hide all telemetry events"
+              title={allHidden ? 'Show all telemetry events' : 'Hide all telemetry events'}
               onClick={(e) => {
                 e.stopPropagation()
-                actions().toggleTelemetryAllHidden()
+                actions().toggleAllEventTypesHidden()
               }}
             >
               {allHidden ? <EyeOffIcon /> : <EyeIcon />}

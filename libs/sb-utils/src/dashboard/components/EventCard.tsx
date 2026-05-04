@@ -12,7 +12,7 @@ import {
   type StoredEvent,
 } from '../store/signals'
 import { getColor } from '../lib/colors'
-import { formatDelta } from '../lib/event-helpers'
+import { formatDelta, summaryFor } from '../lib/event-helpers'
 import { JsonView } from './JsonView'
 import { DiffView } from './DiffView'
 import { CopyButton } from './CopyButton'
@@ -28,29 +28,6 @@ function tabsFor(ev: StoredEvent): Tab[] {
   if (ev.context && Object.keys(ev.context).length > 0) tabs.push({ key: 'context', label: 'Context' })
   tabs.push({ key: 'raw', label: 'Raw' })
   return tabs
-}
-
-function summaryFor(ev: StoredEvent): string {
-  if (ev._source === 'cache-watch' && ev.payload) {
-    const p = ev.payload as Record<string, unknown>
-    return (p.namespace || '') + '/' + (p.key || '')
-  }
-  const parts: string[] = []
-  const p = ev.payload as Record<string, unknown> | undefined
-  if (p) {
-    if (p.eventType) parts.push(String(p.eventType))
-    if (p.type) parts.push(String(p.type))
-    if (p.name) parts.push(String(p.name))
-    if (p.status) parts.push(String(p.status))
-    if (p.error) {
-      const err = p.error as { message?: string } | string
-      parts.push(
-        'error: ' +
-          (typeof err === 'string' ? err : err && err.message ? err.message : 'unknown'),
-      )
-    }
-  }
-  return parts.join(' · ')
 }
 
 function TabPanel({ event, tabKey }: { event: StoredEvent; tabKey: string }) {

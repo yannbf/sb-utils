@@ -32,3 +32,35 @@ export function cacheKeyOf(event: StoredEvent | null | undefined): string | null
   const p = event.payload as Record<string, unknown>
   return (p.namespace || '') + '/' + (p.key || '')
 }
+
+/**
+ * Short human-readable summary of an event's payload. Used as
+ * secondary info next to the event-type badge — on cards, in the
+ * timeline tooltip, and in the drawer header. Cache events get
+ * `<namespace>/<key>`; telemetry events get a `·`-joined list of
+ * common descriptive fields (eventType / type / name / status /
+ * error). Returns an empty string when there's nothing useful.
+ */
+export function summaryFor(ev: StoredEvent | null | undefined): string {
+  if (!ev) return ''
+  if (ev._source === 'cache-watch' && ev.payload) {
+    const p = ev.payload as Record<string, unknown>
+    return (p.namespace || '') + '/' + (p.key || '')
+  }
+  const parts: string[] = []
+  const p = ev.payload as Record<string, unknown> | undefined
+  if (p) {
+    if (p.eventType) parts.push(String(p.eventType))
+    if (p.type) parts.push(String(p.type))
+    if (p.name) parts.push(String(p.name))
+    if (p.status) parts.push(String(p.status))
+    if (p.error) {
+      const err = p.error as { message?: string } | string
+      parts.push(
+        'error: ' +
+          (typeof err === 'string' ? err : err && err.message ? err.message : 'unknown'),
+      )
+    }
+  }
+  return parts.join(' · ')
+}

@@ -1450,6 +1450,18 @@
     font-weight: 600;
     font-family: var(--font-mono);
   }
+  /* Inline secondary info next to the badge (e.g. "boot · dev",
+     "cache:write · dev-server/lastEvents"). Mirrors the summary
+     line under each dashboard card's badge. */
+  .tl-tooltip .tt-summary {
+    color: var(--text-muted);
+    font-size: 10px;
+    font-family: var(--font-mono);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 220px;
+  }
   .tl-tooltip .tt-row {
     display: flex;
     justify-content: space-between;
@@ -1596,6 +1608,18 @@
     display: flex;
     align-items: center;
     gap: 10px;
+    min-width: 0;
+  }
+  /* Payload summary next to the drawer's badge. Mirrors the
+     `.tt-summary` chip in the timeline tooltip and the
+     `.event-summary` line on dashboard cards. */
+  .tl-drawer-summary {
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     min-width: 0;
   }
   .tl-drawer-nav {

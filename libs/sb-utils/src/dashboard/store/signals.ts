@@ -52,7 +52,6 @@ export const hiddenImports = signal<Set<string>>(new Set())
 // keeps the legacy semantics of the underlying flag (true=hidden) while
 // flipping the default so a fresh boot starts quiet.
 export const cacheAllHidden = signal(true)
-export const telemetryAllHidden = signal(false)
 
 /**
  * Show cache entries with mtime < server startedAt. Off by default —
@@ -291,7 +290,6 @@ export function resetAll() {
   hiddenSessions.value = new Set()
   hiddenImports.value = new Set()
   cacheAllHidden.value = true
-  telemetryAllHidden.value = false
   activeFilter.value = 'all'
   activeSession.value = null
   activeImport.value = null

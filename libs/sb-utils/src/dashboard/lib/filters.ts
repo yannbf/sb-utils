@@ -13,7 +13,6 @@ import {
   hiddenSessions,
   hiddenImports,
   cacheAllHidden,
-  telemetryAllHidden,
   showStaleCache,
   serverStartedAt,
   searchQuery,
@@ -25,8 +24,10 @@ export function matchesFilters(event: StoredEvent): boolean {
   if (event.sessionId && hiddenSessions.value.has(event.sessionId)) return false
 
   // Cache events filter independently from telemetry — the
-  // "Show cache operations" / "All events" master toggles let users
-  // isolate one stream without touching the other.
+  // "Show cache operations" toggle lets users isolate one stream
+  // without touching the other. Telemetry "Hide all" works by
+  // populating `hiddenTypes` with every type, which the per-type
+  // check above already handles — so there's no separate flag here.
   if (event._source === 'cache-watch') {
     if (cacheAllHidden.value) return false
     // Hide baked stale entries (mtime < server startedAt) unless the
@@ -43,8 +44,6 @@ export function matchesFilters(event: StoredEvent): boolean {
     ) {
       return false
     }
-  } else {
-    if (telemetryAllHidden.value) return false
   }
 
   const importId = (event._import && event._import.id) || null

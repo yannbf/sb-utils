@@ -9,7 +9,7 @@
 import { useEffect, useState, useMemo } from 'preact/hooks'
 import { events, selectedTimelineEvent, type StoredEvent } from '../store/signals'
 import { getColor } from '../lib/colors'
-import { cacheKeyOf } from '../lib/event-helpers'
+import { cacheKeyOf, summaryFor } from '../lib/event-helpers'
 import { matchesFilters } from '../lib/filters'
 import { navigableEventsFor } from '../lib/timeline-math'
 import { JsonView } from './JsonView'
@@ -133,12 +133,24 @@ export function TimelineDrawer() {
       <div class="tl-drawer-header">
         <div class="tl-drawer-title" id="tlDrawerTitle">
           {ev && (
-            <span
-              class="event-badge"
-              style={{ background: color.bg, color: color.fg }}
-            >
-              {ev.eventType || 'unknown'}
-            </span>
+            <>
+              <span
+                class="event-badge"
+                style={{ background: color.bg, color: color.fg }}
+              >
+                {ev.eventType || 'unknown'}
+              </span>
+              {(() => {
+                // Same payload-summary string the dashboard cards
+                // and timeline tooltip use, e.g. "dev" for a boot
+                // event with payload.eventType="dev". Renders as
+                // muted text right after the badge.
+                const summary = summaryFor(ev)
+                return summary ? (
+                  <span class="tl-drawer-summary">{summary}</span>
+                ) : null
+              })()}
+            </>
           )}
         </div>
         <div class="tl-drawer-nav">
