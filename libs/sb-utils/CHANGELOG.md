@@ -1,3 +1,16 @@
+# v0.0.18 (Mon May 04 2026)
+
+#### ⚠️ Pushed to `main`
+
+- add extra filtering to timeline view ([@yannbf](https://github.com/yannbf))
+- improve timeline visualization ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
 # v0.0.17 (Mon May 04 2026)
 
 #### ⚠️ Pushed to `main`
