@@ -75,6 +75,10 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
   const events: StoredEvent[] = []
   const sseClients = new Set<SSEClient>()
   let eventCounter = 0
+  // Separate counter for the human CLI log. Cache events bump
+  // `eventCounter` (so the dashboard can order them) but don't print a
+  // line, which would otherwise leave visible gaps like #0, #4, #7…
+  let telemetryDisplayCounter = 0
   // Wall-clock time the server booted. Exposed via /config so the
   // dashboard can mark cache entries with mtime < startedAt as "stale"
   // (pre-existing artifacts from before this debug session) and hide
@@ -418,7 +422,8 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
       const sessionInfo = body.sessionId
         ? ` ${grey(`session:${body.sessionId.slice(0, 8)}`)}`
         : ''
-      log.info(`${grey(`#${index}`)} ${blue(body.eventType)}${sessionInfo}`)
+      const displayIndex = telemetryDisplayCounter++
+      log.info(`${grey(`#${displayIndex}`)} ${blue(body.eventType)}${sessionInfo}`)
     }
 
     broadcastEvent(storedEvent)
