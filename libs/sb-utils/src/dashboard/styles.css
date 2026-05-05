@@ -1337,6 +1337,48 @@
   body.view-timeline #scrollBtn,
   body.view-timeline #expandAllBtn { display: none !important; }
 
+  /* Responsive header — collapse labels into icon-only buttons as the
+     viewport narrows so the controls don't crash into each other on
+     small screens (the original layout overlapped the Pause / Cache /
+     Autoscroll labels around 1100px wide). The `title` attribute on
+     each button stays put, so hover tooltips still expose the label
+     verbally. Two breakpoints:
+     - ≤ 1200 px : drop the verbose Pause / Auto-scroll / Expand /
+       Export / Clear all wording and the "events" suffix on the
+       counter; keep view-toggle labels because they're the primary
+       nav.
+     - ≤ 960 px : also drop view-toggle labels, the search box's `/`
+       hint, and tighten the header gaps. The view toggle becomes a
+       compact icon row that stays clickable.
+     - ≤ 760 px : collapse the search box (still focusable via `/`)
+       and shrink the title to just the logo so even narrow phone-
+       width windows stay usable. */
+  @media (max-width: 1200px) {
+    .btn .btn-label,
+    .event-counter .event-counter-unit {
+      display: none;
+    }
+    .btn { padding: 0 9px; }
+    .export-wrap .chevron { display: none; }
+  }
+  @media (max-width: 960px) {
+    .view-toggle .view-toggle-label {
+      display: none;
+    }
+    .view-toggle button { padding: 5px 8px; }
+    .search-box .search-hint { display: none; }
+    .header { gap: 10px; padding: 0 12px; }
+  }
+  @media (max-width: 760px) {
+    .header-title { font-size: 0; gap: 6px; }
+    .header-title .logo { display: flex; }
+    /* Re-enable font-size for the status dot title (it uses `title`
+       attr only, but children inherit font-size so guard the dot). */
+    .header-title .status-dot { font-size: 12px; }
+    .search-box { max-width: 140px; }
+    .separator { display: none; }
+  }
+
   /* ── Timeline view ──────────────────────────────── */
   .timeline {
     flex: 1;

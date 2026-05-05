@@ -89,7 +89,7 @@ function ViewToggle() {
           onClick={() => actions().setView(item.key)}
         >
           {item.icon}
-          {item.label}
+          <span class="view-toggle-label">{item.label}</span>
         </button>
       ))}
     </div>
@@ -157,7 +157,7 @@ function PauseButton() {
           <rect x="14" y="4" width="4" height="16" rx="1" />
         </svg>
       )}
-      <span id="pauseLabel">{isPaused ? 'Resume' : 'Pause'}</span>
+      <span id="pauseLabel" class="btn-label">{isPaused ? 'Resume' : 'Pause'}</span>
     </button>
   )
 }
@@ -175,7 +175,7 @@ function AutoScrollButton() {
         <line x1="12" y1="5" x2="12" y2="19" />
         <polyline points="19 12 12 19 5 12" />
       </svg>
-      <span>Auto-scroll</span>
+      <span class="btn-label">Auto-scroll</span>
     </button>
   )
 }
@@ -195,7 +195,7 @@ function ExpandButton() {
         <line x1="21" y1="3" x2="14" y2="10" />
         <line x1="3" y1="21" x2="10" y2="14" />
       </svg>
-      <span id="expandLabel">{on ? 'Collapse' : 'Expand'}</span>
+      <span id="expandLabel" class="btn-label">{on ? 'Collapse' : 'Expand'}</span>
     </button>
   )
 }
@@ -238,7 +238,7 @@ function ExportMenu() {
           <polyline points="7 10 12 15 17 10" />
           <line x1="12" y1="15" x2="12" y2="3" />
         </svg>
-        <span>Export</span>
+        <span class="btn-label">Export</span>
         <svg class="chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="6 9 12 15 18 9" />
         </svg>
@@ -287,7 +287,7 @@ function ClearButton() {
         <polyline points="3 6 5 6 21 6" />
         <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
       </svg>
-      <span>Clear all</span>
+      <span class="btn-label">Clear all</span>
     </button>
   )
 }
@@ -295,8 +295,9 @@ function ClearButton() {
 function EventCounter() {
   const n = events.value.length
   return (
-    <span class="event-counter" id="eventCount">
-      {n} {n === 1 ? 'event' : 'events'}
+    <span class="event-counter" id="eventCount" title={`${n} ${n === 1 ? 'event' : 'events'}`}>
+      <span class="event-counter-num">{n}</span>{' '}
+      <span class="event-counter-unit">{n === 1 ? 'event' : 'events'}</span>
     </span>
   )
 }
