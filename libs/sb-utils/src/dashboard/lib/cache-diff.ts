@@ -201,6 +201,13 @@ export type DiffData = {
    * view. 'change' is the standard side-by-side.
    */
   mode: 'create' | 'delete' | 'change'
+  /**
+   * Full pre-formatted JSON text for create/delete modes. DiffView
+   * uses this to render one `<pre>` instead of one DOM row per line —
+   * a single 1.4 MB cache:write (e.g. vitest's test-results dump)
+   * was producing tens of thousands of row-divs and locking the tab.
+   */
+  fullText?: string
 }
 export type DiffEmpty = { empty: true; message: string }
 
@@ -237,6 +244,36 @@ export function buildCacheDiff(
     headerLeft = 'Before'
     headerRight = 'After'
     mode = 'change'
+  }
+
+  // Skip the LCS pass entirely for create/delete — there's nothing to
+  // diff against, and on huge payloads (1 MB+ test-result dumps) the
+  // line-pair LCS itself is the slow part. We still surface line
+  // counts via `added`/`removed`, but render the body as a single
+  // `<pre>` (see DiffView).
+  if (mode === 'create') {
+    return {
+      headerLeft,
+      headerRight,
+      rows: [],
+      added: rightLines.length,
+      removed: 0,
+      empty: false,
+      mode,
+      fullText: rightLines.join('\n'),
+    }
+  }
+  if (mode === 'delete') {
+    return {
+      headerLeft,
+      headerRight,
+      rows: [],
+      added: 0,
+      removed: leftLines.length,
+      empty: false,
+      mode,
+      fullText: leftLines.join('\n'),
+    }
   }
 
   const ops = pairAdjacentChanges(lcsLineDiff(leftLines, rightLines))

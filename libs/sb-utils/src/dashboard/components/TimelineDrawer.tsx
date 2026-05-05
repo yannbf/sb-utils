@@ -13,7 +13,7 @@ import { cacheKeyOf, formatDelta, hasErrorPayload, summaryFor } from '../lib/eve
 import { formatClockTime, formatRelTime } from '../lib/format'
 import { matchesFilters } from '../lib/filters'
 import { navigableEventsFor } from '../lib/timeline-math'
-import { JsonView } from './JsonView'
+import { JsonView, JsonViewExpandToggle, type ForceMode } from './JsonView'
 import { DiffView } from './DiffView'
 import { CopyButton } from './CopyButton'
 
@@ -64,6 +64,10 @@ export function TimelineDrawer() {
   const isErrorEv = ev ? hasErrorPayload(ev) : false
   const [active, setActive] = useState(tabs[0]?.key ?? 'raw')
   const [userPickedTab, setUserPickedTab] = useState<string | null>(null)
+  // JSON tree force-mode owned at the drawer level so the sticky
+  // tools row's expand toggle composes with the JsonView in the
+  // active tab.
+  const [jsonMode, setJsonMode] = useState<ForceMode>('default')
   const pickTab = (key: string) => {
     setActive(key)
     setUserPickedTab(key)
@@ -315,13 +319,24 @@ export function TimelineDrawer() {
               data-tab-content={t.key}
               style={active === t.key ? undefined : { display: 'none' }}
             >
-              <CopyButton getValue={() => copyValueFor(ev, t.key)} title={`Copy ${t.label}`} />
+              <div class="tab-tools">
+                {t.key !== 'diff' && (
+                  <JsonViewExpandToggle
+                    mode={jsonMode}
+                    setMode={setJsonMode}
+                    value={t.key === 'raw' ? ev : ((ev as any)[t.key] as unknown)}
+                  />
+                )}
+                <CopyButton getValue={() => copyValueFor(ev, t.key)} title={`Copy ${t.label}`} />
+              </div>
               {t.key === 'diff' ? (
                 <DiffView payload={ev.payload as any} />
               ) : (
                 <JsonView
                   value={t.key === 'raw' ? ev : ((ev as any)[t.key] as unknown)}
                   highlightErrors={t.key === 'payload' && !isCache}
+                  mode={jsonMode}
+                  setMode={setJsonMode}
                 />
               )}
             </div>

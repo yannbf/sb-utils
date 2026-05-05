@@ -690,6 +690,17 @@ const Timeline = (function () {
     hitMap = [];
     if (sessions.length === 0) return;
 
+    // Right edge of the area that's actually clickable. The drawer
+    // (when open) is positioned absolutely on top of the canvas at
+    // `right: 0; width: 420px` (z-index above the canvas), so any
+    // pill drawn past `w - drawerW` lives underneath it — visually
+    // hidden AND uninteractive (clicks land on the drawer instead).
+    // Pill placement and clipping below clamp to this visible right
+    // edge so the user can always reach the +N affordance.
+    const drawerW =
+      drawerEl && drawerEl.classList.contains('open') ? drawerEl.clientWidth || 0 : 0;
+    const visibleRight = Math.max(LABEL_COL_W + 40, w - drawerW);
+
     // Gap markers live entirely on the axis canvas now (drawAxis); the
     // content canvas no longer paints full-height bands or duration
     // labels for collapsed gaps. Keeps the lane area clean.
@@ -892,9 +903,12 @@ const Timeline = (function () {
         // the viewport. As a final guard, clamp within the visible
         // canvas region.
         let pillX = firstX + DOT_R + 6;
-        if (pillX + pillW > w - 4) pillX = firstX - DOT_R - 6 - pillW;
+        // Clamp against `visibleRight` (canvas width minus open
+        // drawer) so pills never render under the drawer where they
+        // can't be clicked.
+        if (pillX + pillW > visibleRight - 4) pillX = firstX - DOT_R - 6 - pillW;
         if (pillX < LABEL_COL_W + 4) pillX = LABEL_COL_W + 4;
-        if (pillX + pillW > w - 4) pillX = w - pillW - 4;
+        if (pillX + pillW > visibleRight - 4) pillX = visibleRight - pillW - 4;
         const pillY = yDot - pillH / 2;
         const containsHover = grp.some((g) => g.e._index === st.hoveredIdx);
         const containsSelected = grp.some((g) => g.e._index === st.selectedIdx);
@@ -1202,27 +1216,38 @@ const Timeline = (function () {
   // the "−" collapse glyph is circular — accept either. Checked
   // before findEventAt so a click on the pill wins over the underlying
   // dot it sits next to.
+  //
+  // Padded to make the click target forgiving — the visual pill is
+  // only 14px tall and ~24px wide; without padding, a click that
+  // lands a pixel or two outside the rect bails out. Don't bail
+  // after the first matching lane either: when the click y is at the
+  // boundary between two lanes, both contain it equally and we want
+  // to try ALL their clusters before giving up.
   function findClusterAt(clientX: number, clientY: number): any {
     const rect = contentCanvas.getBoundingClientRect();
     const x = clientX - rect.left;
     const y = clientY - rect.top;
     if (x < LABEL_COL_W) return null;
+    const HIT_PAD = 5;
     for (const lane of hitMap) {
-      if (y < lane.yTop || y > lane.yBottom) continue;
+      if (y < lane.yTop - HIT_PAD || y > lane.yBottom + HIT_PAD) continue;
       const clusters = lane.clusters || [];
       for (const c of clusters) {
         if (
           c.rectLeft != null &&
-          x >= c.rectLeft &&
-          x <= c.rectRight &&
-          y >= c.rectTop &&
-          y <= c.rectBottom
+          x >= c.rectLeft - HIT_PAD &&
+          x <= c.rectRight + HIT_PAD &&
+          y >= c.rectTop - HIT_PAD &&
+          y <= c.rectBottom + HIT_PAD
         ) {
           return c;
         }
-        if (Math.hypot(c.x - x, c.y - y) <= c.r) return c;
+        if (Math.hypot(c.x - x, c.y - y) <= c.r + HIT_PAD) return c;
       }
-      return null;
+      // Fall through to next lane — the small HIT_PAD around lane
+      // bounds means a y near the boundary qualifies for both
+      // adjacent lanes; if neither has a matching cluster we want to
+      // return null AFTER all candidates are checked.
     }
     return null;
   }
@@ -1380,7 +1405,17 @@ const Timeline = (function () {
     const newEnd = pivotDisp + (st.viewEndDisp - pivotDisp) * factor;
     const newRange = newEnd - newStart;
     const totalD = Math.max(1000, totalDisp());
-    if (newRange < 100 || newRange > totalD * 4) return;
+    // Direction-aware bounds. The previous unconditional
+    // `newRange < 100 || newRange > totalD * 4` blocked BOTH zoom-in
+    // and zoom-out whenever the range was already tight — which
+    // happens after `zoomIntoCluster` lands on a small time window.
+    // Net effect: wheel-scroll appeared "stuck" after clicking a
+    // +N pill, even though the user was trying to zoom OUT to
+    // recover. Now the floor only applies to zoom-in (factor < 1)
+    // and the ceiling only to zoom-out (factor > 1), so the user
+    // can always escape a cluster zoom by wheeling either direction.
+    if (factor < 1 && newRange < 10) return;
+    if (factor > 1 && newRange > totalD * 8) return;
     st.viewStartDisp = newStart;
     st.viewEndDisp = newEnd;
     st.followTail = false;
@@ -1781,15 +1816,54 @@ const Timeline = (function () {
     const tFirst = ms[0]._receivedAt;
     const tLast = ms[ms.length - 1]._receivedAt;
     if (tFirst == null || tLast == null) return;
+
+    const currentRange = st.viewEndDisp - st.viewStartDisp;
+    if (!isFinite(currentRange) || currentRange <= 0) return;
+    const canvasW = (contentCanvas && contentCanvas.clientWidth) || 800;
+    const usableW = Math.max(100, canvasW - LABEL_COL_W);
     const span = Math.max(1, tLast - tFirst);
-    // Pad ~25 % of the cluster's source span on each side so the
-    // user sees a hint of context without losing the focus.
-    const pad = Math.max(span * 0.25, 50);
-    const startSrc = tFirst - pad;
-    const endSrc = tLast + pad;
-    st.viewStartDisp = srcToDisp(startSrc);
-    st.viewEndDisp = srcToDisp(endSrc);
+
+    // Target view-range at which the cluster's events would auto-
+    // separate (each pair > CLUSTER_PX apart on canvas). +4 buffer
+    // pushes them comfortably past the threshold so the cluster
+    // actually breaks rather than rendering as +N still.
+    const sepThreshold = CLUSTER_PX + 4;
+    const denom = Math.max(1, ms.length - 1);
+    const idealRange = Math.max(
+      (span * usableW) / (sepThreshold * denom),
+      100,
+    );
+
+    // Cap each click at 100× zoom. Without a cap a tight cluster on a
+    // far-zoomed-out view (say 0.1× looking at a 4-hour timeline)
+    // would jump straight to a 1000× zoom — disorienting. The cap
+    // means tight clusters take a few clicks to fully unfold, but
+    // each step is still meaningful.
+    const MAX_ZOOM_FACTOR = 100;
+    const minRangeStep = currentRange / MAX_ZOOM_FACTOR;
+
+    // `Math.max` picks the LARGER value (less zoom). Caps the zoom
+    // step at the factor while never overshooting past the cluster's
+    // separation point.
+    const newRange = Math.max(idealRange, minRangeStep);
+
+    // Hard guard: never zoom OUT. If the cluster is already wider
+    // than the current view (rare, but possible if the user was
+    // zoomed in so far that a long-span cluster sits mostly off-
+    // screen), no-op rather than producing a confusing zoom-out.
+    // Small slop accounts for floating-point round trips.
+    if (newRange >= currentRange * 0.95) return;
+
+    const centerSrc = (tFirst + tLast) / 2;
+    const centerDisp = srcToDisp(centerSrc);
+    if (!isFinite(centerDisp)) return;
+
+    st.viewStartDisp = centerDisp - newRange / 2;
+    st.viewEndDisp = centerDisp + newRange / 2;
     st.followTail = false;
+    // Explicit user gesture — don't let the next render snap back to
+    // a fitted view via auto-fit.
+    disableAutoFit();
     invalidate();
   }
 

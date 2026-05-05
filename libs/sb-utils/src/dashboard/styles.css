@@ -911,6 +911,16 @@
     color: var(--text);
   }
 
+  /* "Copied!" flash for the per-card Copy / cURL text buttons —
+     mirrors the icon CopyButton's `.copied` class so users get
+     consistent feedback across both control surfaces. */
+  .event-actions button.copied,
+  .event-actions button.copied:hover {
+    color: var(--green);
+    border-color: var(--green);
+    background: rgba(74, 222, 128, 0.08);
+  }
+
   /* ── Event body ──────────────────────────────────── */
   .event-body {
     display: none;
@@ -952,14 +962,12 @@
     position: relative;
   }
 
-  /* Per-tab copy icon — top-right of the visible tab content. Sits on
-     top of the JSON tree so the user can grab whatever's currently
-     showing (payload / metadata / context / raw / diff) in a single
-     click. Flips to a check icon for ~1.2s after copy. */
+  /* Per-tab copy icon — visual styling only. Positioning comes from
+     the `.tab-tools` sticky row (defined below) which contains both
+     this button AND the JsonView expand/collapse toggle so the two
+     stay anchored to the top-right while the user scrolls long
+     payloads. */
   .tab-copy-btn {
-    position: absolute;
-    top: 8px;
-    right: 10px;
     width: 26px;
     height: 26px;
     display: inline-flex;
@@ -971,10 +979,38 @@
     border-radius: 5px;
     color: var(--text-muted);
     cursor: pointer;
-    z-index: 2;
-    opacity: 0.7;
+    opacity: 0.85;
     transition: opacity 0.12s, color 0.12s, border-color 0.12s, background 0.12s;
   }
+  /* Floating tool cluster holding the per-tab CopyButton + JsonView
+     toggle. Sticky to the scroll container's top so the buttons
+     stay at the top-right while the JSON / diff content scrolls
+     beneath them.
+     `height: 0` makes the row claim ZERO layout space — important
+     for short cache-entry contents where a normal-height row would
+     extend past the box and trigger a scrollbar (see image of a
+     primitive value rendering). The buttons inside are absolutely
+     positioned within this zero-height box and overflow visibly,
+     anchored to the right with `nth-last-child` offsets so 1-button
+     and 2-button rows both line up correctly.
+     `pointer-events: none` on the wrapper lets clicks fall through
+     to the JSON tree underneath everywhere except where a button
+     actually lives. */
+  .tab-tools {
+    position: sticky;
+    top: 0;
+    height: 0;
+    z-index: 2;
+    pointer-events: none;
+    overflow: visible;
+  }
+  .tab-tools > * {
+    pointer-events: auto;
+    position: absolute;
+    top: 6px;
+  }
+  .tab-tools > *:nth-last-child(1) { right: 10px; }
+  .tab-tools > *:nth-last-child(2) { right: 44px; }
   .tab-copy-btn:hover {
     opacity: 1;
     color: var(--text);
@@ -996,6 +1032,11 @@
   .tl-drawer .event-tab-content {
     max-height: none;
     overflow: visible;
+    /* Step out of the containing-block chain so `.tab-tools`
+       inside this tab anchors to `.tl-drawer-body` (the actual
+       scroll container) instead of `.event-tab-content` (which
+       moves with body scroll). */
+    position: static;
   }
 
   .json-view {
@@ -1030,6 +1071,42 @@
     font-size: 11px;
   }
   .json-hidden { display: none; }
+
+  /* JsonView expand/collapse toggle. Used in two contexts:
+     - Hosted inside `.tab-tools` (the sticky tools row) by parents
+       that lift JSON-mode state — EventCard, TimelineDrawer,
+       CacheView. Positioning + stickiness come from `.tab-tools`.
+     - Floating inside `.json-view-toolbar` for uncontrolled callers
+       (no parent supplied a setter). Float keeps it top-right of
+       the JSON tree without consuming a row of layout. */
+  .json-view { position: relative; }
+  .json-view-toolbar {
+    float: right;
+    display: inline-flex;
+    gap: 4px;
+    margin: 0 0 4px 8px;
+  }
+  .json-view-tool-btn {
+    width: 26px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text-muted);
+    cursor: pointer;
+    opacity: 0.85;
+    transition: opacity 0.12s, color 0.12s, border-color 0.12s, background 0.12s;
+  }
+  .json-view-tool-btn:hover {
+    opacity: 1;
+    color: var(--text);
+    border-color: var(--border-hover);
+    background: var(--bg-surface);
+  }
 
   /* ── Scrollbar ───────────────────────────────────── */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -1787,7 +1864,13 @@
     color: var(--text);
     font-variant-numeric: tabular-nums;
   }
-  .tl-drawer-body { flex: 1; overflow-y: auto; }
+  /* `position: relative` makes this the containing block for the
+     `.tab-tools` absolute floats inside each tab — pinning them to
+     the drawer's scroll viewport instead of letting them scroll with
+     the per-tab content (which itself moves as the user scrolls
+     within the body). Paired with the `position: static` override
+     on `.tl-drawer .event-tab-content` below. */
+  .tl-drawer-body { flex: 1; overflow-y: auto; position: relative; }
 
   .tl-empty {
     position: absolute;
@@ -2014,6 +2097,11 @@
     background: var(--red-muted);
     color: var(--red);
   }
+  .cache-entry-mtime {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
   .cache-entry-body {
     display: none;
     padding: 12px 14px;
@@ -2046,6 +2134,11 @@
     word-break: break-all;
   }
   .cache-entry-content {
+    /* `position: relative` + `overflow: auto` makes this the
+       containing block for the `.tab-tools` absolute floats inside
+       (JsonView toggle + CopyButton). They anchor to this padding
+       box, which is fixed while the JSON content scrolls beneath. */
+    position: relative;
     font-family: var(--font-mono);
     font-size: 12px;
     background: var(--bg);
@@ -2229,6 +2322,23 @@
     display: inline-block;
   }
   .sxs-cell.empty { background: rgba(255,255,255,0.01); }
+
+  /* Placeholder body for very large create/delete diffs — shown
+     instead of rendering thousands of per-line DiffRows up-front.
+     Click the expand button inside to materialize the full diff
+     with proper styling. */
+  .sxs-body-placeholder {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-start;
+    padding: 14px;
+  }
+  .sxs-body-placeholder .sxs-placeholder-hint {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: var(--font-sans);
+  }
 
   .sxs-row.eq .sxs-cell { color: var(--text-muted); }
 

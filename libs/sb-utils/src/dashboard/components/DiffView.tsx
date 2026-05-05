@@ -9,7 +9,7 @@
  */
 
 import { useState } from 'preact/hooks'
-import { buildCacheDiff, type SxsOp } from '../lib/cache-diff'
+import { buildCacheDiff, type DiffData, type SxsOp } from '../lib/cache-diff'
 
 type CachePayload = {
   operation?: string
@@ -21,24 +21,8 @@ export function DiffView({ payload }: { payload: CachePayload }) {
   const data = buildCacheDiff(payload)
   if (data.empty) return <div class="diff-view-empty">{data.message}</div>
 
-  if (data.mode === 'create') {
-    return (
-      <div class="sxs-diff sxs-diff-create">
-        <div class="sxs-header">
-          <div class="sxs-header-cell sxs-header-cell-single">
-            {data.headerRight}{' '}
-            <span class="sxs-stat sxs-stat-added">+{data.added}</span>
-          </div>
-        </div>
-        <div class="sxs-body">
-          {data.rows.map((row, i) =>
-            row.kind === 'op' ? (
-              <DiffRowCreate key={i} op={row.op} />
-            ) : null,
-          )}
-        </div>
-      </div>
-    )
+  if (data.mode === 'create' || data.mode === 'delete') {
+    return <CreateOrDeleteDiff data={data} />
   }
 
   return (
@@ -71,14 +55,88 @@ export function DiffView({ payload }: { payload: CachePayload }) {
   )
 }
 
-function DiffRowCreate({ op }: { op: SxsOp }) {
-  if (op.op !== 'add') return null
+// Threshold above which we render a placeholder instead of the full
+// `<pre>`. Even a single `<pre>` with white-space: pre containing
+// tens of thousands of lines requires the browser to lay out every
+// line up-front to compute the natural height — slow enough to lock
+// the tab when 20+ cards expand at once. Below the threshold we
+// render the full content immediately; above it the user clicks to
+// materialize (per-card).
+const CREATE_AUTO_RENDER_LINES = 800
+
+function CreateOrDeleteDiff({ data }: { data: DiffData }) {
+  const isCreate = data.mode === 'create'
+  const text = data.fullText ?? ''
+  const lines = text ? text.split('\n') : []
+  const lineCount = lines.length
+  const heavy = lineCount > CREATE_AUTO_RENDER_LINES
+  const [forceShow, setForceShow] = useState(false)
+  const showRows = !heavy || forceShow
   return (
-    <div class="sxs-row-create add">
-      <div class="sxs-gutter add-gutter">{op.ri}</div>
-      <div class="sxs-cell add-cell">
-        <span class="sxs-marker">+</span>
-        <Cell text={op.right} />
+    <div class={'sxs-diff ' + (isCreate ? 'sxs-diff-create' : 'sxs-diff-delete')}>
+      <div class="sxs-header">
+        <div class="sxs-header-cell sxs-header-cell-single">
+          {isCreate ? data.headerRight : data.headerLeft}{' '}
+          {isCreate ? (
+            <span class="sxs-stat sxs-stat-added">+{data.added}</span>
+          ) : (
+            <span class="sxs-stat sxs-stat-removed">−{data.removed}</span>
+          )}
+        </div>
+      </div>
+      {showRows ? (
+        <div class="sxs-body">
+          {lines.map((lineText, i) => (
+            <CreateDeleteRow
+              key={i}
+              ri={i + 1}
+              text={lineText}
+              isCreate={isCreate}
+            />
+          ))}
+        </div>
+      ) : (
+        <div class="sxs-body sxs-body-placeholder">
+          <button
+            type="button"
+            class="sxs-expand-btn"
+            onClick={() => setForceShow(true)}
+            title="Render the full diff (may take a moment for very large payloads)"
+          >
+            Show {lineCount.toLocaleString()} lines
+          </button>
+          <span class="sxs-placeholder-hint">
+            Hidden by default — large payloads can slow rendering when many cards are expanded.
+          </span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Per-line row for create / delete diffs. Mirrors the styling of
+// `<DiffRow>`'s add/del rows (gutter + marker + cell) so the visual
+// language is identical across all diff modes — line numbers, +/-
+// markers, and the color-coded cell. Kept as a thin function so the
+// `lines.map` above stays readable.
+function CreateDeleteRow({
+  ri,
+  text,
+  isCreate,
+}: {
+  ri: number
+  text: string
+  isCreate: boolean
+}) {
+  const cellCls = isCreate ? 'add-cell' : 'del-cell'
+  const gutterCls = isCreate ? 'add-gutter' : 'del-gutter'
+  const marker = isCreate ? '+' : '−'
+  return (
+    <div class={'sxs-row-create ' + (isCreate ? 'add' : 'del')}>
+      <div class={'sxs-gutter ' + gutterCls}>{ri}</div>
+      <div class={'sxs-cell ' + cellCls}>
+        <span class="sxs-marker">{marker}</span>
+        <Cell text={text} />
       </div>
     </div>
   )

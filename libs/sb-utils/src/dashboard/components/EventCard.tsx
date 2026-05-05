@@ -13,7 +13,7 @@ import {
 } from '../store/signals'
 import { getColor } from '../lib/colors'
 import { formatDelta, hasErrorPayload, summaryFor } from '../lib/event-helpers'
-import { JsonView } from './JsonView'
+import { JsonView, JsonViewExpandToggle, type ForceMode } from './JsonView'
 import { DiffView } from './DiffView'
 import { CopyButton } from './CopyButton'
 
@@ -30,7 +30,17 @@ function tabsFor(ev: StoredEvent): Tab[] {
   return tabs
 }
 
-function TabPanel({ event, tabKey }: { event: StoredEvent; tabKey: string }) {
+function TabPanel({
+  event,
+  tabKey,
+  jsonMode,
+  setJsonMode,
+}: {
+  event: StoredEvent
+  tabKey: string
+  jsonMode: ForceMode
+  setJsonMode: (m: ForceMode) => void
+}) {
   if (tabKey === 'diff') return <DiffView payload={event.payload as any} />
   const data = tabKey === 'raw' ? event : ((event as any)[tabKey] as unknown)
   // Only telemetry payload tabs get the red squiggle on error/fail
@@ -39,7 +49,16 @@ function TabPanel({ event, tabKey }: { event: StoredEvent; tabKey: string }) {
   // (metadata / context / raw) carry too many descriptive fields to
   // highlight without false positives.
   const highlight = tabKey === 'payload' && event._source !== 'cache-watch'
-  return <JsonView value={data} highlightErrors={highlight} />
+  // Controlled mode so the parent's sticky tab-tools row owns the
+  // expand/collapse toggle alongside CopyButton.
+  return (
+    <JsonView
+      value={data}
+      highlightErrors={highlight}
+      mode={jsonMode}
+      setMode={setJsonMode}
+    />
+  )
 }
 
 // Same per-tab copy semantics as the TimelineDrawer: hand back the
@@ -98,6 +117,11 @@ export function EventCard({
   const tabs = tabsFor(event)
 
   const [active, setActive] = useState(tabs[0]?.key ?? 'raw')
+  // JSON tree force-mode is owned at the card level so the sticky
+  // tab-tools row's toggle stays in sync with the JsonView in the
+  // active tab. Reset to default whenever the active tab changes
+  // would be nicer, but the toggle re-syncs on render anyway.
+  const [jsonMode, setJsonMode] = useState<ForceMode>('default')
 
   const toggleExpanded = () => {
     const next = new Set(expandedCards.value)
@@ -106,16 +130,28 @@ export function EventCard({
     expandedCards.value = next
   }
 
+  // "Copied" flashes for the per-card Copy / cURL buttons. Mirrors
+  // the icon CopyButton's behavior so users get the same visual
+  // feedback whether they hit a text button or an icon button.
+  const [copiedKind, setCopiedKind] = useState<'json' | 'curl' | null>(null)
+  const flashCopied = (kind: 'json' | 'curl') => {
+    setCopiedKind(kind)
+    window.setTimeout(() => {
+      setCopiedKind((k) => (k === kind ? null : k))
+    }, 1200)
+  }
   const copyJson = () => {
     const { _index, _receivedAt, ...rest } = event as StoredEvent
-    void navigator.clipboard.writeText(JSON.stringify(rest, null, 2))
+    void navigator.clipboard
+      .writeText(JSON.stringify(rest, null, 2))
+      .then(() => flashCopied('json'))
   }
   const copyCurl = () => {
     const { _index, _receivedAt, ...rest } = event as StoredEvent
     const url = location.origin + '/event-log'
     const body = JSON.stringify(rest)
     const cmd = `curl -X POST '${url}' -H 'Content-Type: application/json' -d '${body.replace(/'/g, "'\\''")}'`
-    void navigator.clipboard.writeText(cmd)
+    void navigator.clipboard.writeText(cmd).then(() => flashCopied('curl'))
   }
 
   return (
@@ -183,23 +219,25 @@ export function EventCard({
         <div class="event-actions">
           <button
             type="button"
-            title="Copy JSON"
+            class={copiedKind === 'json' ? 'copied' : undefined}
+            title={copiedKind === 'json' ? 'Copied!' : 'Copy JSON'}
             onClick={(e) => {
               e.stopPropagation()
               copyJson()
             }}
           >
-            Copy
+            {copiedKind === 'json' ? '✓ Copied' : 'Copy'}
           </button>
           <button
             type="button"
-            title="Copy as cURL"
+            class={copiedKind === 'curl' ? 'copied' : undefined}
+            title={copiedKind === 'curl' ? 'Copied!' : 'Copy as cURL'}
             onClick={(e) => {
               e.stopPropagation()
               copyCurl()
             }}
           >
-            cURL
+            {copiedKind === 'curl' ? '✓ Copied' : 'cURL'}
           </button>
         </div>
       </div>
@@ -221,8 +259,33 @@ export function EventCard({
             ))}
           </div>
           <div class="event-tab-content" data-tab-content={active}>
-            <CopyButton getValue={() => copyValueFor(event, active)} title={`Copy ${active}`} />
-            <TabPanel event={event} tabKey={active} />
+            {/*
+              Sticky tools row: collapse/expand the JSON tree + copy
+              the active tab's value. Lives at the top-right of the
+              scroll container so both stay visible while the user
+              scrolls long payloads. The Diff tab gets only the copy
+              button — its content isn't a JSON tree.
+            */}
+            <div class="tab-tools">
+              {active !== 'diff' && (
+                <JsonViewExpandToggle
+                  mode={jsonMode}
+                  setMode={setJsonMode}
+                  value={
+                    active === 'raw'
+                      ? event
+                      : ((event as any)[active] as unknown)
+                  }
+                />
+              )}
+              <CopyButton getValue={() => copyValueFor(event, active)} title={`Copy ${active}`} />
+            </div>
+            <TabPanel
+              event={event}
+              tabKey={active}
+              jsonMode={jsonMode}
+              setJsonMode={setJsonMode}
+            />
           </div>
         </div>
       )}

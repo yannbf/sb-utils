@@ -80,13 +80,15 @@ test.describe('cache view', () => {
     await firstEntry.locator('.cache-entry-header').click()
     await expect(firstEntry).toHaveClass(/expanded/)
 
-    // Initially Edit / Delete are absent (only Copy is shown).
+    // Initially Edit / Delete are absent. Copy lives in the floating
+    // tools row inside `.cache-entry-content` (not in the actions
+    // row); Copy path stays in the actions row.
     await expect(page.locator('#cacheClearBtn')).toHaveCount(0)
     await expect(
       firstEntry.locator('.cache-entry-actions [data-action="edit"]'),
     ).toHaveCount(0)
     await expect(
-      firstEntry.locator('.cache-entry-actions [data-action="copy"]'),
+      firstEntry.locator('.cache-entry-content .tab-tools .tab-copy-btn'),
     ).toBeVisible()
 
     // Flip the toggle.

@@ -7,7 +7,7 @@
  */
 
 import { signal, computed } from '@preact/signals'
-import { useEffect } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
 import {
   cacheInfo,
   cacheEntries,
@@ -21,7 +21,8 @@ import {
   type CacheEntry,
 } from '../store/cache'
 import { view, expandAll } from '../store/signals'
-import { JsonView } from './JsonView'
+import { JsonView, JsonViewExpandToggle, type ForceMode } from './JsonView'
+import { CopyButton } from './CopyButton'
 
 // Per-entry expansion + edit state — local to this module since they
 // don't need to be observable from anywhere else.
@@ -38,13 +39,37 @@ function formatTimeRemaining(ttlEpoch: number): string {
   return 'in ' + Math.round(delta / 86_400_000) + 'd'
 }
 
+/**
+ * "Just now / 12s ago / 4m ago / 2h ago / 3d ago". Used for cache
+ * entry mtimes — past timestamps only. Coarse on purpose; the
+ * absolute mtime sits in the title attribute for users who need
+ * exact precision.
+ */
+function formatTimeAgo(epochMs: number): string {
+  const delta = Date.now() - epochMs
+  if (delta < 1000) return 'just now'
+  if (delta < 60_000) return Math.round(delta / 1000) + 's ago'
+  if (delta < 3_600_000) return Math.round(delta / 60_000) + 'm ago'
+  if (delta < 86_400_000) return Math.round(delta / 3_600_000) + 'h ago'
+  return Math.round(delta / 86_400_000) + 'd ago'
+}
+
 const groupedEntries = computed<Record<string, CacheEntry[]>>(() => {
   const out: Record<string, CacheEntry[]> = {}
   for (const e of cacheEntries.value) {
     if (!out[e.namespace]) out[e.namespace] = []
     out[e.namespace].push(e)
   }
-  for (const ns of Object.keys(out)) out[ns].sort((a, b) => a.key.localeCompare(b.key))
+  // Sort by mtime descending (most recently modified first) so the
+  // entries the user is currently iterating on bubble to the top of
+  // each namespace. Ties (or entries without an mtime) fall back to
+  // a stable alphabetic order on the key.
+  for (const ns of Object.keys(out)) {
+    out[ns].sort((a, b) => {
+      const dt = (b.mtime || 0) - (a.mtime || 0)
+      return dt !== 0 ? dt : a.key.localeCompare(b.key)
+    })
+  }
   return out
 })
 
@@ -223,6 +248,11 @@ function Entries() {
 function EntryCard({ entry }: { entry: CacheEntry }) {
   const fullKey = entryKey(entry)
   const isExpanded = expandedKeys.value.has(fullKey)
+  // JSON tree force-mode owned per cache entry. The action buttons
+  // row sits OUTSIDE `.cache-entry-content` (which is the scroll
+  // container), so the toggle naturally stays visible while the user
+  // scrolls — no sticky needed for cache-view specifically.
+  const [jsonMode, setJsonMode] = useState<ForceMode>('default')
   const draft = editingDrafts.value.get(fullKey)
   const isEditing = draft != null
   const editMode = cacheEditMode.value
@@ -271,8 +301,9 @@ function EntryCard({ entry }: { entry: CacheEntry }) {
     next.delete(fullKey)
     expandedKeys.value = next
   }
-  const copyContent = () => {
-    void navigator.clipboard.writeText(JSON.stringify(entry.content, null, 2))
+  const copyPath = () => {
+    if (!entry.file) return
+    void navigator.clipboard.writeText(entry.file)
   }
 
   return (
@@ -282,11 +313,21 @@ function EntryCard({ entry }: { entry: CacheEntry }) {
     >
       <div class="cache-entry-header" onClick={toggleExpanded}>
         <span class="cache-entry-key">{entry.key}</span>
-        {entry.ttl ? (
-          <span class={'ttl-tag' + (entry.expired ? ' expired' : '')}>
-            {entry.expired ? 'expired' : 'ttl'} {formatTimeRemaining(entry.ttl)}
-          </span>
-        ) : null}
+        <div class="cache-entry-meta">
+          {entry.ttl ? (
+            <span class={'ttl-tag' + (entry.expired ? ' expired' : '')}>
+              {entry.expired ? 'expired' : 'ttl'} {formatTimeRemaining(entry.ttl)}
+            </span>
+          ) : null}
+          {entry.mtime ? (
+            <span
+              class="cache-entry-mtime"
+              title={`Last updated: ${new Date(entry.mtime).toLocaleString()}`}
+            >
+              {formatTimeAgo(entry.mtime)}
+            </span>
+          ) : null}
+        </div>
       </div>
       <div class="cache-entry-body">
         {isEditing ? (
@@ -329,15 +370,18 @@ function EntryCard({ entry }: { entry: CacheEntry }) {
         ) : (
           <>
             <div class="cache-entry-actions">
-              <button
-                data-action="copy"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  copyContent()
-                }}
-              >
-                Copy content
-              </button>
+              {entry.file && (
+                <button
+                  data-action="copy-path"
+                  title={entry.file}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    copyPath()
+                  }}
+                >
+                  Copy path
+                </button>
+              )}
               {editMode && (
                 <>
                   <button
@@ -364,7 +408,28 @@ function EntryCard({ entry }: { entry: CacheEntry }) {
             </div>
             <div class="cache-entry-file">{entry.file || ''}</div>
             <div class="cache-entry-content">
-              <JsonView value={entry.content} />
+              {/*
+                Same floating tools cluster as EventCard / TimelineDrawer
+                — JSON expand/collapse + Copy. Anchored to the
+                cache-entry-content's padding box so both icons stay
+                visible while the user scrolls a long entry.
+              */}
+              <div class="tab-tools">
+                <JsonViewExpandToggle
+                  mode={jsonMode}
+                  setMode={setJsonMode}
+                  value={entry.content}
+                />
+                <CopyButton
+                  getValue={() => entry.content}
+                  title="Copy content"
+                />
+              </div>
+              <JsonView
+                value={entry.content}
+                mode={jsonMode}
+                setMode={setJsonMode}
+              />
             </div>
           </>
         )}

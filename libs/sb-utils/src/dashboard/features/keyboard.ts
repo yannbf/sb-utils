@@ -17,6 +17,7 @@ type TimelineHooks = {
   isDrawerOpen: () => boolean
   closeDrawer: () => void
   navigate: (dir: number) => void
+  fitAll: () => void
 }
 
 function isTypingTarget(el: EventTarget | null): boolean {
@@ -70,6 +71,12 @@ export function setupKeyboardShortcuts(timelineGetter: () => TimelineHooks | nul
     }
 
     if (e.key === ' ') {
+      // Pause/resume only on the dashboard / cache views. In the
+      // timeline view space is too easy to hit unintentionally
+      // (the canvas is a big click target) and the resulting pause
+      // is confusing — the timeline doesn't visually show that the
+      // ingestion stream is paused.
+      if (view.value === 'timeline') return
       e.preventDefault()
       setPaused(!paused.value)
     } else if (e.key === 'v' || e.key === 'V') {
@@ -77,6 +84,15 @@ export function setupKeyboardShortcuts(timelineGetter: () => TimelineHooks | nul
       setView(view.value === 'timeline' ? 'dashboard' : 'timeline')
     } else if (e.key === 'e' || e.key === 'E') {
       if (view.value !== 'timeline') setExpandAll(!expandAll.value)
+    } else if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey) {
+      // Fit-all the timeline canvas — same effect as the toolbar's
+      // "Fit all" button. Skipped outside the timeline view (and
+      // when ctrl/cmd is held, which is reserved for the search
+      // shortcut below).
+      if (view.value === 'timeline' && tl) {
+        e.preventDefault()
+        tl.fitAll()
+      }
     } else if (e.key === '/') {
       e.preventDefault()
       search?.focus()

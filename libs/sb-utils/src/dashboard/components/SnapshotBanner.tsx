@@ -19,12 +19,37 @@ type SnapshotMeta = {
   sessionsCount?: number
 }
 
+// Basename of an absolute path. Last non-empty segment of the path,
+// stripped of trailing slashes. We use this for the snapshot banner's
+// project label — full disk paths are too long and noisy in a yellow
+// strip across the top, but the project folder name is enough to
+// remind the viewer which Storybook was captured.
+function basename(p: string): string {
+  if (!p) return ''
+  const trimmed = p.replace(/[\\/]+$/, '')
+  const idx = Math.max(trimmed.lastIndexOf('/'), trimmed.lastIndexOf('\\'))
+  return idx >= 0 ? trimmed.slice(idx + 1) : trimmed
+}
+
 export function SnapshotBanner() {
   if (!(window as any).__SNAPSHOT__) return null
   const meta: SnapshotMeta = ((window as any).__SNAPSHOT_META__ as SnapshotMeta) || {}
   const captured = meta.capturedAt ? new Date(meta.capturedAt).toLocaleString() : ''
   const events = meta.eventsCount ?? 0
   const sessions = meta.sessionsCount ?? 0
+
+  // Project label sourced from the cache info baked at export time.
+  // Only meaningful when the cache was actually detected — otherwise
+  // there's no meaningful "project" attached to the snapshot. Full
+  // path goes in the title attribute for hover-disclosure.
+  const cacheInfo =
+    ((window as any).__SNAPSHOT_CACHE_INFO__ as
+      | { cacheStatus?: string; projectRoot?: string | null }
+      | undefined) || {}
+  const projectName =
+    cacheInfo.cacheStatus === 'found' && cacheInfo.projectRoot
+      ? basename(cacheInfo.projectRoot)
+      : ''
 
   const showExplanation = () =>
     openExplanationModal(
@@ -38,6 +63,17 @@ export function SnapshotBanner() {
         <span class="dot" />
         <b>Snapshot</b>
         {meta.name && <span class="name">{meta.name}</span>}
+        {projectName && (
+          <>
+            <span class="meta">·</span>
+            <span
+              class="name"
+              title={cacheInfo.projectRoot || ''}
+            >
+              {projectName}
+            </span>
+          </>
+        )}
         <span class="meta">·</span>
         {captured && <span class="meta">captured {captured}</span>}
         <span class="meta">·</span>
