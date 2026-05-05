@@ -1,3 +1,17 @@
+# v0.0.23 (Tue May 05 2026)
+
+#### ⚠️ Pushed to `main`
+
+- cluster and cache view improvements ([@yannbf](https://github.com/yannbf))
+- improve cache detection ([@yannbf](https://github.com/yannbf))
+- make UI responsive ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
 # v0.0.22 (Mon May 04 2026)
 
 #### ⚠️ Pushed to `main`
