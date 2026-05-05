@@ -23,10 +23,40 @@ function readJsonFile(file: string): unknown {
 }
 
 /**
- * Read a single cache file and turn it into a CacheEntry. Returns null if
- * the file is missing, unreadable, or doesn't match the `{ key, content }`
- * shape (Storybook's FileSystemCache writes that envelope; anything else is
- * not ours).
+ * Filename gate for "this file is (probably) a cache entry we should
+ * surface in the dashboard". Lists every regular file under each
+ * namespace directory — covers Storybook's `FileSystemCache` outputs
+ * (`storybook-<sha>`) AND foreign-but-useful artifacts other
+ * subsystems drop into the same tree, e.g. vitest's
+ * `story-tests/test-results-<ts>.json` dumps. Excludes hidden files
+ * (`.DS_Store`, dot-lockfiles) so we don't get noise.
+ *
+ * Used by both the read-time enumerator and the watch-time accept
+ * gate so live + on-load views agree on what counts. Deletion (in
+ * write.ts) intentionally stays strict to `storybook-*` so we never
+ * touch files we didn't write.
+ */
+export function isCacheFile(f: string): boolean {
+  if (!f) return false
+  if (f.startsWith('.')) return false
+  return true
+}
+
+/**
+ * Derive a logical key for files that don't ship Storybook's
+ * `{ key, content }` envelope (e.g. vitest test-result dumps). Strips
+ * a trailing `.json` extension to keep the dashboard label compact.
+ */
+function deriveKeyFromFilename(file: string): string {
+  return path.basename(file).replace(/\.json$/i, '')
+}
+
+/**
+ * Read a single cache file and turn it into a CacheEntry. Falls back
+ * to using the filename as the entry's key when the file isn't in
+ * Storybook's `{ key, content }` envelope — covers test-result
+ * dumps and any future foreign JSON drops without a custom adapter.
+ * Returns null only when the file is missing or not a regular file.
  */
 export function readEntryFile(file: string, namespace: string): CacheEntry | null {
   let stat: fs.Stats
@@ -55,20 +85,34 @@ export function readEntryFile(file: string, namespace: string): CacheEntry | nul
     }
   }
 
-  if (!parsed || typeof parsed !== 'object' || typeof parsed.key !== 'string') {
-    return null
+  // Storybook's FileSystemCache envelope: `{ key, content, ttl? }`.
+  if (parsed && typeof parsed === 'object' && typeof parsed.key === 'string') {
+    const ttl = typeof parsed.ttl === 'number' ? parsed.ttl : null
+    return {
+      key: parsed.key,
+      namespace,
+      file,
+      mtime: stat.mtimeMs,
+      size: stat.size,
+      content: parsed.content,
+      ttl,
+      expired: ttl !== null && Date.now() > ttl,
+    }
   }
 
-  const ttl = typeof parsed.ttl === 'number' ? parsed.ttl : null
+  // Foreign shape — vitest's story-tests dumps, manual writes, etc.
+  // Surface them with the filename as the key and the parsed JSON as
+  // content. Non-JSON or non-object payloads still get represented so
+  // the user sees something in the cache view.
   return {
-    key: parsed.key,
+    key: deriveKeyFromFilename(file),
     namespace,
     file,
     mtime: stat.mtimeMs,
     size: stat.size,
-    content: parsed.content,
-    ttl,
-    expired: ttl !== null && Date.now() > ttl,
+    content: parsed,
+    ttl: null,
+    expired: false,
   }
 }
 
@@ -106,9 +150,12 @@ export function listEntries(location: CacheLocation): CacheEntry[] {
       continue
     }
     for (const f of files) {
-      // Only files matching the storybook prefix; skips lockfiles, .DS_Store,
-      // vitest deps subfolders, etc.
-      if (!f.startsWith('storybook-')) continue
+      // Accept any regular file under the namespace — covers
+      // Storybook's `storybook-<sha>` files AND foreign artifacts
+      // like vitest's `story-tests/test-results-*.json`. Hidden
+      // files (`.DS_Store`, dot-lockfiles) and non-files (subdirs
+      // such as vitest deps) are filtered downstream.
+      if (!isCacheFile(f)) continue
       const entry = readEntryFile(path.join(nsPath, f), ns)
       if (entry) out.push(entry)
     }

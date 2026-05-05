@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { readEntryFile } from './read'
+import { isCacheFile, readEntryFile } from './read'
 import type { CacheChange, CacheDiff, CacheEntry, CacheLocation } from './types'
 
 // Plain JSON is treated atomically — diffs are key-by-key on the top-level
@@ -103,7 +103,7 @@ export function watchCache(
         continue
       }
       for (const f of files) {
-        if (!f.startsWith('storybook-')) continue
+        if (!isCacheFile(f)) continue
         const file = path.join(nsPath, f)
         const entry = readEntryFile(file, ns)
         if (!entry) continue
@@ -133,7 +133,7 @@ export function watchCache(
   const DEBOUNCE_MS = 50
 
   function handleEvent(absPath: string) {
-    if (!path.basename(absPath).startsWith('storybook-')) return
+    if (!isCacheFile(path.basename(absPath))) return
 
     const existing = debounceTimers.get(absPath)
     if (existing) clearTimeout(existing)
