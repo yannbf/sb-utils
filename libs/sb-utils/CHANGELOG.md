@@ -1,3 +1,15 @@
+# v0.0.24 (Tue May 05 2026)
+
+#### ⚠️ Pushed to `main`
+
+- fix event count in CLI ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
 # v0.0.23 (Tue May 05 2026)
 
 #### ⚠️ Pushed to `main`

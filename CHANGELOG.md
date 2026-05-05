@@ -2,6 +2,19 @@
 
 #### ⚠️ Pushed to `main`
 
+- `@hipster/sb-utils@0.0.24`
+  - fix event count in CLI ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
+# (Tue May 05 2026)
+
+#### ⚠️ Pushed to `main`
+
 - `@hipster/sb-utils@0.0.23`
   - cluster and cache view improvements ([@yannbf](https://github.com/yannbf))
   - improve cache detection ([@yannbf](https://github.com/yannbf))
