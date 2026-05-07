@@ -14,13 +14,12 @@ import {
   cacheEditMode,
   setEditMode,
   refreshCache,
-  changeCacheRoot,
-  setCacheVersion,
   clearCache,
   writeCacheEntry,
   deleteCacheEntry,
   type CacheEntry,
 } from '../store/cache'
+import { switchCacheRoot, switchCacheVersion } from '../features/actions'
 import { view, expandAll } from '../store/signals'
 import { JsonView, JsonViewExpandToggle, type ForceMode } from './JsonView'
 import { CopyButton } from './CopyButton'
@@ -142,8 +141,11 @@ function Toolbar({ status }: { status: string }) {
   const editMode = cacheEditMode.value
   const statusLabel = status === 'found' ? 'Active' : status === 'unreadable' ? 'Unreadable' : 'Not found'
   const versions = info.versions ?? []
+  const versionMtimes = info.versionMtimes ?? {}
   const projectVersion = info.projectStorybookVersion ?? null
+  const activeVersion = info.version ?? null
   const hasMultipleVersions = versions.length > 1
+  const mismatchTooltip = buildMismatchTooltip(activeVersion, projectVersion, versions)
   return (
     <div class="cache-toolbar">
       <div class="cache-root-info" id="cacheRootInfo">
@@ -156,24 +158,39 @@ function Toolbar({ status }: { status: string }) {
         {hasMultipleVersions ? (
           <CacheVersionPicker
             versions={versions}
-            active={info.version ?? null}
+            versionMtimes={versionMtimes}
+            active={activeVersion}
             projectVersion={projectVersion}
           />
         ) : (
-          info.version && (
+          activeVersion && (
             <span
               class="cache-root-version"
               id="cacheRootVersion"
               title={
-                projectVersion === info.version
+                projectVersion === activeVersion
                   ? `Matches storybook ${projectVersion} declared in package.json`
                   : undefined
               }
             >
-              sb {info.version}
-              {projectVersion === info.version ? ' (current)' : ''}
+              sb {activeVersion}
+              {projectVersion === activeVersion ? ' (current)' : ''}
             </span>
           )
+        )}
+        {mismatchTooltip && (
+          <span
+            class="cache-version-mismatch"
+            title={mismatchTooltip}
+            aria-label={mismatchTooltip}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+            {projectVersion ? 'mismatch' : 'no storybook installed'}
+          </span>
         )}
       </div>
       <div class="cache-toolbar-actions">
@@ -208,7 +225,7 @@ function Toolbar({ status }: { status: string }) {
           class="btn"
           id="cacheChangeRootBtn"
           title="Switch to a different project root"
-          onClick={() => void changeCacheRoot()}
+          onClick={() => void switchCacheRoot()}
         >
           Change root…
         </button>
@@ -234,21 +251,29 @@ function Toolbar({ status }: { status: string }) {
 
 function CacheVersionPicker({
   versions,
+  versionMtimes,
   active,
   projectVersion,
 }: {
   versions: string[]
+  versionMtimes: Record<string, number>
   active: string | null
   projectVersion: string | null
 }) {
-  // Sorted highest-first so the most recent storybook version sits at
-  // the top of the dropdown — matches the typical "I want to inspect
-  // my latest run" mental model.
-  const sorted = [...versions].sort().reverse()
+  // Sort by mtime desc so the most recently updated version dir sits
+  // at the top of the dropdown — that's the same dir the server picks
+  // as the auto-default. Versions without an mtime fall through to
+  // lexicographic descending so the result stays deterministic.
+  const sorted = [...versions].sort((a, b) => {
+    const dt = (versionMtimes[b] ?? 0) - (versionMtimes[a] ?? 0)
+    if (dt !== 0) return dt
+    return b.localeCompare(a)
+  })
+  const latest = sorted[0]
   const onChange = (e: Event) => {
     const next = (e.currentTarget as HTMLSelectElement).value
     if (next === active) return
-    void setCacheVersion(next)
+    void switchCacheVersion(next)
   }
   return (
     <span class="cache-root-version-picker" title="Multiple Storybook versions detected in this project's cache. Pick which one to inspect.">
@@ -261,15 +286,51 @@ function CacheVersionPicker({
         value={active ?? ''}
         onChange={onChange}
       >
-        {sorted.map((v) => (
-          <option key={v} value={v}>
-            {v}
-            {v === projectVersion ? ' (current)' : ''}
-          </option>
-        ))}
+        {sorted.map((v) => {
+          const tags: string[] = []
+          if (v === projectVersion) tags.push('current')
+          if (v === latest && v !== projectVersion) tags.push('most recent')
+          return (
+            <option key={v} value={v}>
+              {v}
+              {tags.length ? ` (${tags.join(', ')})` : ''}
+            </option>
+          )
+        })}
       </select>
     </span>
   )
+}
+
+/**
+ * Build a tooltip string for the mismatch indicator. Returns null when
+ * the dashboard is currently showing the project's installed storybook
+ * version (the happy path — no warning needed).
+ *
+ * Two flag-worthy cases:
+ *   1. `projectVersion` is set but doesn't match the active dir (the
+ *      cache being inspected is stale relative to what's installed —
+ *      typically because the user pinned an older version, or because
+ *      the cache dir for the installed version hasn't been written
+ *      yet).
+ *   2. The cache root has version dirs but the project doesn't declare
+ *      storybook in package.json (e.g. cache lingers from a removed
+ *      install, or storybook hasn't finished installing yet — the
+ *      server polls and freezes the version once detected).
+ */
+function buildMismatchTooltip(
+  active: string | null,
+  projectVersion: string | null,
+  versions: string[],
+): string | null {
+  if (!active && versions.length === 0) return null
+  if (projectVersion && active && projectVersion !== active) {
+    return `Showing cache for sb ${active}, but the installed Storybook version is ${projectVersion}. Pick the matching version from the dropdown to inspect its cache.`
+  }
+  if (!projectVersion && versions.length > 0) {
+    return `Cache directories exist for ${versions.length === 1 ? 'sb ' + versions[0] : versions.length + ' Storybook versions'}, but no storybook dependency has been detected yet. The server re-checks during cache activity — once installed, the cache for the installed version will be selected automatically.`
+  }
+  return null
 }
 
 function Entries() {

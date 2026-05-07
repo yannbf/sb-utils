@@ -84,7 +84,16 @@ export function watchCache(
       : location.cacheRoot
   })()
 
-  // Cold-start seed.
+  // Cold-start seed. We always stamp cold-start events with `Date.now()`
+  // for `timestamp` rather than the file's mtime — these events
+  // represent "the dashboard just discovered this entry", not "this
+  // file was last written at X". Using mtime would push pre-existing
+  // entries below the dashboard's staleness cutoff (server startedAt)
+  // and they'd be filtered out, so a user who manually switched to a
+  // version dir full of older entries would see an empty list. The
+  // entry's real mtime is still surfaced through the cache list and
+  // entry payload for UI display.
+  const now = Date.now()
   try {
     const namespaces = fs.readdirSync(subRoot)
     for (const ns of namespaces) {
@@ -117,7 +126,7 @@ export function watchCache(
             content: entry.content,
             previousContent: null,
             diff: null,
-            timestamp: entry.mtime,
+            timestamp: now,
           })
         }
       }

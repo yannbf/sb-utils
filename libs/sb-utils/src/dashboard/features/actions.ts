@@ -37,6 +37,10 @@ import {
 import { exportHtmlSnapshot as _exportHtmlSnapshot } from './snapshot-export'
 import { reconstructFromCacheNow, backfillFromCache } from './reconstruction'
 import { writePref } from '../lib/session-storage'
+import {
+  setCacheVersion as _setCacheVersion,
+  changeCacheRoot as _changeCacheRoot,
+} from '../store/cache'
 
 // ── Imperative bridges (filled at boot from runtime.ts) ────────────
 type Bridges = {
@@ -49,6 +53,28 @@ let bridges: Bridges = {
 }
 export function wireRuntimeBridges(b: Bridges): void {
   bridges = b
+}
+
+// ── Cache version / root switch ───────────────────────────────────
+//
+// Switching the project root or the active version dir is a server
+// operation: the server clears its own cache events, broadcasts a
+// `cache-reset` SSE control frame, and re-emits cold-start events for
+// the new selection. The dashboard's SSE handler picks up the control
+// frame and drops local cache-watch / cache-recon events. These thin
+// wrappers exist so callers don't have to know which signals get
+// reset — they just kick off the request.
+
+export async function switchCacheVersion(version: string | null): Promise<boolean> {
+  const ok = await _setCacheVersion(version)
+  if (ok) bridges.invalidateTimeline()
+  return ok
+}
+
+export async function switchCacheRoot(): Promise<boolean> {
+  const ok = await _changeCacheRoot()
+  if (ok) bridges.invalidateTimeline()
+  return ok
 }
 
 // ── Filter / sidebar actions ───────────────────────────────────────

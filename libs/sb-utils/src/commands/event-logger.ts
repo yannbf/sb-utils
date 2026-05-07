@@ -11,6 +11,7 @@ import { isAgent, agent } from 'std-env'
 import { blue, bright, green, grey } from '../utils/colors'
 import {
   createCacheRoutes,
+  findProjectStorybookVersion,
   resolveCacheLocation,
   watchCache,
   type CacheChange,
@@ -181,12 +182,55 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
     }
   }
 
+  /**
+   * Send an out-of-band SSE control frame the dashboard recognizes. Used
+   * by the auto re-evaluation loop to tell the client "I just switched
+   * cache version dirs — drop your local cache events and re-fetch
+   * info" without smuggling it through a real telemetry event.
+   *
+   * Frames look like `{ "_control": "<name>", ...payload }`. The
+   * dashboard's SSE handler bails out before the StoredEvent pipeline
+   * when `_control` is set, so these never appear in the event list.
+   */
+  function broadcastCacheReset(reason: string) {
+    const data = JSON.stringify({ _control: 'cache-reset', reason })
+    for (const client of sseClients) {
+      try {
+        client.write(data)
+      } catch {
+        sseClients.delete(client)
+      }
+    }
+  }
+
   // ── Cache integration ──────────────────────────────
+  // Cached installed storybook version. Once detected (non-null), it's
+  // frozen — `findProjectStorybookVersion` walks the FS and we don't
+  // want to re-do that on every cache write. Stays null until storybook
+  // is installed mid-session, at which point the periodic
+  // re-evaluation timer picks it up and writes here once.
+  let cachedInstalledVersion: string | null = null
+
+  function rememberInstalledVersionFrom(projectRoot: string | null): void {
+    if (cachedInstalledVersion) return
+    if (!projectRoot) return
+    let v: string | null = null
+    try {
+      v = findProjectStorybookVersion(projectRoot)
+    } catch {
+      v = null
+    }
+    if (v) cachedInstalledVersion = v
+  }
+
   // Active cache location. Mutable because the dashboard can switch project
   // roots at runtime via POST /cache/project-root.
   let cacheLocation: CacheLocation = resolveCacheLocation({
     projectRoot: options.projectRoot ?? null,
   })
+  if (cacheLocation.projectStorybookVersion) {
+    cachedInstalledVersion = cacheLocation.projectStorybookVersion
+  }
   // The version the user has explicitly pinned via the dashboard (or
   // `null` for "auto-pick from project's storybook dependency").
   // Re-applied on every project-root switch and discovery re-resolve.
@@ -249,48 +293,124 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
   // data" toggle handles the opt-in.
   startCacheWatcher()
 
-  // Cache-discovery poll. If the cache wasn't found when the server
-  // booted (e.g. user started event-logger before storybook created
-  // its cache directory), re-resolve every 2s. Once it materializes,
-  // update the active location and reattach the watcher so subsequent
-  // live writes flow through. Stops itself once found, and re-arms
-  // automatically if the user switches project roots back to a
-  // location without a cache.
-  let cacheDiscoveryTimer: NodeJS.Timeout | null = null
-  function startCacheDiscovery() {
-    if (cacheDiscoveryTimer) return
-    if (cacheLocation.status === 'found') return
-    if (options.noCache || options.noCacheWatch) return
-    cacheDiscoveryTimer = setInterval(() => {
-      const next = resolveCacheLocation({
-        projectRoot: cacheLocation.projectRoot ?? null,
-        version: pinnedVersion,
-      })
-      if (next.status === 'found') {
-        cacheLocation = next
-        // Mid-session discovery: emit cold-start events so the
-        // dashboard sees the just-appeared entries as legitimate
-        // discoveries, not "stale data". Their mtimes will be
-        // post-startedAt (since the directory itself didn't exist
-        // before now), so the dashboard's staleness gate keeps them
-        // visible by default.
-        startCacheWatcher({ emitColdStart: true })
-        if (cacheDiscoveryTimer) {
-          clearInterval(cacheDiscoveryTimer)
-          cacheDiscoveryTimer = null
-        }
-        if (!quiet) {
-          log.info(
-            blue('cache') +
-              ' detected at ' +
-              grey(next.cacheRoot ?? '(unknown)'),
-          )
-        }
-      }
-    }, 2000)
-    if (cacheDiscoveryTimer.unref) cacheDiscoveryTimer.unref()
+  // Drop every cache-watch event we've stored. Used right before we
+  // re-seed the watcher against a new project root or version dir —
+  // without this, the events array (and the dashboard's count) keeps
+  // growing each time the user switches.
+  function clearCacheWatchEvents() {
+    for (let i = events.length - 1; i >= 0; i--) {
+      if ((events[i] as any)._source === 'cache-watch') events.splice(i, 1)
+    }
   }
-  startCacheDiscovery()
+
+  // Periodic cache-location re-evaluation. Three things can change
+  // mid-session that this loop is responsible for picking up:
+  //
+  //   1. Cache directory appears for the first time (user started
+  //      event-logger before running storybook).
+  //   2. A new version dir gets created — typically by `storybook
+  //      init` upgrading or first-installing storybook. Once
+  //      populated, its mtime overtakes existing dirs, so the
+  //      auto-pick should switch to it.
+  //   3. `storybook` becomes declared in the project's package.json
+  //      mid-session. We freeze the value once found and stop
+  //      re-walking the FS — every subsequent re-evaluation reuses
+  //      the cached installed version so we don't pay the find cost
+  //      on every tick.
+  //
+  // Throttled to 2s so a busy storybook write loop doesn't translate
+  // into hot-path FS walks.
+  const REEVALUATE_INTERVAL_MS = 2000
+  let cacheReevaluateTimer: NodeJS.Timeout | null = null
+
+  function compareVersionsList(a: string[], b: string[]): boolean {
+    if (a.length !== b.length) return false
+    for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false
+    return true
+  }
+
+  function reevaluateCacheLocation(): void {
+    if (options.noCache || options.noCacheWatch) return
+    rememberInstalledVersionFrom(cacheLocation.projectRoot)
+    const next = resolveCacheLocation({
+      projectRoot: cacheLocation.projectRoot ?? null,
+      version: pinnedVersion,
+      installedVersion: cachedInstalledVersion,
+    })
+    const wasFound = cacheLocation.status === 'found'
+    const isFound = next.status === 'found'
+
+    if (!isFound) {
+      // Bookkeeping: keep cacheLocation in sync if projectStorybookVersion
+      // just became known on a not-found root (very edge-y, but keeps
+      // the dashboard label up to date).
+      if (
+        !wasFound &&
+        next.projectStorybookVersion !== cacheLocation.projectStorybookVersion
+      ) {
+        cacheLocation = next
+        broadcastCacheReset('info-update')
+      }
+      return
+    }
+
+    if (!wasFound) {
+      // First detection mid-session. Emit cold-start events so the
+      // just-discovered entries surface in the dashboard.
+      cacheLocation = next
+      startCacheWatcher({ emitColdStart: true })
+      if (!quiet) {
+        log.info(
+          blue('cache') +
+            ' detected at ' +
+            grey(next.cacheRoot ?? '(unknown)'),
+        )
+      }
+      broadcastCacheReset('first-discovery')
+      return
+    }
+
+    // Both old and new are found. Switch the watcher only when the
+    // active version actually changed — listing-only changes (a new
+    // empty version dir, a renamed sibling) don't move the watcher
+    // off the user's currently-inspected dir.
+    const versionChanged = next.version !== cacheLocation.version
+    const versionsListChanged = !compareVersionsList(
+      next.versions,
+      cacheLocation.versions,
+    )
+    const projectVersionChanged =
+      next.projectStorybookVersion !== cacheLocation.projectStorybookVersion
+
+    if (!versionChanged && !versionsListChanged && !projectVersionChanged) {
+      return
+    }
+
+    cacheLocation = next
+    if (versionChanged) {
+      // The cold-start events we're about to emit refer to entries
+      // under the NEW version dir. Drop the previous version's
+      // events first so the dashboard counts don't pile up. The
+      // client receives the reset control frame and drops its local
+      // copies before the new cold-start events arrive.
+      broadcastCacheReset('version-changed')
+      clearCacheWatchEvents()
+      startCacheWatcher({ emitColdStart: true })
+    } else {
+      // Versions list changed (a new empty dir, or a delete of a
+      // non-active dir) but the user still inspects the same active
+      // version. Just nudge the dashboard to refetch /cache/info.
+      broadcastCacheReset('info-update')
+    }
+  }
+
+  function startCacheReevaluation(): void {
+    if (cacheReevaluateTimer) return
+    if (options.noCache || options.noCacheWatch) return
+    cacheReevaluateTimer = setInterval(reevaluateCacheLocation, REEVALUATE_INTERVAL_MS)
+    if (cacheReevaluateTimer.unref) cacheReevaluateTimer.unref()
+  }
+  startCacheReevaluation()
 
   // Load and cache the prebuilt dashboard HTML at startup. Vite + the
   // singlefile plugin emit dist/event-log-dashboard.html with all CSS + JS
@@ -337,25 +457,26 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
       getLocation: () => cacheLocation,
       setProjectRoot: (newRoot) => {
         // Switching project roots resets any previously-pinned
-        // version — the new project may not have that version dir.
+        // version AND the cached installed-version (the new project
+        // may have a different storybook dependency, or none at all).
         pinnedVersion = null
+        cachedInstalledVersion = null
         cacheLocation = resolveCacheLocation({ projectRoot: newRoot })
+        if (cacheLocation.projectStorybookVersion) {
+          cachedInstalledVersion = cacheLocation.projectStorybookVersion
+        }
+        // Tell every connected dashboard to drop its local cache
+        // events BEFORE we emit the new cold-start. The control
+        // frame is queued onto the same SSE stream as the cold-start
+        // events and is delivered first.
+        broadcastCacheReset('project-switch')
+        clearCacheWatchEvents()
         // Re-seed the watcher against the new root so subsequent writes
         // appear in the timeline immediately. User explicitly pointed
         // us here, so emit cold-start events to surface the new
         // root's existing contents — the dashboard's staleness gate
         // still hides any genuinely-stale (pre-session) entries.
         startCacheWatcher({ emitColdStart: true })
-        // If the new root doesn't have a cache yet, re-arm discovery
-        // so the watcher attaches automatically when storybook
-        // creates it later. Likewise, stop discovery if it does have
-        // one — the watcher is already attached.
-        if (cacheLocation.status === 'found' && cacheDiscoveryTimer) {
-          clearInterval(cacheDiscoveryTimer)
-          cacheDiscoveryTimer = null
-        } else if (cacheLocation.status !== 'found') {
-          startCacheDiscovery()
-        }
         return cacheLocation
       },
       setVersion: (version) => {
@@ -363,7 +484,10 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
         cacheLocation = resolveCacheLocation({
           projectRoot: cacheLocation.projectRoot ?? null,
           version,
+          installedVersion: cachedInstalledVersion,
         })
+        broadcastCacheReset('version-changed')
+        clearCacheWatchEvents()
         // Re-attach the watcher against the newly-active version dir
         // and surface its existing contents (the entries are new from
         // the user's perspective — they just switched into them).

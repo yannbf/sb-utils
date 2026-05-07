@@ -20,6 +20,11 @@ export type CacheLocation = {
   // Other version directories that exist but aren't the active one.
   // (Kept for callers that only care about the non-active set.)
   otherVersions: string[]
+  // Max file mtime (ms) under each version directory. Used to pick the
+  // most-recently-updated version as the auto-default and to power UI
+  // affordances like "(latest)" labels in the picker. Empty when no
+  // versions exist.
+  versionMtimes: Record<string, number>
   // The default sub-namespace (always 'default' for core; project-hash dirs
   // for vitest-style isolated caches).
   subs: string[]

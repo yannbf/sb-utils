@@ -21,7 +21,7 @@ import {
   type StoredEvent,
 } from '../store/signals'
 import { backfillFromCache, reconstructTelemetryFromCacheWrite } from './reconstruction'
-import { refreshCacheEntries } from '../store/cache'
+import { refreshCache, refreshCacheEntries } from '../store/cache'
 import { timelineApi } from '../components/Timeline'
 
 // How long the SSE may sit in CONNECTING before we suspect the
@@ -82,8 +82,16 @@ function connect() {
   }, CONNECT_TIMEOUT_MS)
 
   eventSource.onmessage = (e) => {
-    const event = JSON.parse(e.data) as StoredEvent
-    enqueueIncoming(event)
+    const data = JSON.parse(e.data)
+    // Out-of-band control frames the server uses to coordinate state
+    // that doesn't belong in the event stream — e.g. "I just switched
+    // cache version dirs, drop your local cache events". They never
+    // hit the StoredEvent pipeline.
+    if (data && typeof data === 'object' && '_control' in data) {
+      handleControlFrame(data as { _control: string; reason?: string })
+      return
+    }
+    enqueueIncoming(data as StoredEvent)
   }
   eventSource.onopen = () => {
     connectionStatus.value = 'connected'
@@ -94,6 +102,38 @@ function connect() {
   eventSource.onerror = () => {
     connectionStatus.value = 'disconnected'
   }
+}
+
+/**
+ * Server-issued control frames. Currently one kind:
+ *
+ *   `cache-reset` — fired when the server's auto re-evaluation loop
+ *   switches the active cache version dir (or the discovery loop
+ *   first attaches). The dashboard should drop any cache-watch /
+ *   cache-recon events from the previous version (they refer to a
+ *   different version's contents and shouldn't be counted under the
+ *   new one) and re-fetch /cache/info so the toolbar mirrors the
+ *   server's new selection. Cold-start events for the new version
+ *   arrive immediately after this frame on the same SSE channel.
+ */
+function handleControlFrame(data: { _control: string; reason?: string }): void {
+  if (data._control !== 'cache-reset') return
+  // Reset only when the active version genuinely changed or this is
+  // a first-discovery / project-switch event. `info-update` (the
+  // versions list grew but the active dir didn't change) shouldn't
+  // wipe accumulated cache events for the still-active version.
+  const reason = data.reason || ''
+  const dropEvents =
+    reason === 'version-changed' ||
+    reason === 'first-discovery' ||
+    reason === 'project-switch'
+  if (dropEvents) {
+    events.value = events.value.filter(
+      (e) => e._source !== 'cache-watch' && e._source !== 'cache-recon',
+    )
+    timelineApi.value?.invalidate()
+  }
+  void refreshCache()
 }
 
 async function recoverMissedEvents(): Promise<void> {
@@ -124,7 +164,7 @@ async function recoverMissedEvents(): Promise<void> {
 let _pending: StoredEvent[] = []
 const _pendingIds = new Set<string>()
 const _pendingIdx = new Set<number>()
-let _pendingFlush: number | null = null
+let _pendingFlush: { rafId: number | null; timeoutId: ReturnType<typeof setTimeout> } | null = null
 
 function enqueueIncoming(event: StoredEvent): void {
   const all = events.value
@@ -140,14 +180,31 @@ function enqueueIncoming(event: StoredEvent): void {
   if (event.eventId) _pendingIds.add(event.eventId)
   if (event._index != null) _pendingIdx.add(event._index)
   if (_pendingFlush == null) {
-    _pendingFlush = (typeof requestAnimationFrame !== 'undefined'
-      ? requestAnimationFrame
-      : (cb: any) => setTimeout(cb, 0))(flushPending) as unknown as number
+    // Schedule with rAF when available for natural 60fps coalescing,
+    // but ALSO arm a setTimeout safety net. Background tabs throttle
+    // (or pause) rAF — without the fallback, events would queue
+    // indefinitely while the dashboard sits unfocused. The safety
+    // timer fires first if rAF is paused; otherwise rAF wins and the
+    // timer no-ops.
+    const rafId =
+      typeof requestAnimationFrame !== 'undefined'
+        ? requestAnimationFrame(flushPending)
+        : null
+    const timeoutId = setTimeout(flushPending, 100)
+    _pendingFlush = { rafId, timeoutId }
   }
 }
 
 function flushPending(): void {
-  _pendingFlush = null
+  if (_pendingFlush) {
+    // Whichever scheduler fired first wins; cancel the other so the
+    // batch isn't double-processed (rAF would see _pending empty and
+    // bail at the length check, but cancelling is tidier and
+    // documents intent).
+    if (_pendingFlush.rafId != null) cancelAnimationFrame(_pendingFlush.rafId)
+    clearTimeout(_pendingFlush.timeoutId)
+    _pendingFlush = null
+  }
   if (_pending.length === 0) return
   const batch = _pending
   _pending = []

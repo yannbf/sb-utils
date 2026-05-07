@@ -14,6 +14,10 @@ export type CacheInfo = {
   // Every version dir that exists under cacheRoot. When length > 1,
   // CacheView renders a picker so the user can switch between them.
   versions?: string[]
+  // Max file mtime (ms) under each version dir, keyed by version. Lets
+  // the dashboard surface "(latest)" alongside the most recently
+  // updated entry in the picker.
+  versionMtimes?: Record<string, number>
   // The version declared in the project's package.json (cleaned of
   // the semver range prefix). Used to label the matching version dir
   // in the picker as the "current" one.
@@ -37,6 +41,7 @@ export const cacheInfo = signal<CacheInfo>({
   cacheRoot: null,
   version: null,
   versions: [],
+  versionMtimes: {},
   projectStorybookVersion: null,
 })
 
@@ -99,6 +104,7 @@ export async function refreshCacheEntries(): Promise<void> {
         cacheRoot,
         version,
         versions,
+        versionMtimes,
         projectStorybookVersion,
       } = data as {
         cacheStatus?: string
@@ -106,6 +112,7 @@ export async function refreshCacheEntries(): Promise<void> {
         cacheRoot?: string | null
         version?: string | null
         versions?: string[]
+        versionMtimes?: Record<string, number>
         projectStorybookVersion?: string | null
       }
       if (cacheStatus) {
@@ -115,6 +122,10 @@ export async function refreshCacheEntries(): Promise<void> {
           cacheRoot,
           version,
           versions: Array.isArray(versions) ? versions : cacheInfo.value.versions,
+          versionMtimes:
+            versionMtimes && typeof versionMtimes === 'object'
+              ? versionMtimes
+              : cacheInfo.value.versionMtimes,
           projectStorybookVersion:
             projectStorybookVersion ?? cacheInfo.value.projectStorybookVersion,
         }

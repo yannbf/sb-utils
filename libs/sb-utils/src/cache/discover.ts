@@ -63,12 +63,41 @@ function readDirSafe(dir: string): string[] {
 }
 
 /**
+ * Recursively walk a cache version directory and return the highest
+ * mtime found. Capped at a small depth — Storybook's cache layout is
+ * `<version>/<sub>/<namespace>/<file>` (3 levels of dirs) so depth 4
+ * covers files. Returns 0 on any error so the caller falls back to
+ * lexicographic ordering for that version.
+ */
+function maxMtimeMs(dir: string, depth = 4): number {
+  let max = 0
+  let stat: fs.Stats
+  try {
+    stat = fs.statSync(dir)
+  } catch {
+    return 0
+  }
+  if (stat.mtimeMs > max) max = stat.mtimeMs
+  if (depth <= 0 || !stat.isDirectory()) return max
+  let children: string[]
+  try {
+    children = fs.readdirSync(dir)
+  } catch {
+    return max
+  }
+  for (const child of children) {
+    const m = maxMtimeMs(path.join(dir, child), depth - 1)
+    if (m > max) max = m
+  }
+  return max
+}
+
+/**
  * Inspect a cache root and surface its layout. Returns every version
  * directory found plus the layout for the active one. The "active"
  * version is chosen by `pickActiveVersion`: prefer an exact match
- * for `preferred`, otherwise fall back to the highest-sorted entry
- * (lexicographic — works for both stable semver and the long
- * pre-release suffixes).
+ * for `preferred`, otherwise fall back to the most-recently-updated
+ * version dir (max file mtime under it).
  */
 export function describeCacheLayout(
   cacheRoot: string,
@@ -77,6 +106,7 @@ export function describeCacheLayout(
   version: string | null
   versions: string[]
   otherVersions: string[]
+  versionMtimes: Record<string, number>
   subs: string[]
   namespaces: string[]
 } {
@@ -86,11 +116,16 @@ export function describeCacheLayout(
       version: null,
       versions: [],
       otherVersions: [],
+      versionMtimes: {},
       subs: [],
       namespaces: [],
     }
   }
-  const version = pickActiveVersion(versions, preferred ?? null)
+  const versionMtimes: Record<string, number> = {}
+  for (const v of versions) {
+    versionMtimes[v] = maxMtimeMs(path.join(cacheRoot, v))
+  }
+  const version = pickActiveVersion(versions, preferred ?? null, versionMtimes)
   const otherVersions = versions.filter((v) => v !== version)
 
   const versionRoot = path.join(cacheRoot, version)
@@ -100,7 +135,7 @@ export function describeCacheLayout(
   subs.sort((a, b) => (a === 'default' ? -1 : b === 'default' ? 1 : a.localeCompare(b)))
   const activeSub = subs[0] ?? null
   const namespaces = activeSub ? readDirSafe(path.join(versionRoot, activeSub)) : []
-  return { version, versions, otherVersions, subs, namespaces }
+  return { version, versions, otherVersions, versionMtimes, subs, namespaces }
 }
 
 /**
@@ -108,16 +143,30 @@ export function describeCacheLayout(
  * dirs and an optional preference.
  *
  *   1. If `preferred` matches one of the available dirs exactly, use it.
- *   2. Otherwise fall back to the highest-sorted entry (deterministic
- *      across stable semver and pre-release shas).
+ *      (`preferred` is set when the caller has explicitly pinned a
+ *      version — the dashboard's version picker.)
+ *   2. Otherwise pick the dir with the most recent contents (max file
+ *      mtime under it). This is what users typically want by default:
+ *      "show me the cache from my latest run", regardless of whether
+ *      it matches the version declared in package.json.
+ *   3. As a last-resort tie-breaker (no mtimes available), fall back to
+ *      the highest-sorted entry.
  */
 export function pickActiveVersion(
   versions: string[],
   preferred: string | null,
+  mtimes: Record<string, number> = {},
 ): string {
   const exact = pickMatchingVersion(versions, preferred ?? null)
   if (exact) return exact
-  return versions[versions.length - 1]
+  // mtime descending; ties broken by lexicographic descending so the
+  // result is deterministic.
+  const sorted = [...versions].sort((a, b) => {
+    const dt = (mtimes[b] ?? 0) - (mtimes[a] ?? 0)
+    if (dt !== 0) return dt
+    return b.localeCompare(a)
+  })
+  return sorted[0]
 }
 
 export type ResolveOptions = {
@@ -128,13 +177,19 @@ export type ResolveOptions = {
   /**
    * Pin the active cache version. When set, the resolved location's
    * `version` is forced to this value (or 'not-found' if the dir
-   * doesn't exist on disk). When omitted, we auto-pick: project's
-   * declared storybook version (from the nearest package.json with
-   * `dependencies.storybook` / `devDependencies.storybook`) if it
-   * matches a version dir, otherwise the highest-sorted available
-   * version.
+   * doesn't exist on disk). When omitted, we auto-pick: prefer the
+   * project's declared storybook version when it matches a version
+   * dir, otherwise pick the most-recently-updated version dir.
    */
   version?: string | null
+  /**
+   * Pre-resolved storybook version. When provided, skips the
+   * package.json walk and uses this value as `projectStorybookVersion`
+   * in the result. Lets long-running callers (the event-logger) cache
+   * the lookup once they've found it, so they don't re-walk the FS on
+   * every re-resolve. Pass `null` to force a re-walk.
+   */
+  installedVersion?: string | null
 }
 
 /**
@@ -163,6 +218,7 @@ export function resolveCacheLocation(opts: ResolveOptions = {}): CacheLocation {
       version: null,
       versions: [],
       otherVersions: [],
+      versionMtimes: {},
       subs: [],
       namespaces: [],
       projectStorybookVersion: null,
@@ -171,12 +227,18 @@ export function resolveCacheLocation(opts: ResolveOptions = {}): CacheLocation {
 
   // Pull the project's declared storybook version up-front so we can
   // bias the version-dir pick toward it (and surface it to the
-  // dashboard for "currently used" labelling).
+  // dashboard for "currently used" labelling). Honour an explicit
+  // override from the caller — long-running callers cache the result
+  // and avoid re-walking the FS on every re-resolve.
   let projectStorybookVersion: string | null = null
-  try {
-    projectStorybookVersion = findProjectStorybookVersion(projectRoot)
-  } catch {
-    projectStorybookVersion = null
+  if (opts.installedVersion !== undefined) {
+    projectStorybookVersion = opts.installedVersion
+  } else {
+    try {
+      projectStorybookVersion = findProjectStorybookVersion(projectRoot)
+    } catch {
+      projectStorybookVersion = null
+    }
   }
 
   const cacheRoot = findCacheRoot(projectRoot)
@@ -188,14 +250,17 @@ export function resolveCacheLocation(opts: ResolveOptions = {}): CacheLocation {
       version: null,
       versions: [],
       otherVersions: [],
+      versionMtimes: {},
       subs: [],
       namespaces: [],
       projectStorybookVersion,
     }
   }
 
-  // Explicit `version` opt wins; otherwise prefer the project's
-  // declared storybook version (cleaned of the semver range prefix).
+  // Auto-pick prefers the project's declared storybook version when
+  // its cache dir exists; otherwise `describeCacheLayout` falls back
+  // to the most-recently-updated version dir. An explicit pin via
+  // `opts.version` always wins.
   const preferred = opts.version ?? projectStorybookVersion
 
   let layout: ReturnType<typeof describeCacheLayout>
@@ -217,6 +282,7 @@ export function resolveCacheLocation(opts: ResolveOptions = {}): CacheLocation {
       version: null,
       versions: [],
       otherVersions: [],
+      versionMtimes: {},
       subs: [],
       namespaces: [],
     }
@@ -230,6 +296,7 @@ export function resolveCacheLocation(opts: ResolveOptions = {}): CacheLocation {
     version: layout.version,
     versions: layout.versions,
     otherVersions: layout.otherVersions,
+    versionMtimes: layout.versionMtimes,
     subs: layout.subs,
     namespaces: layout.namespaces,
     projectStorybookVersion,
