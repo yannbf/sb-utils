@@ -1,3 +1,16 @@
+# v0.0.25 (Thu May 07 2026)
+
+#### ⚠️ Pushed to `main`
+
+- multi-version cache ([@yannbf](https://github.com/yannbf))
+- add cache version picker, prefer project's storybook version ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
 # v0.0.24 (Tue May 05 2026)
 
 #### ⚠️ Pushed to `main`

@@ -1,3 +1,18 @@
+# (Thu May 07 2026)
+
+#### ⚠️ Pushed to `main`
+
+- fix ([@yannbf](https://github.com/yannbf))
+- `@hipster/sb-utils@0.0.25`
+  - multi-version cache ([@yannbf](https://github.com/yannbf))
+  - add cache version picker, prefer project's storybook version ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
 # (Tue May 05 2026)
 
 #### ⚠️ Pushed to `main`
