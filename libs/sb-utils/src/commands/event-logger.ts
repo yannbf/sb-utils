@@ -187,6 +187,10 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
   let cacheLocation: CacheLocation = resolveCacheLocation({
     projectRoot: options.projectRoot ?? null,
   })
+  // The version the user has explicitly pinned via the dashboard (or
+  // `null` for "auto-pick from project's storybook dependency").
+  // Re-applied on every project-root switch and discovery re-resolve.
+  let pinnedVersion: string | null = null
   let cacheWatchHandle: { close: () => void } | null = null
 
   function ingestCacheChange(change: CacheChange) {
@@ -260,6 +264,7 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
     cacheDiscoveryTimer = setInterval(() => {
       const next = resolveCacheLocation({
         projectRoot: cacheLocation.projectRoot ?? null,
+        version: pinnedVersion,
       })
       if (next.status === 'found') {
         cacheLocation = next
@@ -331,6 +336,9 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
     createCacheRoutes({
       getLocation: () => cacheLocation,
       setProjectRoot: (newRoot) => {
+        // Switching project roots resets any previously-pinned
+        // version — the new project may not have that version dir.
+        pinnedVersion = null
         cacheLocation = resolveCacheLocation({ projectRoot: newRoot })
         // Re-seed the watcher against the new root so subsequent writes
         // appear in the timeline immediately. User explicitly pointed
@@ -348,6 +356,18 @@ export async function eventLogger(options: EventLoggerOptions): Promise<void> {
         } else if (cacheLocation.status !== 'found') {
           startCacheDiscovery()
         }
+        return cacheLocation
+      },
+      setVersion: (version) => {
+        pinnedVersion = version
+        cacheLocation = resolveCacheLocation({
+          projectRoot: cacheLocation.projectRoot ?? null,
+          version,
+        })
+        // Re-attach the watcher against the newly-active version dir
+        // and surface its existing contents (the entries are new from
+        // the user's perspective — they just switched into them).
+        startCacheWatcher({ emitColdStart: true })
         return cacheLocation
       },
     }),

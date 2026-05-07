@@ -1971,6 +1971,30 @@
     border-radius: 3px;
     border: 1px solid var(--border-light);
   }
+  .cache-root-version-picker {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--bg-input);
+    padding: 1px 4px 1px 6px;
+    border-radius: 3px;
+    border: 1px solid var(--border-light);
+  }
+  .cache-root-version-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .cache-root-version-select {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text);
+    background: transparent;
+    border: none;
+    padding: 1px 2px;
+    cursor: pointer;
+  }
+  .cache-root-version-select:focus { outline: none; }
   .cache-toolbar-actions { display: flex; gap: 6px; }
 
   .cache-writes-banner, .cache-readonly-banner {

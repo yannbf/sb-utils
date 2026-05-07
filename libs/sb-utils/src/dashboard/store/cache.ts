@@ -9,7 +9,15 @@ export type CacheInfo = {
   cacheStatus?: string
   projectRoot?: string | null
   cacheRoot?: string | null
+  // The currently-active version dir.
   version?: string | null
+  // Every version dir that exists under cacheRoot. When length > 1,
+  // CacheView renders a picker so the user can switch between them.
+  versions?: string[]
+  // The version declared in the project's package.json (cleaned of
+  // the semver range prefix). Used to label the matching version dir
+  // in the picker as the "current" one.
+  projectStorybookVersion?: string | null
   error?: string
 }
 
@@ -28,6 +36,8 @@ export const cacheInfo = signal<CacheInfo>({
   projectRoot: null,
   cacheRoot: null,
   version: null,
+  versions: [],
+  projectStorybookVersion: null,
 })
 
 export const cacheEntries = signal<CacheEntry[]>([])
@@ -83,14 +93,31 @@ export async function refreshCacheEntries(): Promise<void> {
     // []; that meant every live cache:write SSE event wiped the
     // count rather than growing it.
     if (data && typeof data === 'object') {
-      const { cacheStatus, projectRoot, cacheRoot, version } = data as {
+      const {
+        cacheStatus,
+        projectRoot,
+        cacheRoot,
+        version,
+        versions,
+        projectStorybookVersion,
+      } = data as {
         cacheStatus?: string
         projectRoot?: string | null
         cacheRoot?: string | null
         version?: string | null
+        versions?: string[]
+        projectStorybookVersion?: string | null
       }
       if (cacheStatus) {
-        cacheInfo.value = { cacheStatus, projectRoot, cacheRoot, version }
+        cacheInfo.value = {
+          cacheStatus,
+          projectRoot,
+          cacheRoot,
+          version,
+          versions: Array.isArray(versions) ? versions : cacheInfo.value.versions,
+          projectStorybookVersion:
+            projectStorybookVersion ?? cacheInfo.value.projectStorybookVersion,
+        }
       }
     }
     cacheEntries.value = Array.isArray(data?.entries) ? data.entries : []
@@ -102,6 +129,26 @@ export async function refreshCacheEntries(): Promise<void> {
 export async function refreshCache(): Promise<void> {
   await refreshCacheInfo()
   await refreshCacheEntries()
+}
+
+export async function setCacheVersion(version: string | null): Promise<boolean> {
+  try {
+    const res = await fetch('/cache/version', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ version }),
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      window.alert('Switch version failed: ' + (body.error || res.statusText))
+      return false
+    }
+    await refreshCache()
+    return true
+  } catch (err) {
+    window.alert('Switch version failed: ' + (err as Error).message)
+    return false
+  }
 }
 
 export async function changeCacheRoot(): Promise<boolean> {

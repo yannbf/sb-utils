@@ -51,6 +51,7 @@
     "@clack/prompts": "^1.2.0",
     "@hono/node-server": "^1.14.1",
     "commander": "^14.0.2",
+    "empathic": "^2.0.0",
     "hono": "^4.7.10",
     "std-env": "^4.1.0"
   },

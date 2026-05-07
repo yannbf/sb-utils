@@ -15,17 +15,29 @@ export type CacheRoutesOptions = {
    * different project root from the dashboard).
    */
   setProjectRoot: (projectRoot: string | null) => CacheLocation
+  /**
+   * Pin the active cache version. The server re-resolves the location
+   * with the chosen version so subsequent reads (and the watcher)
+   * target it. Pass null to revert to auto-pick.
+   */
+  setVersion: (version: string | null) => CacheLocation
 }
 
 /**
- * Resolve the location to operate on for a given request. Honors a
- * `?projectRoot=<abs>` query override per-request without mutating the
- * server's default — useful for one-off lookups across projects.
+ * Resolve the location to operate on for a given request. Honors
+ * `?projectRoot=<abs>` and `?version=<v>` query overrides per-request
+ * without mutating the server's default — useful for one-off lookups
+ * across projects / versions.
  */
 function locationForRequest(c: any, opts: CacheRoutesOptions): CacheLocation {
-  const override = c.req.query('projectRoot')
-  if (override) {
-    return resolveCacheLocation({ projectRoot: override })
+  const projectRoot = c.req.query('projectRoot')
+  const version = c.req.query('version')
+  if (projectRoot || version) {
+    const base = projectRoot ? null : opts.getLocation().projectRoot
+    return resolveCacheLocation({
+      projectRoot: projectRoot ?? base,
+      version: version ?? null,
+    })
   }
   return opts.getLocation()
 }
@@ -36,6 +48,8 @@ function withSummary(location: CacheLocation, body: Record<string, unknown> = {}
     projectRoot: location.projectRoot,
     cacheRoot: location.cacheRoot,
     version: location.version,
+    versions: location.versions,
+    projectStorybookVersion: location.projectStorybookVersion,
     ...body,
   }
 }
@@ -51,9 +65,11 @@ export function createCacheRoutes(opts: CacheRoutesOptions): Hono {
       projectRoot: loc.projectRoot,
       cacheRoot: loc.cacheRoot,
       version: loc.version,
+      versions: loc.versions,
       otherVersions: loc.otherVersions,
       subs: loc.subs,
       namespaces: loc.namespaces,
+      projectStorybookVersion: loc.projectStorybookVersion,
     })
   })
 
@@ -73,8 +89,36 @@ export function createCacheRoutes(opts: CacheRoutesOptions): Hono {
       projectRoot: newLoc.projectRoot,
       cacheRoot: newLoc.cacheRoot,
       version: newLoc.version,
+      versions: newLoc.versions,
       subs: newLoc.subs,
       namespaces: newLoc.namespaces,
+      projectStorybookVersion: newLoc.projectStorybookVersion,
+    })
+  })
+
+  // POST /cache/version { version } — pin the active cache version.
+  // Accepts null/empty to revert to the server's auto-pick.
+  app.post('/version', async (c) => {
+    let body: any
+    try {
+      body = await c.req.json()
+    } catch {
+      return c.json({ error: 'Invalid JSON body' }, 400)
+    }
+    const version =
+      body && typeof body.version === 'string' && body.version.trim()
+        ? body.version.trim()
+        : null
+    const newLoc = opts.setVersion(version)
+    return c.json({
+      cacheStatus: newLoc.status,
+      projectRoot: newLoc.projectRoot,
+      cacheRoot: newLoc.cacheRoot,
+      version: newLoc.version,
+      versions: newLoc.versions,
+      subs: newLoc.subs,
+      namespaces: newLoc.namespaces,
+      projectStorybookVersion: newLoc.projectStorybookVersion,
     })
   })
 

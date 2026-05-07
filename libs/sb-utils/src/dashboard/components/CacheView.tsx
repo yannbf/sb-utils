@@ -15,6 +15,7 @@ import {
   setEditMode,
   refreshCache,
   changeCacheRoot,
+  setCacheVersion,
   clearCache,
   writeCacheEntry,
   deleteCacheEntry,
@@ -140,6 +141,9 @@ function Toolbar({ status }: { status: string }) {
   const info = cacheInfo.value
   const editMode = cacheEditMode.value
   const statusLabel = status === 'found' ? 'Active' : status === 'unreadable' ? 'Unreadable' : 'Not found'
+  const versions = info.versions ?? []
+  const projectVersion = info.projectStorybookVersion ?? null
+  const hasMultipleVersions = versions.length > 1
   return (
     <div class="cache-toolbar">
       <div class="cache-root-info" id="cacheRootInfo">
@@ -149,10 +153,27 @@ function Toolbar({ status }: { status: string }) {
         <span class="cache-root-path" id="cacheRootPath">
           {info.projectRoot || 'No project resolved — pass --project-root or click "Change root…"'}
         </span>
-        {info.version && (
-          <span class="cache-root-version" id="cacheRootVersion">
-            sb {info.version}
-          </span>
+        {hasMultipleVersions ? (
+          <CacheVersionPicker
+            versions={versions}
+            active={info.version ?? null}
+            projectVersion={projectVersion}
+          />
+        ) : (
+          info.version && (
+            <span
+              class="cache-root-version"
+              id="cacheRootVersion"
+              title={
+                projectVersion === info.version
+                  ? `Matches storybook ${projectVersion} declared in package.json`
+                  : undefined
+              }
+            >
+              sb {info.version}
+              {projectVersion === info.version ? ' (current)' : ''}
+            </span>
+          )
         )}
       </div>
       <div class="cache-toolbar-actions">
@@ -208,6 +229,46 @@ function Toolbar({ status }: { status: string }) {
         )}
       </div>
     </div>
+  )
+}
+
+function CacheVersionPicker({
+  versions,
+  active,
+  projectVersion,
+}: {
+  versions: string[]
+  active: string | null
+  projectVersion: string | null
+}) {
+  // Sorted highest-first so the most recent storybook version sits at
+  // the top of the dropdown — matches the typical "I want to inspect
+  // my latest run" mental model.
+  const sorted = [...versions].sort().reverse()
+  const onChange = (e: Event) => {
+    const next = (e.currentTarget as HTMLSelectElement).value
+    if (next === active) return
+    void setCacheVersion(next)
+  }
+  return (
+    <span class="cache-root-version-picker" title="Multiple Storybook versions detected in this project's cache. Pick which one to inspect.">
+      <label class="cache-root-version-label" htmlFor="cacheVersionSelect">
+        sb
+      </label>
+      <select
+        id="cacheVersionSelect"
+        class="cache-root-version-select"
+        value={active ?? ''}
+        onChange={onChange}
+      >
+        {sorted.map((v) => (
+          <option key={v} value={v}>
+            {v}
+            {v === projectVersion ? ' (current)' : ''}
+          </option>
+        ))}
+      </select>
+    </span>
   )
 }
 

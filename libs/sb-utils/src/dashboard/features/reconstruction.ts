@@ -234,14 +234,31 @@ export async function backfillFromCache(): Promise<void> {
     // them from a follow-up /cache/info fetch.
     cacheEntries.value = entries
     if (data && typeof data === 'object') {
-      const { cacheStatus, projectRoot, cacheRoot, version } = data as {
+      const {
+        cacheStatus,
+        projectRoot,
+        cacheRoot,
+        version,
+        versions,
+        projectStorybookVersion,
+      } = data as {
         cacheStatus?: string
         projectRoot?: string | null
         cacheRoot?: string | null
         version?: string | null
+        versions?: string[]
+        projectStorybookVersion?: string | null
       }
       if (cacheStatus) {
-        cacheInfo.value = { cacheStatus, projectRoot, cacheRoot, version }
+        cacheInfo.value = {
+          cacheStatus,
+          projectRoot,
+          cacheRoot,
+          version,
+          versions: Array.isArray(versions) ? versions : cacheInfo.value.versions,
+          projectStorybookVersion:
+            projectStorybookVersion ?? cacheInfo.value.projectStorybookVersion,
+        }
       }
     }
 
