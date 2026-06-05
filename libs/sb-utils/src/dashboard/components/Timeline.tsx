@@ -59,7 +59,7 @@ export function Timeline() {
           Range: <b>—</b>
         </span>
         <div class="tl-toolbar-right">
-          <button type="button" class="tl-toggle" id="tlGroupUserBtn" title="Group sessions by user (anonymousId / userSince)">
+          <button type="button" class="tl-toggle" id="tlGroupUserBtn" title="One lane per user — their sessions stacked in time with dividers (identity: userSince, else anonymousId)">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
               <circle cx="9" cy="7" r="4" />

@@ -10,7 +10,32 @@ import {
   centerOnDot,
   userKeyForSession,
   groupLanesByUser,
+  buildUserLanes,
 } from '../src/dashboard/lib/timeline-math'
+
+describe('buildUserLanes', () => {
+  it("merges a user's sessions into one lane, ordered users by earliest", () => {
+    const sessionLanes = [
+      { sid: 's1', userKey: 'A', first: 0, last: 10, events: [{ _receivedAt: 0 }, { _receivedAt: 10 }] },
+      { sid: 's2', userKey: 'A', first: 20, last: 30, events: [{ _receivedAt: 20 }, { _receivedAt: 30 }] },
+      { sid: 's3', userKey: 'B', first: 5, last: 8, events: [{ _receivedAt: 5 }] },
+    ]
+    const lanes = buildUserLanes(sessionLanes)
+    expect(lanes.map((l) => l.userKey)).toEqual(['A', 'B'])
+  })
+
+  it('keeps ordered session spans and a merged, time-sorted event list', () => {
+    const sessionLanes = [
+      { sid: 's2', userKey: 'A', first: 20, last: 30, events: [{ _receivedAt: 30 }, { _receivedAt: 20 }] },
+      { sid: 's1', userKey: 'A', first: 0, last: 10, events: [{ _receivedAt: 0 }, { _receivedAt: 10 }] },
+    ]
+    const [a] = buildUserLanes(sessionLanes)
+    expect(a.first).toBe(0)
+    expect(a.last).toBe(30)
+    expect(a.sessions.map((s) => s.sid)).toEqual(['s1', 's2'])
+    expect(a.events.map((e) => e._receivedAt)).toEqual([0, 10, 20, 30])
+  })
+})
 
 describe('userKeyForSession', () => {
   it('returns the first event that carries an identity', () => {

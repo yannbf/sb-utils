@@ -86,6 +86,61 @@ export function groupLanesByUser<L extends { userKey: string; first: number }>(
   return out
 }
 
+export type SessionSpan = { sid: string; first: number; last: number }
+
+export type UserLane<E> = {
+  userKey: string
+  first: number
+  last: number
+  events: E[]
+  /** Each constituent session, sorted by start — drives the per-session
+   *  lifespan blocks + the vertical divider lines drawn between them. */
+  sessions: SessionSpan[]
+}
+
+/**
+ * Collapse per-session lanes into one lane per user. All of a user's
+ * events merge into a single chronological row; their sessions are kept
+ * as ordered spans so the renderer can draw a block per session and a
+ * vertical divider where each new session begins. Users are ordered by
+ * their earliest event.
+ *
+ * This is the "swim lane = user, sessions stacked in time" model: a user
+ * with sessions at 0–10m and 20–30m shows both sequentially in one row
+ * (with the gap between them, which "Collapse gaps" can compress), rather
+ * than on two separate rows.
+ */
+export function buildUserLanes<
+  E extends { _receivedAt?: number },
+  L extends { sid: string; userKey: string; first: number; last: number; events: E[] },
+>(sessionLanes: L[]): UserLane<E>[] {
+  const byUser = new Map<string, L[]>()
+  for (const lane of sessionLanes) {
+    const g = byUser.get(lane.userKey)
+    if (g) g.push(lane)
+    else byUser.set(lane.userKey, [lane])
+  }
+  const lanes: UserLane<E>[] = []
+  for (const [userKey, group] of byUser) {
+    const sessions = group
+      .map((l) => ({ sid: l.sid, first: l.first, last: l.last }))
+      .sort((a, b) => a.first - b.first)
+    const events = group
+      .flatMap((l) => l.events)
+      .slice()
+      .sort((a, b) => (a._receivedAt || 0) - (b._receivedAt || 0))
+    let first = Infinity
+    let last = -Infinity
+    for (const s of sessions) {
+      if (s.first < first) first = s.first
+      if (s.last > last) last = s.last
+    }
+    lanes.push({ userKey, first, last, events, sessions })
+  }
+  lanes.sort((a, b) => a.first - b.first)
+  return lanes
+}
+
 /**
  * Build piecewise time-mapping segments. When `collapseGaps` is true,
  * any inter-event gap > threshold (max(3000ms, median*8)) is compressed

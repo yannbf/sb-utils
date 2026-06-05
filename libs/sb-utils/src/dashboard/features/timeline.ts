@@ -339,8 +339,11 @@ const Timeline = (function () {
       lane.userKey = userKeyForSession(lane.events) || 'unknown';
     }
     if (st.groupByUser) {
-      // Reorder so each user's sessions are adjacent; the helper also
-      // flags the first lane of each group (isFirstOfUser) for the header.
+      // Keep one lane PER SESSION (stacked vertically), but order them so
+      // each user's sessions are adjacent and, within a user, sorted by
+      // start time — so you can read which session began first. The
+      // helper flags the first lane of each user group (isFirstOfUser)
+      // for the header + separator.
       sessionLanes = groupLanesByUser(sessionLanes);
     } else {
       sessionLanes.sort((a, b) => a.first - b.first);
@@ -1207,10 +1210,6 @@ const Timeline = (function () {
         ? lane.events.length + ' op' + (lane.events.length !== 1 ? 's' : '')
         : lane.events.length + ' event' + (lane.events.length !== 1 ? 's' : '');
       contentCtx.fillText(subLabel, 12, sidY + 14);
-      // Visible duration (first → last across the events that pass
-      // the current hidden-types filter — see visibleSessions).
-      // Surfaces "how long is the run I'm looking at?" right next to
-      // the count, without the user having to reach for the axis.
       if (lane.events.length >= 2) {
         const span = lane.last - lane.first;
         if (span > 0) {
@@ -2116,12 +2115,22 @@ const Timeline = (function () {
   }
 
   // "Group by user" toggle: reorder lanes so each user's sessions are
-  // adjacent. Only the vertical lane order changes — the time axis is
-  // untouched — so a plain redraw is enough.
+  // adjacent and time-ordered. Turning it ON also auto-engages gap
+  // collapsing — grouping packs many sessions onto the shared axis, and
+  // without collapsing the dead time between them they squeeze into
+  // unreadable specks. Auto-ENABLE only (never auto-off), so the user
+  // can still turn collapsing back off while grouped.
   function toggleGroupByUser() {
     st.groupByUser = !st.groupByUser;
     groupTimelineByUser.value = st.groupByUser;
     writePref('groupTimelineByUser', st.groupByUser ? '1' : '0');
+    if (st.groupByUser && !st.collapseGaps) {
+      st.collapseGaps = true;
+      collapseTimelineGaps.value = true;
+      writePref('collapseTimelineGaps', '1');
+      fitAll(); // rebuilds segments for the new mapping + reframes
+      return;
+    }
     invalidate();
   }
 
