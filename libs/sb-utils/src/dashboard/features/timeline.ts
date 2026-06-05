@@ -14,17 +14,24 @@
 
 import { effect } from '@preact/signals'
 import { escapeHtml, formatGapDuration as _formatGapDurationLib } from '../lib/format'
-import { formatDelta, hasErrorPayload, summaryFor } from '../lib/event-helpers'
+import { formatDelta, hasErrorPayload, summaryFor, shortUserLabel, userKeyOf } from '../lib/event-helpers'
 import { writePref } from './../lib/session-storage'
-import { getColor } from '../lib/colors'
+import { getColor, getUserColor } from '../lib/colors'
 import { matchesFilters as _matchesFilters } from '../lib/filters'
-import { selectedTimelineEvent, collapseTimelineGaps } from '../store/signals'
+import {
+  selectedTimelineEvent,
+  collapseTimelineGaps,
+  normalizeTimeline,
+  groupTimelineByUser,
+} from '../store/signals'
 import {
   computeDataRange,
   buildSegments as _buildSegments,
   chooseTickInterval as _chooseTickInterval,
   centerOnDot,
   shouldPanToFocus,
+  userKeyForSession,
+  groupLanesByUser,
 } from '../lib/timeline-math'
 
 export function setupTimeline(state: any, applyFiltersInPlace: () => void, container: HTMLElement) {
@@ -85,6 +92,18 @@ const Timeline = (function () {
     // pulled from the signal so persisted prefs / snapshot bake take
     // effect on boot. `toggleCollapseGaps` keeps both in sync.
     collapseGaps: collapseTimelineGaps.value,
+    // Mirror of `normalizeTimeline` — when true, every lane is re-based
+    // to elapsed-from-its-own-start (see `eventSrc`). Kept in sync by
+    // `toggleNormalize`.
+    normalize: normalizeTimeline.value,
+    // Mirror of `groupTimelineByUser` — when true, `visibleSessions`
+    // reorders session lanes so each user's sessions are adjacent. Kept
+    // in sync by `toggleGroupByUser`.
+    groupByUser: groupTimelineByUser.value,
+    // event `_index` → its lane's origin (first timestamp), rebuilt each
+    // render by `buildOriginIndex`. Only populated in normalize mode;
+    // `eventSrc` reads it O(1) so per-event projection stays cheap.
+    originByIndex: new Map(),
     segments: null,
   };
   // Single point that interactions call to opt out of further
@@ -103,6 +122,7 @@ const Timeline = (function () {
   // class is driven by the selectedTimelineEvent signal.
   let drawerEl: any
   let zoomInfo: any, rangeInfo: any, liveInfo: any, emptyEl: any, fitBtn: any, collapseBtn: any
+  let normalizeBtn: any, groupUserBtn: any
   let axisCtx: any, contentCtx: any, minimapCtx: any
   let dpr = 1
   let rafPending = false
@@ -126,6 +146,8 @@ const Timeline = (function () {
     emptyEl = document.getElementById('tlEmpty');
     fitBtn = document.getElementById('tlFitBtn');
     collapseBtn = document.getElementById('tlCollapseBtn');
+    normalizeBtn = document.getElementById('tlNormalizeBtn');
+    groupUserBtn = document.getElementById('tlGroupUserBtn');
 
     axisCtx = axisCanvas.getContext('2d');
     contentCtx = contentCanvas.getContext('2d');
@@ -182,6 +204,8 @@ const Timeline = (function () {
     jumpBtn.addEventListener('click', () => { st.followTail = true; fitAll(); });
     // Drawer prev/next/close buttons are owned by TimelineDrawer.tsx.
     collapseBtn.addEventListener('click', toggleCollapseGaps);
+    if (normalizeBtn) normalizeBtn.addEventListener('click', toggleNormalize);
+    if (groupUserBtn) groupUserBtn.addEventListener('click', toggleGroupByUser);
 
     // React to drawer-driven selection changes (prev/next navigation in
     // <TimelineDrawer />): pan the canvas so the new dot is visible and
@@ -208,7 +232,44 @@ const Timeline = (function () {
   }
 
   function dataRange() {
+    // Normalize mode plots elapsed-from-session-start, so the range is
+    // [0, longest session duration] rather than wall-clock first→last.
+    // buildOriginIndex must have run (it does, via rebuildSegments at
+    // the top of every render) for eventSrc to resolve per-lane origins.
+    if (st.normalize) {
+      let max = 0;
+      for (const e of state.events) {
+        if (!e._receivedAt) continue;
+        const v = eventSrc(e);
+        if (v > max) max = v;
+      }
+      return [0, Math.max(1000, max)] as [number, number];
+    }
     return computeDataRange(state.events);
+  }
+
+  // event `_index` → origin (its lane's first timestamp). Only built in
+  // normalize mode; absolute mode leaves the map empty and eventSrc
+  // short-circuits. Rebuilt once per render (cheap — one pass over the
+  // already-computed lanes) so eventSrc reads it O(1) inside hot loops.
+  function buildOriginIndex() {
+    const m = st.originByIndex;
+    m.clear();
+    if (!st.normalize) return;
+    for (const lane of visibleSessions()) {
+      for (const e of lane.events) m.set(e._index, lane.first);
+    }
+  }
+
+  // Source-time value to plot an event at, in the current mode:
+  //   absolute  → its wall-clock _receivedAt
+  //   normalize → ms elapsed from its own lane's first event
+  // Lanes whose origin isn't in the index (e.g. a stray event not in
+  // any visible lane) fall back to 0 elapsed rather than NaN.
+  function eventSrc(e: any): number {
+    if (!st.normalize) return e._receivedAt;
+    const o = st.originByIndex.get(e._index);
+    return e._receivedAt - (o == null ? e._receivedAt : o);
   }
 
   function visibleSessions() {
@@ -269,7 +330,21 @@ const Timeline = (function () {
       if (e._receivedAt > entry.last) entry.last = e._receivedAt;
       entry.events.push(e);
     }
-    const sessionLanes = Array.from(map.values()).sort((a, b) => a.first - b.first);
+    let sessionLanes = Array.from(map.values());
+    // Resolve each session's user identity (first event in the lane
+    // that carries anonymousId / userSince). Drives group-by-user
+    // ordering + the colored rail/header in drawContent. Falls back to
+    // 'unknown' so identity-less sessions still group together.
+    for (const lane of sessionLanes) {
+      lane.userKey = userKeyForSession(lane.events) || 'unknown';
+    }
+    if (st.groupByUser) {
+      // Reorder so each user's sessions are adjacent; the helper also
+      // flags the first lane of each group (isFirstOfUser) for the header.
+      sessionLanes = groupLanesByUser(sessionLanes);
+    } else {
+      sessionLanes.sort((a, b) => a.first - b.first);
+    }
     return cacheLane ? [cacheLane, ...sessionLanes] : sessionLanes;
   }
 
@@ -278,13 +353,16 @@ const Timeline = (function () {
   // synthetic 1s window from dataRange() so callers don't need to
   // special-case empty.
   function rebuildSegments() {
+    // Build per-lane origins first so eventSrc resolves below (and so
+    // dataRange in normalize mode sees fresh origins this render).
+    buildOriginIndex();
     if (state.events.length === 0) {
       const [first, last] = dataRange();
       st.segments = [{ srcStart: first, srcEnd: last, dispStart: 0, dispEnd: last - first, type: 'data' }];
       return;
     }
     const stamps: number[] = [];
-    for (const e of state.events) if (e._receivedAt) stamps.push(e._receivedAt);
+    for (const e of state.events) if (e._receivedAt) stamps.push(eventSrc(e));
     const segs = _buildSegments(stamps, { collapseGaps: st.collapseGaps, gapSegDispMs: GAP_SEG_DISP_MS });
     if (segs.length === 0) {
       const [first, last] = dataRange();
@@ -436,6 +514,25 @@ const Timeline = (function () {
     return includeSeconds ? base + ':' + pad2(d.getSeconds()) : base;
   }
 
+  // Elapsed-time axis label for normalize mode: mm:ss (or h:mm:ss past
+  // an hour). The value is already relative to each lane's start, so
+  // unlike formatRelTime it takes no baseline.
+  function formatElapsed(ms) {
+    const totalSec = Math.floor(Math.max(0, ms) / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    const pad2 = (n) => (n < 10 ? '0' + n : '' + n);
+    return h > 0 ? h + ':' + pad2(m) + ':' + pad2(s) : pad2(m) + ':' + pad2(s);
+  }
+
+  // Axis/range label in the active mode: elapsed when normalized,
+  // wall-clock otherwise. Single switch point so drawAxis + updateInfo
+  // stay consistent.
+  function formatAxisTime(ms, includeSeconds) {
+    return st.normalize ? formatElapsed(ms) : formatClockTime(ms, includeSeconds);
+  }
+
   function formatGapDuration(ms) {
     if (ms < 1000) return ms + 'ms';
     if (ms < 60000) return (ms / 1000).toFixed(1) + 's';
@@ -580,9 +677,13 @@ const Timeline = (function () {
     if (state.events.length > 0) {
       const startSrc = dispToSrc(st.viewStartDisp);
       const endSrc = dispToSrc(st.viewEndDisp);
+      // In normalize mode the axis is already elapsed time, so the
+      // "(+mm:ss)" suffix would just repeat the bold range — drop it.
+      const relSuffix = st.normalize
+        ? ''
+        : ' <span style="color:var(--text-dim)">(+' + formatRelTime(startSrc, first, false) + ' – +' + formatRelTime(endSrc, first, false) + ')</span>';
       rangeInfo.innerHTML =
-        'Range: <b>' + formatClockTime(startSrc, true) + ' – ' + formatClockTime(endSrc, true) + '</b>' +
-        ' <span style="color:var(--text-dim)">(+' + formatRelTime(startSrc, first, false) + ' – +' + formatRelTime(endSrc, first, false) + ')</span>';
+        'Range: <b>' + formatAxisTime(startSrc, true) + ' – ' + formatAxisTime(endSrc, true) + '</b>' + relSuffix;
     } else {
       rangeInfo.innerHTML = 'Range: <b>—</b>';
     }
@@ -590,6 +691,8 @@ const Timeline = (function () {
     liveInfo.textContent = 'LIVE';
     jumpBtn.classList.toggle('visible', !st.followTail && state.events.length > 0);
     collapseBtn.classList.toggle('active', st.collapseGaps);
+    if (normalizeBtn) normalizeBtn.classList.toggle('active', st.normalize);
+    if (groupUserBtn) groupUserBtn.classList.toggle('active', st.groupByUser);
   }
 
   function drawAxis() {
@@ -624,7 +727,7 @@ const Timeline = (function () {
         axisCtx.fillStyle = 'rgba(255,255,255,0.08)';
         axisCtx.fillRect(x, h - 5, 1, 4);
         axisCtx.fillStyle = '#9ba8b9';
-        axisCtx.fillText(formatClockTime(t, includeSeconds), x, h / 2 - 1);
+        axisCtx.fillText(formatAxisTime(t, includeSeconds), x, h / 2 - 1);
         drawnXs.push(x);
       }
     }
@@ -648,7 +751,7 @@ const Timeline = (function () {
       // Anchor to the inside edge so the text never spills over the
       // sticky label column (left) or the canvas right edge (right).
       axisCtx.textAlign = side === 'left' ? 'left' : 'right';
-      axisCtx.fillText(formatClockTime(t, includeSeconds), x, h / 2 - 1);
+      axisCtx.fillText(formatAxisTime(t, includeSeconds), x, h / 2 - 1);
       axisCtx.textAlign = 'center';
     };
     if (viewLastSrc > viewFirstSrc) {
@@ -723,8 +826,12 @@ const Timeline = (function () {
 
       const firstEvent = lane.events[0] || { eventType: 'unknown' };
       const sessionColor = getColor(firstEvent.eventType).fg;
-      const x1 = timeToX(lane.first, w);
-      const x2 = timeToX(lane.last, w);
+      // In normalize mode the lane's lifespan bar runs from elapsed 0 to
+      // its duration; in absolute mode from its wall-clock first→last.
+      const laneStartSrc = st.normalize ? 0 : lane.first;
+      const laneEndSrc = st.normalize ? lane.last - lane.first : lane.last;
+      const x1 = timeToX(laneStartSrc, w);
+      const x2 = timeToX(laneEndSrc, w);
       const barX = Math.max(LABEL_COL_W, x1);
       const barW = Math.min(w, x2) - barX;
       if (barW > 0) {
@@ -755,7 +862,7 @@ const Timeline = (function () {
       type Vis = { e: any; x: number };
       const visible: Vis[] = [];
       for (const e of lane.events) {
-        const x = timeToX(e._receivedAt, w);
+        const x = timeToX(eventSrc(e), w);
         if (x < LABEL_COL_W - 12 || x > w + 12) continue;
         visible.push({ e, x });
       }
@@ -1048,17 +1155,58 @@ const Timeline = (function () {
         contentCtx.fillRect(0, yTop, 2, LANE_H);
       }
 
+      // Group-by-user chrome: a per-user colored rail at the column
+      // divider (every session lane) plus, on the first lane of each
+      // user group, a full-width separator and a "👤 <user> · N
+      // sessions" caption. The cache lane is identity-less, so it's
+      // skipped. The rail sits at the right edge of the label column so
+      // it never fights the blue activeSession rail at x=0.
+      const isUserHeader =
+        st.groupByUser && lane.kind === 'session' && (lane as any).isFirstOfUser;
+      if (st.groupByUser && lane.kind === 'session') {
+        const uc = getUserColor(lane.userKey || 'unknown');
+        contentCtx.fillStyle = hexToRgba(uc, 0.85);
+        contentCtx.fillRect(LABEL_COL_W - 3, yTop, 3, LANE_H);
+        if (isUserHeader && i > 0) {
+          contentCtx.fillStyle = hexToRgba(uc, 0.3);
+          contentCtx.fillRect(0, yTop, w, 1);
+        }
+      }
+      if (isUserHeader) {
+        const uc = getUserColor(lane.userKey || 'unknown');
+        const sessionsForUser = sessions.filter(
+          (s) => s.kind === 'session' && s.userKey === lane.userKey,
+        ).length;
+        contentCtx.fillStyle = uc;
+        contentCtx.font = '9px ui-monospace, SFMono-Regular, Menlo, monospace';
+        contentCtx.textAlign = 'left';
+        contentCtx.fillText(
+          '\u{1F464} ' +
+            shortUserLabel(lane.userKey || 'unknown') +
+            ' · ' +
+            sessionsForUser +
+            ' session' +
+            (sessionsForUser !== 1 ? 's' : ''),
+          12,
+          yTop + 11,
+        );
+      }
+
+      // When a user header occupies the top of the lane, push the
+      // session label rows down so they don't collide with the caption.
+      const sidY = isUserHeader ? yTop + 26 : yTop + LANE_H / 2 - 14;
+
       contentCtx.fillStyle = dimSession ? 'rgba(155,168,185,0.45)' : '#e2e8f0';
       contentCtx.font = '11px ui-monospace, SFMono-Regular, Menlo, monospace';
       contentCtx.textAlign = 'left';
       const laneLabel = lane.kind === 'cache' ? 'Cache' : lane.sid.slice(0, 8);
-      contentCtx.fillText(laneLabel, 12, yTop + LANE_H / 2 - 14);
+      contentCtx.fillText(laneLabel, 12, sidY);
       contentCtx.fillStyle = dimSession ? 'rgba(95,112,133,0.6)' : '#5f7085';
       contentCtx.font = '10px ui-monospace, SFMono-Regular, Menlo, monospace';
       const subLabel = lane.kind === 'cache'
         ? lane.events.length + ' op' + (lane.events.length !== 1 ? 's' : '')
         : lane.events.length + ' event' + (lane.events.length !== 1 ? 's' : '');
-      contentCtx.fillText(subLabel, 12, yTop + LANE_H / 2);
+      contentCtx.fillText(subLabel, 12, sidY + 14);
       // Visible duration (first → last across the events that pass
       // the current hidden-types filter — see visibleSessions).
       // Surfaces "how long is the run I'm looking at?" right next to
@@ -1066,7 +1214,7 @@ const Timeline = (function () {
       if (lane.events.length >= 2) {
         const span = lane.last - lane.first;
         if (span > 0) {
-          contentCtx.fillText(formatGapDuration(span), 12, yTop + LANE_H / 2 + 14);
+          contentCtx.fillText(formatGapDuration(span), 12, sidY + 28);
         }
       }
     }
@@ -1109,7 +1257,7 @@ const Timeline = (function () {
       } else {
         if (state.telemetryAllHidden) continue;
       }
-      const x = ((e._receivedAt - first) / range) * w;
+      const x = ((eventSrc(e) - first) / range) * w;
       minimapCtx.fillStyle = hexToRgba(getColor(e.eventType).fg, 0.55);
       minimapCtx.fillRect(x, h * 0.25, 1.5, h * 0.5);
     }
@@ -1675,6 +1823,17 @@ const Timeline = (function () {
     const summaryHtml = summary
       ? '<span class="tt-summary">' + escapeHtml(summary) + '</span>'
       : '';
+    // Elapsed = time since the session's own start. In normalize mode
+    // that's exactly eventSrc; in absolute mode it's the offset from the
+    // global data start (first). The "time" row keeps the real wall
+    // clock regardless of mode.
+    const elapsedMs = st.normalize ? eventSrc(event) : event._receivedAt - first;
+    // Surface the user identity (anonymousId / userSince) when the event
+    // carries one — the dimension the group-by-user mode keys on.
+    const uk = userKeyOf(event);
+    const userHtml = uk
+      ? '<div class="tt-row"><span>user</span><span class="val">' + escapeHtml(shortUserLabel(uk)) + '</span></div>'
+      : '';
     tooltipEl.innerHTML =
       '<div class="tt-head">' +
       '<span class="tt-idx">#' + (displayIdx || event._index) + '</span>' +
@@ -1682,7 +1841,8 @@ const Timeline = (function () {
       summaryHtml +
       '</div>' +
       '<div class="tt-row"><span>time</span><span class="val">' + formatClockTime(event._receivedAt, true) + '</span></div>' +
-      '<div class="tt-row"><span>elapsed</span><span class="val">+' + formatRelTime(event._receivedAt, first, false) + '</span></div>' +
+      '<div class="tt-row"><span>elapsed</span><span class="val">+' + formatRelTime(elapsedMs, 0, false) + '</span></div>' +
+      userHtml +
       '<div class="tt-row"><span>since prev</span><span class="val">' + sincePrev + '</span></div>' +
       selectedDeltaHtml +
       '<div class="tt-hint">click for details →</div>';
@@ -1813,8 +1973,10 @@ const Timeline = (function () {
   // jump is too disorienting.
   function zoomIntoCluster(cluster: any): void {
     const ms = cluster.members;
-    const tFirst = ms[0]._receivedAt;
-    const tLast = ms[ms.length - 1]._receivedAt;
+    // Cluster members share a lane, so eventSrc keeps their relative
+    // order (and works in normalize mode where dots plot on elapsed).
+    const tFirst = eventSrc(ms[0]);
+    const tLast = eventSrc(ms[ms.length - 1]);
     if (tFirst == null || tLast == null) return;
 
     const currentRange = st.viewEndDisp - st.viewStartDisp;
@@ -1878,7 +2040,7 @@ const Timeline = (function () {
     // accounts for it.
     const drawerW =
       drawerEl && drawerEl.classList.contains('open') ? drawerEl.clientWidth || 0 : 0;
-    const dotDisp = srcToDisp(event._receivedAt);
+    const dotDisp = srcToDisp(eventSrc(event));
     const viewRange = st.viewEndDisp - st.viewStartDisp;
     const contentW = canvasW - LABEL_COL_W;
     const dotX = LABEL_COL_W + ((dotDisp - st.viewStartDisp) / viewRange) * contentW;
@@ -1939,6 +2101,27 @@ const Timeline = (function () {
     st.viewStartDisp = midDisp - viewD / 2;
     st.viewEndDisp = midDisp + viewD / 2;
     st.followTail = false;
+    invalidate();
+  }
+
+  // "Align starts" toggle: re-base every lane to elapsed-from-its-own-
+  // start. The time mapping changes wholesale (clock ↔ elapsed), so
+  // re-frame the whole view via fitAll rather than trying to preserve
+  // the old window. Signal + pref kept in sync like collapseGaps.
+  function toggleNormalize() {
+    st.normalize = !st.normalize;
+    normalizeTimeline.value = st.normalize;
+    writePref('normalizeTimeline', st.normalize ? '1' : '0');
+    fitAll();
+  }
+
+  // "Group by user" toggle: reorder lanes so each user's sessions are
+  // adjacent. Only the vertical lane order changes — the time axis is
+  // untouched — so a plain redraw is enough.
+  function toggleGroupByUser() {
+    st.groupByUser = !st.groupByUser;
+    groupTimelineByUser.value = st.groupByUser;
+    writePref('groupTimelineByUser', st.groupByUser ? '1' : '0');
     invalidate();
   }
 

@@ -26,6 +26,8 @@ import {
   showStaleCache,
   cacheAllHidden,
   collapseTimelineGaps,
+  normalizeTimeline,
+  groupTimelineByUser,
   serverStartedAt,
 } from '../store/signals'
 import { rotateSessionIfChanged, readPref } from '../lib/session-storage'
@@ -79,6 +81,10 @@ if (!isSnapshot) {
   const collapsePref = readPref('collapseTimelineGaps')
   if (collapsePref === '0') collapseTimelineGaps.value = false
   else if (collapsePref === '1') collapseTimelineGaps.value = true
+  // `normalizeTimeline` + `groupTimelineByUser` default OFF; persist so
+  // a user who turned them on stays in that mode across reloads.
+  if (readPref('normalizeTimeline') === '1') normalizeTimeline.value = true
+  if (readPref('groupTimelineByUser') === '1') groupTimelineByUser.value = true
 } else {
   // Snapshot mode: restore the cache-options toggles from the values
   // baked at export time so the viewer sees what the exporter saw.
@@ -90,6 +96,8 @@ if (!isSnapshot) {
         showStaleCache?: boolean
         showCacheOperations?: boolean
         collapseTimelineGaps?: boolean
+        normalizeTimeline?: boolean
+        groupTimelineByUser?: boolean
       }
     | undefined
   if (baked) {
@@ -100,6 +108,12 @@ if (!isSnapshot) {
     }
     if (typeof baked.collapseTimelineGaps === 'boolean') {
       collapseTimelineGaps.value = baked.collapseTimelineGaps
+    }
+    if (typeof baked.normalizeTimeline === 'boolean') {
+      normalizeTimeline.value = baked.normalizeTimeline
+    }
+    if (typeof baked.groupTimelineByUser === 'boolean') {
+      groupTimelineByUser.value = baked.groupTimelineByUser
     }
   }
 }

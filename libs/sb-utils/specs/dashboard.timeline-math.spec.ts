@@ -8,7 +8,53 @@ import {
   navigableEventsFor,
   shouldPanToFocus,
   centerOnDot,
+  userKeyForSession,
+  groupLanesByUser,
 } from '../src/dashboard/lib/timeline-math'
+
+describe('userKeyForSession', () => {
+  it('returns the first event that carries an identity', () => {
+    const events = [
+      { context: {}, metadata: {} },
+      { metadata: { userSince: 100 } },
+      { context: { anonymousId: 'late' } },
+    ]
+    expect(userKeyForSession(events)).toBe('since:100')
+  })
+
+  it('returns null when no event carries an identity', () => {
+    expect(userKeyForSession([{ context: {} }, {}])).toBe(null)
+  })
+})
+
+describe('groupLanesByUser', () => {
+  it('groups sessions by user, ordering users by earliest session', () => {
+    const lanes = [
+      { sid: 'a1', userKey: 'A', first: 50 },
+      { sid: 'b1', userKey: 'B', first: 10 },
+      { sid: 'a2', userKey: 'A', first: 30 },
+      { sid: 'b2', userKey: 'B', first: 80 },
+    ]
+    const out = groupLanesByUser(lanes)
+    // User B is first (earliest session at t=10); within each user,
+    // sessions are sorted by their own start.
+    expect(out.map((l) => l.sid)).toEqual(['b1', 'b2', 'a2', 'a1'])
+  })
+
+  it('flags only the first lane of each user group', () => {
+    const lanes = [
+      { sid: 'a1', userKey: 'A', first: 10 },
+      { sid: 'a2', userKey: 'A', first: 20 },
+      { sid: 'b1', userKey: 'B', first: 30 },
+    ]
+    const out = groupLanesByUser(lanes)
+    expect(out.map((l) => [l.sid, l.isFirstOfUser])).toEqual([
+      ['a1', true],
+      ['a2', false],
+      ['b1', true],
+    ])
+  })
+})
 
 describe('computeDataRange', () => {
   it('returns a synthetic 60s window when there are no events', () => {

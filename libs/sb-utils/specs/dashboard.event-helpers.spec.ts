@@ -1,6 +1,54 @@
 import { describe, expect, it } from 'vitest'
-import { hasErrorPayload, summaryFor } from '../src/dashboard/lib/event-helpers'
+import {
+  hasErrorPayload,
+  summaryFor,
+  userKeyOf,
+  shortUserLabel,
+} from '../src/dashboard/lib/event-helpers'
 import type { StoredEvent } from '../src/dashboard/store/signals'
+
+describe('userKeyOf', () => {
+  it('returns null when no identity is present', () => {
+    expect(userKeyOf(null)).toBe(null)
+    expect(userKeyOf(undefined)).toBe(null)
+    expect(userKeyOf({} as StoredEvent)).toBe(null)
+    expect(userKeyOf({ context: {}, metadata: {} } as StoredEvent)).toBe(null)
+  })
+
+  it('prefers metadata.userSince (stable across a user\'s sessions)', () => {
+    expect(
+      userKeyOf({ context: { anonymousId: 'abc123' }, metadata: { userSince: 42 } } as StoredEvent),
+    ).toBe('since:42')
+    expect(userKeyOf({ metadata: { userSince: 1776330056886 } } as StoredEvent)).toBe(
+      'since:1776330056886',
+    )
+    expect(userKeyOf({ metadata: { userSince: '1776330056886' } } as StoredEvent)).toBe(
+      'since:1776330056886',
+    )
+  })
+
+  it('falls back to a prefixed anonymousId when userSince is absent', () => {
+    expect(userKeyOf({ context: { anonymousId: 'abc123' } } as StoredEvent)).toBe('anon:abc123')
+  })
+
+  it('ignores empty / non-finite values', () => {
+    expect(
+      userKeyOf({ context: { anonymousId: '' }, metadata: { userSince: NaN } } as StoredEvent),
+    ).toBe(null)
+  })
+})
+
+describe('shortUserLabel', () => {
+  it('truncates an anonymousId hash to 8 chars', () => {
+    expect(shortUserLabel('0123456789abcdef')).toBe('01234567')
+  })
+
+  it('renders a since:<ms> key as a date', () => {
+    const label = shortUserLabel('since:1776330056886')
+    expect(label.startsWith('since ')).toBe(true)
+    expect(label).not.toContain('1776330056886')
+  })
+})
 
 describe('hasErrorPayload', () => {
   it('returns false for events with no payload', () => {

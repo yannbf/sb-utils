@@ -9,6 +9,7 @@
 
 import { signal, computed } from '@preact/signals'
 import { cacheEntries } from './cache'
+import { userKeyOf } from '../lib/event-helpers'
 
 export type StoredEvent = {
   eventType: string
@@ -70,6 +71,28 @@ export const showStaleCache = signal(false)
  * sessionStorage on boot and snapshot mode bakes the live value.
  */
 export const collapseTimelineGaps = signal(true)
+
+/**
+ * Timeline view's "Align starts" mode. Off by default: lanes plot on
+ * shared wall-clock time. When on, every session is re-based so its
+ * first event sits at elapsed 0 — all swim lanes start at the left edge
+ * and the x-axis reads elapsed time (00:00, 00:30, …) instead of clock
+ * time. This makes session shapes + durations directly comparable
+ * regardless of when each one actually ran. The toolbar toggle in
+ * `features/timeline.ts` writes here; runtime restores from
+ * sessionStorage on boot and snapshot mode bakes the live value.
+ */
+export const normalizeTimeline = signal(false)
+
+/**
+ * Timeline view's "Group by user" mode. Off by default: lanes are
+ * ordered purely by start time. When on, lanes are grouped so each
+ * user's sessions are adjacent (identity = `context.anonymousId` with
+ * `metadata.userSince` fallback), with a colored left rail + group
+ * header per user. Lets you read "these N sessions all belong to one
+ * user" at a glance. Persisted + baked like the other timeline toggles.
+ */
+export const groupTimelineByUser = signal(false)
 
 /**
  * Wall-clock time the event-logger process booted, fetched from
@@ -195,15 +218,26 @@ export const typeCounts = computed<Record<string, number>>(() => {
   return out
 })
 
-export type SessionInfo = { count: number; firstSeen: number }
+export type SessionInfo = { count: number; firstSeen: number; userKey: string }
 
 export const sessionMap = computed<Record<string, SessionInfo>>(() => {
   const out: Record<string, SessionInfo> = {}
   for (const e of events.value) {
     if (!e.sessionId) continue
-    if (!out[e.sessionId]) out[e.sessionId] = { count: 0, firstSeen: e._receivedAt || Date.now() }
-    out[e.sessionId].count++
+    let info = out[e.sessionId]
+    if (!info) {
+      info = out[e.sessionId] = { count: 0, firstSeen: e._receivedAt || Date.now(), userKey: '' }
+    }
+    info.count++
+    // First event in the session that carries an identity wins — same
+    // rule as the timeline's userKeyForSession, so sidebar grouping and
+    // timeline grouping always agree.
+    if (!info.userKey) {
+      const k = userKeyOf(e)
+      if (k) info.userKey = k
+    }
   }
+  for (const sid in out) if (!out[sid].userKey) out[sid].userKey = 'unknown'
   return out
 })
 

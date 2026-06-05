@@ -4,6 +4,8 @@
  * imports from here at boot.
  */
 
+import { userKeyOf } from './event-helpers'
+
 export type TimelineSegment = {
   srcStart: number
   srcEnd: number
@@ -33,6 +35,55 @@ export function computeDataRange(
   if (!isFinite(first)) return [now - 60000, now]
   if (last - first < 1000) last = first + 1000
   return [first, last]
+}
+
+/**
+ * Resolve the user identity for a whole session by scanning its events
+ * for the first one that carries a `userKeyOf` (anonymousId / userSince).
+ * A session's metadata-bearing events (e.g. `init-step`) hold the
+ * identity while others (`boot`, cache) don't, so we take the first
+ * non-null. Returns null when no event in the session carries identity.
+ */
+export function userKeyForSession(
+  events: Array<{ context?: unknown; metadata?: unknown }>,
+): string | null {
+  for (const e of events) {
+    const k = userKeyOf(e as never)
+    if (k) return k
+  }
+  return null
+}
+
+/**
+ * Reorder session lanes so every user's sessions are adjacent, ready
+ * for the timeline's "Group by user" mode. Users are ordered by their
+ * earliest session; sessions within a user by their own start. The
+ * first lane of each user group is flagged `isFirstOfUser` so the
+ * renderer knows where to draw the group header + separator.
+ *
+ * Pure and order-stable: same input → same output, so it's safe to run
+ * every render.
+ */
+export function groupLanesByUser<L extends { userKey: string; first: number }>(
+  lanes: L[],
+): Array<L & { isFirstOfUser: boolean }> {
+  const groups = new Map<string, L[]>()
+  for (const lane of lanes) {
+    const g = groups.get(lane.userKey)
+    if (g) g.push(lane)
+    else groups.set(lane.userKey, [lane])
+  }
+  const ordered = Array.from(groups.values()).map((g) =>
+    g.slice().sort((a, b) => a.first - b.first),
+  )
+  ordered.sort((a, b) => a[0].first - b[0].first)
+  const out: Array<L & { isFirstOfUser: boolean }> = []
+  for (const g of ordered) {
+    for (let i = 0; i < g.length; i++) {
+      out.push(Object.assign({}, g[i], { isFirstOfUser: i === 0 }))
+    }
+  }
+  return out
 }
 
 /**
