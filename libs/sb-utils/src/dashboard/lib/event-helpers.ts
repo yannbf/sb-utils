@@ -57,15 +57,18 @@ export function userKeyOf(ev: StoredEvent | null | undefined): string | null {
  */
 export function shortUserLabel(key: string): string {
   if (key.startsWith('since:')) {
-    const ms = Number(key.slice('since:'.length))
-    if (Number.isFinite(ms)) {
-      const d = new Date(ms)
-      return (
-        'since ' +
-        d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-      )
-    }
-    return key
+    const raw = key.slice('since:'.length)
+    let n = Number(raw)
+    if (!Number.isFinite(n)) return key
+    // userSince is a Unix timestamp; some telemetry emits it in seconds
+    // rather than ms. Anything below 1e12 (i.e. before year 2001 in ms)
+    // is almost certainly seconds, so scale it up before formatting.
+    if (n > 0 && n < 1e12) n = n * 1000
+    const d = new Date(n)
+    // Implausible timestamps (placeholder values like 1) would format to
+    // a misleading ~1970 date — show the raw id instead.
+    if (d.getFullYear() < 2015) return 'user #' + raw
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
   }
   if (key.startsWith('anon:')) return key.slice('anon:'.length, 'anon:'.length + 8)
   return key.slice(0, 8)

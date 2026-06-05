@@ -19,7 +19,6 @@ import {
   cacheAllHidden,
   collapseTimelineGaps,
   normalizeTimeline,
-  groupTimelineByUser,
   pushToast,
 } from '../store/signals'
 import { openSaveModal } from '../store/modal'
@@ -106,10 +105,10 @@ export async function exportHtmlSnapshot(): Promise<void> {
     // dashboards; baking the live value lets the viewer land on the
     // same view the exporter was looking at.
     collapseTimelineGaps: collapseTimelineGaps.value,
-    // Timeline view's "Align starts" + "Group by user" toggles, baked so
-    // the snapshot viewer lands on the same framing the exporter chose.
+    // Timeline view's "Align starts" toggle, baked so the snapshot viewer
+    // lands on the same framing the exporter chose. (Group-by-user is
+    // automatic, derived from whether the data spans multiple users.)
     normalizeTimeline: normalizeTimeline.value,
-    groupTimelineByUser: groupTimelineByUser.value,
   }
   const bootstrap = document.createElement('script')
   bootstrap.textContent = [

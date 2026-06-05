@@ -85,14 +85,12 @@ export const collapseTimelineGaps = signal(true)
 export const normalizeTimeline = signal(false)
 
 /**
- * Timeline view's "Group by user" mode. Off by default: lanes are
- * ordered purely by start time. When on, lanes are grouped so each
- * user's sessions are adjacent (identity = `context.anonymousId` with
- * `metadata.userSince` fallback), with a colored left rail + group
- * header per user. Lets you read "these N sessions all belong to one
- * user" at a glance. Persisted + baked like the other timeline toggles.
+ * User-group keys collapsed in the sidebar Sessions list. Clicking a
+ * user group header toggles its key here; collapsed groups hide their
+ * session rows (the header stays, with a collapsed chevron). Purely a
+ * sidebar UI concern — the timeline ignores it.
  */
-export const groupTimelineByUser = signal(false)
+export const collapsedUserGroups = signal<Set<string>>(new Set())
 
 /**
  * Wall-clock time the event-logger process booted, fetched from
@@ -239,6 +237,18 @@ export const sessionMap = computed<Record<string, SessionInfo>>(() => {
   }
   for (const sid in out) if (!out[sid].userKey) out[sid].userKey = 'unknown'
   return out
+})
+
+/**
+ * True when the captured sessions span more than one distinct user
+ * identity. Drives automatic grouping: the timeline groups lanes by user
+ * and the dashboard surfaces per-session user tags ONLY when this holds —
+ * with a single user there's nothing to disambiguate, so both stay flat.
+ */
+export const hasMultipleUsers = computed<boolean>(() => {
+  const keys = new Set<string>()
+  for (const sid in sessionMap.value) keys.add(sessionMap.value[sid].userKey)
+  return keys.size > 1
 })
 
 // Total count of telemetry events (everything except `cache-watch`).

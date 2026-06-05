@@ -43,10 +43,19 @@ describe('shortUserLabel', () => {
     expect(shortUserLabel('0123456789abcdef')).toBe('01234567')
   })
 
-  it('renders a since:<ms> key as a date', () => {
+  it('renders a real since:<ms> key as a short date', () => {
     const label = shortUserLabel('since:1776330056886')
-    expect(label.startsWith('since ')).toBe(true)
+    expect(label).toContain('2026')
     expect(label).not.toContain('1776330056886')
+  })
+
+  it('scales 10-digit second timestamps to ms before formatting', () => {
+    // 1767850146 seconds → Jan 2026 (would be 1970 if treated as ms)
+    expect(shortUserLabel('since:1767850146')).toContain('2026')
+  })
+
+  it('shows an opaque id for placeholder timestamps instead of a 1970 date', () => {
+    expect(shortUserLabel('since:1')).toBe('user #1')
   })
 })
 
