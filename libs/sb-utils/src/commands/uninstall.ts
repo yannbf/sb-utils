@@ -22,6 +22,10 @@ import {
   findVitestConfigsWithStorybook,
   removeStorybookVitestPlugin,
 } from '../utils/vitest'
+import {
+  findLintConfigsWithStorybook,
+  removeStorybookFromLintConfig,
+} from '../utils/lint'
 import { blue, grey } from '../utils/colors'
 
 type Summary = {
@@ -29,6 +33,7 @@ type Summary = {
   storyFiles: string[]
   packageChanges: Record<string, string[]>
   vitestConfigs: string[]
+  lintConfigs: string[]
 }
 
 const summary: Summary = {
@@ -36,6 +41,7 @@ const summary: Summary = {
   storyFiles: [],
   packageChanges: {},
   vitestConfigs: [],
+  lintConfigs: [],
 }
 
 type UninstallOptions = {
@@ -99,12 +105,15 @@ export async function uninstall(options: UninstallOptions): Promise<void> {
   // Find vitest/vite config files containing the Storybook vitest addon plugin
   const vitestConfigsWithStorybook = findVitestConfigsWithStorybook(allPaths)
 
+  // Find eslint/oxlint config files referencing Storybook's lint plugin
+  const lintConfigsWithStorybook = findLintConfigsWithStorybook(allPaths)
+
   const doVitest = !options.storiesOnly
   const doStories = !options.vitestOnly && !options.keepStories
   const doFull = !options.vitestOnly && !options.storiesOnly
 
   // Build the list of available categories based on what was detected
-  type Category = 'dirs' | 'deps' | 'stories' | 'vitest'
+  type Category = 'dirs' | 'deps' | 'stories' | 'vitest' | 'lint'
   const availableCategories: { value: Category; label: string; hint: string }[] = []
 
   if (doFull && storybookDirs.length > 0) {
@@ -134,6 +143,13 @@ export async function uninstall(options: UninstallOptions): Promise<void> {
       value: 'vitest',
       label: 'Remove Storybook vitest plugin',
       hint: `${vitestConfigsWithStorybook.length} config ${vitestConfigsWithStorybook.length === 1 ? 'file' : 'files'}`,
+    })
+  }
+  if (doFull && lintConfigsWithStorybook.length > 0) {
+    availableCategories.push({
+      value: 'lint',
+      label: 'Remove Storybook lint config',
+      hint: `${lintConfigsWithStorybook.length} config ${lintConfigsWithStorybook.length === 1 ? 'file' : 'files'}`,
     })
   }
 
@@ -179,6 +195,7 @@ export async function uninstall(options: UninstallOptions): Promise<void> {
   let selectedPackages: string[] = []
   let shouldRemoveStories = false
   let selectedVitestConfigs: string[] = []
+  let selectedLintConfigs: string[] = []
 
   if (selectedCategories.includes('dirs')) {
     if (options.yes || storybookDirs.length === 1) {
@@ -252,6 +269,28 @@ export async function uninstall(options: UninstallOptions): Promise<void> {
     }
   }
 
+  if (selectedCategories.includes('lint')) {
+    if (options.yes || lintConfigsWithStorybook.length === 1) {
+      selectedLintConfigs = lintConfigsWithStorybook
+    } else {
+      const result = await multiselect({
+        message: 'Select lint config files to clean:',
+        options: lintConfigsWithStorybook.map((file) => ({
+          value: file,
+          label: getRelativePath(file),
+        })),
+        initialValues: lintConfigsWithStorybook,
+      })
+
+      if (isCancel(result)) {
+        note('Uninstallation cancelled.', 'Cancelled')
+        outro('✨ Done')
+        return
+      }
+      selectedLintConfigs = result as string[]
+    }
+  }
+
   // --- Execute actions ---
 
   // Process .storybook directories
@@ -316,6 +355,23 @@ export async function uninstall(options: UninstallOptions): Promise<void> {
       if (cleaned !== original) {
         fs.writeFileSync(configFile, cleaned)
         summary.vitestConfigs.push(configFile)
+      }
+    }
+  }
+
+  // Clean lint config files
+  if (selectedLintConfigs.length > 0) {
+    log.success(
+      `Removing Storybook lint config from ${selectedLintConfigs.length} config ${
+        selectedLintConfigs.length === 1 ? 'file' : 'files'
+      }...`,
+    )
+    for (const configFile of selectedLintConfigs) {
+      const original = fs.readFileSync(configFile, 'utf-8')
+      const cleaned = removeStorybookFromLintConfig(configFile, original)
+      if (cleaned !== original) {
+        fs.writeFileSync(configFile, cleaned)
+        summary.lintConfigs.push(configFile)
       }
     }
   }
@@ -403,6 +459,15 @@ export async function uninstall(options: UninstallOptions): Promise<void> {
     summary.vitestConfigs.forEach((file) => {
       console.log(
         `${grey('│')}  • ${blue(getRelativePath(file))} — removed Storybook vitest plugin`,
+      )
+    })
+  }
+
+  if (summary.lintConfigs.length > 0) {
+    note('Lint config files cleaned:')
+    summary.lintConfigs.forEach((file) => {
+      console.log(
+        `${grey('│')}  • ${blue(getRelativePath(file))} — removed Storybook lint config`,
       )
     })
   }
