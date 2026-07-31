@@ -1,3 +1,16 @@
+# (Fri Jul 31 2026)
+
+#### 🐛 Bug Fix
+
+- `@hipster/sb-utils@0.0.26`
+  - Account for linters [#22](https://github.com/yannbf/sb-utils/pull/22) ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
 # (Thu May 07 2026)
 
 #### ⚠️ Pushed to `main`
