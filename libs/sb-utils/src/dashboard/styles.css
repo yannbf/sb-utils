@@ -598,6 +598,71 @@
     font-size: 12px;
   }
 
+  /* Per-user header above each user's session bucket (Group by user). */
+  .session-user-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px 2px;
+    margin-top: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    cursor: pointer;
+    user-select: none;
+  }
+  .session-user-header:hover { color: var(--text); }
+  .session-user-chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.12s ease;
+    flex-shrink: 0;
+    color: var(--text-dim);
+  }
+  .session-user-header:hover .session-user-chevron { color: var(--text); }
+  .session-user-chevron.collapsed { transform: rotate(-90deg); }
+  .session-user-header:first-child {
+    margin-top: 0;
+  }
+  .session-user-header .session-user-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .session-user-header .count {
+    color: var(--text-dim);
+  }
+  /* Trash/eye actions on a user group header — reveal on hover, same as
+     the per-session rows. */
+  .session-user-header .item-actions {
+    display: none;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+    height: 18px;
+  }
+  .session-user-header:hover .item-actions { display: flex; }
+  .session-user-header:hover .count { display: none; }
+  .session-user-header .item-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 18px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .session-user-header .item-action:hover { color: var(--text); background: var(--bg-surface); }
+  .session-user-header .item-action.danger:hover { color: #f87171; }
+
   .shortcuts-list {
     padding: 2px 6px;
     color: var(--text-dim);
@@ -1360,6 +1425,19 @@
     white-space: nowrap;
     font-weight: 500;
     letter-spacing: 0.02em;
+  }
+
+  /* User identity shown next to the session id in the separator. Slightly
+     dimmer than the session pill so the session id stays primary. */
+  .session-separator .session-user-tag {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    padding: 2px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+    color: var(--text-dim);
+    font-size: 10px;
+    margin-left: -6px;
   }
 
   /* ── Kbd ──────────────────────────────────────────── */

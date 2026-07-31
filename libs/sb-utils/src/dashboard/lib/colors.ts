@@ -83,3 +83,15 @@ export function getColor(type: string): TypeColor {
   const b = parseInt(fg.slice(5, 7), 16)
   return { bg: `rgba(${r},${g},${b},0.12)`, fg }
 }
+
+/**
+ * Deterministic accent color for a user (anonymousId / userSince) key,
+ * used by the timeline's "Group by user" mode to color each user's
+ * left rail + group header. Hashed over the same FALLBACK_HUES palette
+ * so the same user always reads the same hue across renders/sessions.
+ */
+export function getUserColor(key: string): string {
+  let hash = 0
+  for (let i = 0; i < key.length; i++) hash = ((hash << 5) - hash + key.charCodeAt(i)) | 0
+  return FALLBACK_HUES[Math.abs(hash) % FALLBACK_HUES.length]
+}
