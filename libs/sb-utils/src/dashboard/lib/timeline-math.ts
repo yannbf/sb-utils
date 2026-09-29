@@ -4,6 +4,8 @@
  * imports from here at boot.
  */
 
+import { userKeyOf } from './event-helpers'
+
 export type TimelineSegment = {
   srcStart: number
   srcEnd: number
@@ -33,6 +35,110 @@ export function computeDataRange(
   if (!isFinite(first)) return [now - 60000, now]
   if (last - first < 1000) last = first + 1000
   return [first, last]
+}
+
+/**
+ * Resolve the user identity for a whole session by scanning its events
+ * for the first one that carries a `userKeyOf` (anonymousId / userSince).
+ * A session's metadata-bearing events (e.g. `init-step`) hold the
+ * identity while others (`boot`, cache) don't, so we take the first
+ * non-null. Returns null when no event in the session carries identity.
+ */
+export function userKeyForSession(
+  events: Array<{ context?: unknown; metadata?: unknown }>,
+): string | null {
+  for (const e of events) {
+    const k = userKeyOf(e as never)
+    if (k) return k
+  }
+  return null
+}
+
+/**
+ * Reorder session lanes so every user's sessions are adjacent, ready
+ * for the timeline's "Group by user" mode. Users are ordered by their
+ * earliest session; sessions within a user by their own start. The
+ * first lane of each user group is flagged `isFirstOfUser` so the
+ * renderer knows where to draw the group header + separator.
+ *
+ * Pure and order-stable: same input → same output, so it's safe to run
+ * every render.
+ */
+export function groupLanesByUser<L extends { userKey: string; first: number }>(
+  lanes: L[],
+): Array<L & { isFirstOfUser: boolean }> {
+  const groups = new Map<string, L[]>()
+  for (const lane of lanes) {
+    const g = groups.get(lane.userKey)
+    if (g) g.push(lane)
+    else groups.set(lane.userKey, [lane])
+  }
+  const ordered = Array.from(groups.values()).map((g) =>
+    g.slice().sort((a, b) => a.first - b.first),
+  )
+  ordered.sort((a, b) => a[0].first - b[0].first)
+  const out: Array<L & { isFirstOfUser: boolean }> = []
+  for (const g of ordered) {
+    for (let i = 0; i < g.length; i++) {
+      out.push(Object.assign({}, g[i], { isFirstOfUser: i === 0 }))
+    }
+  }
+  return out
+}
+
+export type SessionSpan = { sid: string; first: number; last: number }
+
+export type UserLane<E> = {
+  userKey: string
+  first: number
+  last: number
+  events: E[]
+  /** Each constituent session, sorted by start — drives the per-session
+   *  lifespan blocks + the vertical divider lines drawn between them. */
+  sessions: SessionSpan[]
+}
+
+/**
+ * Collapse per-session lanes into one lane per user. All of a user's
+ * events merge into a single chronological row; their sessions are kept
+ * as ordered spans so the renderer can draw a block per session and a
+ * vertical divider where each new session begins. Users are ordered by
+ * their earliest event.
+ *
+ * This is the "swim lane = user, sessions stacked in time" model: a user
+ * with sessions at 0–10m and 20–30m shows both sequentially in one row
+ * (with the gap between them, which "Collapse gaps" can compress), rather
+ * than on two separate rows.
+ */
+export function buildUserLanes<
+  E extends { _receivedAt?: number },
+  L extends { sid: string; userKey: string; first: number; last: number; events: E[] },
+>(sessionLanes: L[]): UserLane<E>[] {
+  const byUser = new Map<string, L[]>()
+  for (const lane of sessionLanes) {
+    const g = byUser.get(lane.userKey)
+    if (g) g.push(lane)
+    else byUser.set(lane.userKey, [lane])
+  }
+  const lanes: UserLane<E>[] = []
+  for (const [userKey, group] of byUser) {
+    const sessions = group
+      .map((l) => ({ sid: l.sid, first: l.first, last: l.last }))
+      .sort((a, b) => a.first - b.first)
+    const events = group
+      .flatMap((l) => l.events)
+      .slice()
+      .sort((a, b) => (a._receivedAt || 0) - (b._receivedAt || 0))
+    let first = Infinity
+    let last = -Infinity
+    for (const s of sessions) {
+      if (s.first < first) first = s.first
+      if (s.last > last) last = s.last
+    }
+    lanes.push({ userKey, first, last, events, sessions })
+  }
+  lanes.sort((a, b) => a.first - b.first)
+  return lanes
 }
 
 /**

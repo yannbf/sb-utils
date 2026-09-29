@@ -26,6 +26,54 @@ export function getPreviousEventTime(event: StoredEvent, all: StoredEvent[]): nu
   return event._receivedAt - prev._receivedAt
 }
 
+/**
+ * Stable per-user identity key for an event, or null if it carries
+ * none. Storybook telemetry attaches two install-scoped identities:
+ * `metadata.userSince` (the ms timestamp of when the user was first
+ * seen) is stable across ALL of a user's sessions, while
+ * `context.anonymousId` is a per-install hash that varies session to
+ * session. Grouping by user therefore keys on `userSince` first — so a
+ * user's many sessions actually collapse into one group — and only
+ * falls back to `anonymousId` when a session has no `userSince` at all.
+ * The whole session inherits the first non-null key found across its
+ * events (see `userKeyForSession` in timeline-math).
+ */
+export function userKeyOf(ev: StoredEvent | null | undefined): string | null {
+  const md = ev?.metadata as Record<string, unknown> | undefined
+  const us = md?.userSince
+  if (typeof us === 'number' && Number.isFinite(us)) return 'since:' + us
+  if (typeof us === 'string' && us) return 'since:' + us
+  const ctx = ev?.context as Record<string, unknown> | undefined
+  const anon = ctx?.anonymousId
+  if (typeof anon === 'string' && anon) return 'anon:' + anon
+  return null
+}
+
+/**
+ * Short, human-readable label for a user key. Hashes (anonymousId)
+ * truncate to their first 8 chars; `since:<ms>` keys render as a date
+ * so the group header reads "user since Apr 14" rather than an opaque
+ * epoch. Used by the timeline group-by-user header + tooltip.
+ */
+export function shortUserLabel(key: string): string {
+  if (key.startsWith('since:')) {
+    const raw = key.slice('since:'.length)
+    let n = Number(raw)
+    if (!Number.isFinite(n)) return key
+    // userSince is a Unix timestamp; some telemetry emits it in seconds
+    // rather than ms. Anything below 1e12 (i.e. before year 2001 in ms)
+    // is almost certainly seconds, so scale it up before formatting.
+    if (n > 0 && n < 1e12) n = n * 1000
+    const d = new Date(n)
+    // Implausible timestamps (placeholder values like 1) would format to
+    // a misleading ~1970 date — show the raw id instead.
+    if (d.getFullYear() < 2015) return 'user #' + raw
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  }
+  if (key.startsWith('anon:')) return key.slice('anon:'.length, 'anon:'.length + 8)
+  return key.slice(0, 8)
+}
+
 /** `<namespace>/<key>` for cache:* pseudo-events. Returns null otherwise. */
 export function cacheKeyOf(event: StoredEvent | null | undefined): string | null {
   if (!event || event._source !== 'cache-watch' || !event.payload) return null

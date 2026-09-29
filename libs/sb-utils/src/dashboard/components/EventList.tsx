@@ -7,14 +7,27 @@
 
 import { useEffect, useRef } from 'preact/hooks'
 import { computed } from '@preact/signals'
-import { events, autoScroll, type StoredEvent } from '../store/signals'
+import {
+  events,
+  autoScroll,
+  sessionMap,
+  hasMultipleUsers,
+  type StoredEvent,
+} from '../store/signals'
 import { matchesFilters } from '../lib/filters'
+import { shortUserLabel } from '../lib/event-helpers'
 import { EventCard } from './EventCard'
 
 function SessionSeparator({ sessionId }: { sessionId: string }) {
+  // Surface the session's user identity (anonymousId / userSince) next to
+  // the session id — but only when the data spans multiple users, since
+  // with one user there's nothing to disambiguate.
+  const userKey = sessionMap.value[sessionId]?.userKey
+  const showUser = hasMultipleUsers.value && userKey && userKey !== 'unknown'
   return (
     <div class="session-separator" data-session-id={sessionId}>
       <span class="session-label">Session {sessionId.slice(0, 8)}</span>
+      {showUser && <span class="session-user-tag">{shortUserLabel(userKey)}</span>}
     </div>
   )
 }

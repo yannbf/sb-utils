@@ -62,6 +62,18 @@ describe('sessionMap', () => {
     ]
     expect(sessionMap.value['sess-a'].firstSeen).toBe(1000)
   })
+
+  it('resolves userKey from the first identity-bearing event, else "unknown"', () => {
+    events.value = [
+      ev({ sessionId: 'sess-a' }),
+      ev({ sessionId: 'sess-a', metadata: { userSince: 99 } }),
+      ev({ sessionId: 'sess-b', context: { anonymousId: 'user-x' } }),
+      ev({ sessionId: 'sess-c' }),
+    ]
+    expect(sessionMap.value['sess-a'].userKey).toBe('since:99')
+    expect(sessionMap.value['sess-b'].userKey).toBe('anon:user-x')
+    expect(sessionMap.value['sess-c'].userKey).toBe('unknown')
+  })
 })
 
 describe('imports', () => {

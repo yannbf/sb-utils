@@ -9,6 +9,7 @@
 
 import { signal, computed } from '@preact/signals'
 import { cacheEntries } from './cache'
+import { userKeyOf } from '../lib/event-helpers'
 
 export type StoredEvent = {
   eventType: string
@@ -70,6 +71,26 @@ export const showStaleCache = signal(false)
  * sessionStorage on boot and snapshot mode bakes the live value.
  */
 export const collapseTimelineGaps = signal(true)
+
+/**
+ * Timeline view's "Align starts" mode. Off by default: lanes plot on
+ * shared wall-clock time. When on, every session is re-based so its
+ * first event sits at elapsed 0 — all swim lanes start at the left edge
+ * and the x-axis reads elapsed time (00:00, 00:30, …) instead of clock
+ * time. This makes session shapes + durations directly comparable
+ * regardless of when each one actually ran. The toolbar toggle in
+ * `features/timeline.ts` writes here; runtime restores from
+ * sessionStorage on boot and snapshot mode bakes the live value.
+ */
+export const normalizeTimeline = signal(false)
+
+/**
+ * User-group keys collapsed in the sidebar Sessions list. Clicking a
+ * user group header toggles its key here; collapsed groups hide their
+ * session rows (the header stays, with a collapsed chevron). Purely a
+ * sidebar UI concern — the timeline ignores it.
+ */
+export const collapsedUserGroups = signal<Set<string>>(new Set())
 
 /**
  * Wall-clock time the event-logger process booted, fetched from
@@ -195,16 +216,39 @@ export const typeCounts = computed<Record<string, number>>(() => {
   return out
 })
 
-export type SessionInfo = { count: number; firstSeen: number }
+export type SessionInfo = { count: number; firstSeen: number; userKey: string }
 
 export const sessionMap = computed<Record<string, SessionInfo>>(() => {
   const out: Record<string, SessionInfo> = {}
   for (const e of events.value) {
     if (!e.sessionId) continue
-    if (!out[e.sessionId]) out[e.sessionId] = { count: 0, firstSeen: e._receivedAt || Date.now() }
-    out[e.sessionId].count++
+    let info = out[e.sessionId]
+    if (!info) {
+      info = out[e.sessionId] = { count: 0, firstSeen: e._receivedAt || Date.now(), userKey: '' }
+    }
+    info.count++
+    // First event in the session that carries an identity wins — same
+    // rule as the timeline's userKeyForSession, so sidebar grouping and
+    // timeline grouping always agree.
+    if (!info.userKey) {
+      const k = userKeyOf(e)
+      if (k) info.userKey = k
+    }
   }
+  for (const sid in out) if (!out[sid].userKey) out[sid].userKey = 'unknown'
   return out
+})
+
+/**
+ * True when the captured sessions span more than one distinct user
+ * identity. Drives automatic grouping: the timeline groups lanes by user
+ * and the dashboard surfaces per-session user tags ONLY when this holds —
+ * with a single user there's nothing to disambiguate, so both stay flat.
+ */
+export const hasMultipleUsers = computed<boolean>(() => {
+  const keys = new Set<string>()
+  for (const sid in sessionMap.value) keys.add(sessionMap.value[sid].userKey)
+  return keys.size > 1
 })
 
 // Total count of telemetry events (everything except `cache-watch`).

@@ -22,9 +22,13 @@ import {
   imports,
   telemetryCount,
   cacheOperationsCount,
+  hasMultipleUsers,
+  collapsedUserGroups,
 } from '../store/signals'
 import { actions } from '../store/actions'
-import { getColor } from '../lib/colors'
+import { getColor, getUserColor } from '../lib/colors'
+import { shortUserLabel } from '../lib/event-helpers'
+import { groupLanesByUser } from '../lib/timeline-math'
 
 const EyeIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -42,6 +46,11 @@ const TrashIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <polyline points="3 6 5 6 21 6" />
     <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+  </svg>
+)
+const ChevronIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="6 9 12 15 18 9" />
   </svg>
 )
 
@@ -283,63 +292,141 @@ function SessionsSection() {
   const map = sessionMap.value
   const hidden = hiddenSessions.value
   const active = activeSession.value
+  const grouped = hasMultipleUsers.value
   const sids = Object.keys(map).sort((a, b) => map[a].firstSeen - map[b].firstSeen)
+
+  // One session row — shared by the flat + grouped layouts.
+  const renderSession = (sid: string) => {
+    const isActive = active === sid
+    const isHidden = hidden.has(sid)
+    const label = sid.length > 20 ? sid.slice(0, 18) + '…' : sid
+    return (
+      <div
+        key={sid}
+        class={
+          'filter-item' + (isActive ? ' active' : '') + (isHidden ? ' hidden-item' : '')
+        }
+        data-session={sid}
+        onClick={() => actions().setSession(isActive ? null : sid)}
+      >
+        <div class="label-row">
+          <span>{label}</span>
+        </div>
+        <div class="item-actions">
+          <button
+            class="item-action danger trash-btn"
+            title="Delete events for this session"
+            onClick={(e) => {
+              e.stopPropagation()
+              actions().deleteEventsBySession(sid)
+            }}
+          >
+            <TrashIcon />
+          </button>
+          <button
+            class="item-action eye-btn"
+            title={isHidden ? 'Show this session' : 'Hide this session'}
+            onClick={(e) => {
+              e.stopPropagation()
+              actions().toggleHiddenSession(sid)
+            }}
+          >
+            {isHidden ? <EyeOffIcon /> : <EyeIcon />}
+          </button>
+        </div>
+        <span class="count">{map[sid].count}</span>
+      </div>
+    )
+  }
+
+  // When "Group by user" is on, bucket sessions under per-user headers —
+  // same ordering as the timeline (groupLanesByUser): users by earliest
+  // session, sessions within a user by start. A header renders before
+  // each user's first session.
+  let body: preact.ComponentChildren
+  if (sids.length === 0) {
+    body = (
+      <div class="sessions-empty" id="sessionsEmpty">
+        No sessions yet
+      </div>
+    )
+  } else if (grouped) {
+    const lanes = groupLanesByUser(
+      sids.map((sid) => ({ sid, userKey: map[sid].userKey, first: map[sid].firstSeen })),
+    )
+    const collapsed = collapsedUserGroups.value
+    const out: preact.ComponentChildren[] = []
+    let curCollapsed = false
+    for (const lane of lanes) {
+      if (lane.isFirstOfUser) {
+        const uk = lane.userKey
+        curCollapsed = collapsed.has(uk)
+        const color = getUserColor(uk)
+        const userSids = sids.filter((s) => map[s].userKey === uk)
+        const userSessions = userSids.length
+        const allHidden = userSids.length > 0 && userSids.every((s) => hidden.has(s))
+        out.push(
+          <div
+            key={'hdr-' + uk}
+            class={'session-user-header' + (allHidden ? ' hidden-item' : '')}
+            onClick={() => {
+              const next = new Set(collapsed)
+              if (next.has(uk)) next.delete(uk)
+              else next.add(uk)
+              collapsedUserGroups.value = next
+            }}
+          >
+            <span class={'session-user-chevron' + (curCollapsed ? ' collapsed' : '')}>
+              <ChevronIcon />
+            </span>
+            <span class="dot" style={{ background: color }} />
+            <span class="session-user-name">{shortUserLabel(uk)}</span>
+            <div class="item-actions">
+              <button
+                class="item-action danger trash-btn"
+                title="Delete all events for this user"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (
+                    confirm(
+                      `Delete all events for this user (${userSessions} session${userSessions !== 1 ? 's' : ''})?`,
+                    )
+                  ) {
+                    userSids.forEach((s) => actions().deleteEventsBySession(s))
+                  }
+                }}
+              >
+                <TrashIcon />
+              </button>
+              <button
+                class="item-action eye-btn"
+                title={allHidden ? 'Show this user' : 'Hide this user'}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  const next = new Set(hidden)
+                  if (allHidden) userSids.forEach((s) => next.delete(s))
+                  else userSids.forEach((s) => next.add(s))
+                  hiddenSessions.value = next
+                }}
+              >
+                {allHidden ? <EyeOffIcon /> : <EyeIcon />}
+              </button>
+            </div>
+            <span class="count">{userSessions}</span>
+          </div>,
+        )
+      }
+      if (!curCollapsed) out.push(renderSession(lane.sid))
+    }
+    body = out
+  } else {
+    body = sids.map((sid) => renderSession(sid))
+  }
 
   return (
     <div class="sidebar-section">
       <div class="sidebar-section-title">Sessions</div>
-      <div id="sessionList">
-        {sids.length === 0 ? (
-          <div class="sessions-empty" id="sessionsEmpty">
-            No sessions yet
-          </div>
-        ) : (
-          sids.map((sid) => {
-            const isActive = active === sid
-            const isHidden = hidden.has(sid)
-            const label = sid.length > 20 ? sid.slice(0, 18) + '…' : sid
-            return (
-              <div
-                key={sid}
-                class={
-                  'filter-item' +
-                  (isActive ? ' active' : '') +
-                  (isHidden ? ' hidden-item' : '')
-                }
-                data-session={sid}
-                onClick={() => actions().setSession(isActive ? null : sid)}
-              >
-                <div class="label-row">
-                  <span>{label}</span>
-                </div>
-                <div class="item-actions">
-                  <button
-                    class="item-action danger trash-btn"
-                    title="Delete events for this session"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      actions().deleteEventsBySession(sid)
-                    }}
-                  >
-                    <TrashIcon />
-                  </button>
-                  <button
-                    class="item-action eye-btn"
-                    title={isHidden ? 'Show this session' : 'Hide this session'}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      actions().toggleHiddenSession(sid)
-                    }}
-                  >
-                    {isHidden ? <EyeOffIcon /> : <EyeIcon />}
-                  </button>
-                </div>
-                <span class="count">{map[sid].count}</span>
-              </div>
-            )
-          })
-        )}
-      </div>
+      <div id="sessionList">{body}</div>
     </div>
   )
 }

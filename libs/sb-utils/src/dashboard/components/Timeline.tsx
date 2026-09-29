@@ -59,6 +59,16 @@ export function Timeline() {
           Range: <b>—</b>
         </span>
         <div class="tl-toolbar-right">
+          <button type="button" class="tl-toggle" id="tlNormalizeBtn" title="Align every session to start at elapsed 0 (compare durations regardless of when they ran)">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="4" y1="4" x2="4" y2="20" />
+              <circle cx="9" cy="8" r="1.6" fill="currentColor" stroke="none" />
+              <circle cx="15" cy="8" r="1.6" fill="currentColor" stroke="none" />
+              <circle cx="9" cy="16" r="1.6" fill="currentColor" stroke="none" />
+              <circle cx="19" cy="16" r="1.6" fill="currentColor" stroke="none" />
+            </svg>
+            Align starts
+          </button>
           <button type="button" class="tl-toggle" id="tlCollapseBtn" title="Collapse long periods with no events">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="4 14 10 14 10 20" />
