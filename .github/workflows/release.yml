@@ -42,8 +42,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # Rebuild after Auto bumps package.json so the CLI embeds the new version.
-      # npm publish runs the prepack script before packaging the release.
+      # prerelease builds before npm validates the executable in package.json.
+      # prepack rebuilds after Auto bumps the version so the CLI stays in sync.
       - name: Create Release
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}

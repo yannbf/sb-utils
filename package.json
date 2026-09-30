@@ -19,7 +19,9 @@
   "main": "./dist/bin.mjs",
   "module": "./dist/bin.mjs",
   "types": "./dist/bin.d.mts",
-  "bin": "./dist/bin.mjs",
+  "bin": {
+    "sb-utils": "dist/bin.mjs"
+  },
   "exports": {
     "./bin": "./dist/bin.mjs",
     "./uninstall": {
@@ -40,12 +42,14 @@
     "dev:cli": "tsdown --watch",
     "test": "vitest",
     "test:package": "node scripts/check-package.mjs",
+    "test:release": "node --test scripts/release.test.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "pretest:e2e": "pnpm run build",
     "run": "jiti src/bin.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit -p src/dashboard/tsconfig.json",
     "prepack": "pnpm run build",
+    "prerelease": "pnpm run build",
     "release": "auto shipit"
   },
   "dependencies": {

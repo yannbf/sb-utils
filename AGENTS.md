@@ -13,7 +13,8 @@ via `npx @hipster/sb-utils <command>`.
 This is a single-package repository: source, scripts, and package metadata
 live at the root. `playground/package.json.fixture` is manual uninstall
 test data, not a workspace package. Releases use Auto's npm plugin;
-`prepack` builds artifacts after versioning. Keep that lifecycle intact.
+`prerelease` builds before npm validates the executable, and `prepack`
+rebuilds after versioning. Keep both lifecycle hooks intact.
 
 ## Hard constraints
 
@@ -208,6 +209,7 @@ pnpm typecheck              # both tsconfigs
 pnpm test --run             # vitest
 pnpm test:e2e               # playwright (auto-builds)
 pnpm test:package           # pack, install, and smoke-test the npm artifact
+pnpm test:release           # clean-directory publish dry run; preserves bin metadata
 ```
 
 For UI changes, also smoke the dashboard manually:

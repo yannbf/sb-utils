@@ -243,6 +243,7 @@ Use Node.js 24 (see `.node-version`) and the pnpm version pinned in
 pnpm install --frozen-lockfile
 pnpm typecheck
 pnpm test --run
+pnpm test:release
 pnpm exec playwright install chromium
 pnpm test:e2e
 pnpm test:package
@@ -272,7 +273,11 @@ tags and fetch full Git history in the release job. `CHANGELOG.md` now holds
 the package's changelog; the old repository-wide history is archived in
 [`docs/monorepo-changelog.md`](docs/monorepo-changelog.md).
 
-`prepack` rebuilds the CLI and dashboard after Auto changes the version, so
-both `npm publish` and `npm pack` include fresh artifacts and the correct
-CLI version. `pnpm test:package` checks a real tarball in a temporary consumer
+`prerelease` builds before Auto runs because npm validates the executable
+before calling `prepack`. `prepack` then rebuilds the CLI and dashboard after
+Auto changes the version, so both `npm publish` and `npm pack` include fresh
+artifacts and the correct CLI version. `pnpm test:package` checks a real tarball in a temporary consumer
 project, including its executable, exports, and dashboard. It never publishes.
+`pnpm test:release` checks the release lifecycle from a clean temporary
+directory using `npm publish --dry-run`, catching executable metadata warnings
+that `npm pack` alone does not detect.
