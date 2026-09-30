@@ -1,3 +1,16 @@
+# v0.0.27 (Wed Sep 30 2026)
+
+#### 🐛 Bug Fix
+
+- Consolidate repo, modernize and simplify structure [#23](https://github.com/yannbf/sb-utils/pull/23) ([@yannbf](https://github.com/yannbf))
+- grouped lane implementation [#21](https://github.com/yannbf/sb-utils/pull/21) ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
 # v0.0.26 (Fri Jul 31 2026)
 
 #### 🐛 Bug Fix
