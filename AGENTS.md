@@ -1,239 +1,125 @@
-## What this package is
+# Working on @hipster/sb-utils
 
-A CLI of Storybook utilities. Two commands:
+This repository is one npm package at the root. It provides two CLI commands:
+`uninstall` removes Storybook from a project; `event-logger` serves a local
+telemetry and cache dashboard. Users run `npx @hipster/sb-utils <command>`.
 
-- `uninstall` — remove Storybook from a project.
-- `event-logger` — local HTTP server + dashboard for inspecting
-  Storybook telemetry and the on-disk cache. The dashboard is the
-  bulk of the codebase.
+Read [README.md](README.md) for usage, [development commands](README.md#development),
+and the [release process](README.md#releases). `package.json` and
+`.github/workflows/` are the source of truth for scripts and automation.
+`CLAUDE.md` imports this file; keep agent instructions here.
 
-Distribution: published to npm as `@hipster/sb-utils`. Users invoke
-via `npx @hipster/sb-utils <command>`.
+## Code map
 
-This is a single-package repository: source, scripts, and package metadata
-live at the root. `playground/package.json.fixture` is manual uninstall
-test data, not a workspace package. Releases use Auto's npm plugin;
-`prerelease` builds before npm validates the executable, and `prepack`
-rebuilds after versioning. Keep both lifecycle hooks intact.
-
-## Hard constraints
-
-These are the requirements that drove the architecture. Don't break
-them without an explicit user nod:
-
-1. **Single-binary install.** Everything ships through `dist/`. Users
-   shouldn't need any extra setup beyond `npx`.
-2. **Single-file dashboard.** `dist/event-log-dashboard.html` is one
-   self-contained file with all CSS + JS inlined. The server serves
-   it whole; the snapshot exporter clones it. No external assets.
-3. **Snapshot exports must stay interactive offline.** An exported
-   `.html` snapshot opens via `file://` on any machine and must
-   render the baked events, support tab switches, and never make
-   network calls. The bake stubs `fetch` and `EventSource`.
-4. **No dev-machine state leaks into snapshots.** `localStorage` is
-   never used. Live preferences live in `sessionStorage`,
-   namespaced by the server's `startedAt` so they reset across
-   restarts. The session-storage layer is a no-op in snapshot mode.
-5. **Cache + telemetry stay independent.** Cache entries surface
-   independently from telemetry events. Filters, hide/show, and
-   reconstruction toggles are orthogonal.
-
-## Build pipeline
-
-Two parallel toolchains, both in `package.json`:
-
-- **`tsdown`** builds the CLI/server (`bin.ts`, `commands/*`,
-  `cache/*`, `utils/*`) → `dist/bin.mjs` + `dist/commands/*.mjs`.
-- **`vite` + `vite-plugin-singlefile` + `@preact/preset-vite`** builds
-  the dashboard (`src/dashboard/**`) → a single
-  `dist/event-log-dashboard.html`.
-
-Scripts:
-
-| Script | What it does |
+| Area | Start here |
 | --- | --- |
-| `pnpm build` | tsdown + vite. Required before E2E. |
-| `pnpm build:cli` | tsdown only. |
-| `pnpm build:dashboard` | vite only. Faster iteration. |
-| `pnpm dev:dashboard` | vite dev server (HMR). Proxies API calls to a long-running CLI. |
-| `pnpm dev:cli` | tsdown --watch. Pair with `node dist/bin.mjs event-logger`. |
-| `pnpm typecheck` | Two passes — root tsconfig + `src/dashboard/tsconfig.json`. |
-| `pnpm test --run` | Vitest. Pure-logic specs in `specs/`. |
-| `pnpm test:e2e` | Playwright. End-to-end specs in `e2e/`. Auto-builds via `pretest:e2e`. |
+| CLI commands and options | `src/bin.ts`, then the matching file in `src/commands/` |
+| HTTP server, telemetry ingestion, SSE, startup | `src/commands/event-logger.ts` |
+| Cache discovery, version selection, filesystem watching | `src/cache/discover.ts`, `src/cache/storybook-version.ts`, `src/cache/watch.ts` |
+| Cache HTTP endpoints and file operations | `src/cache/routes.ts`, `src/cache/read.ts`, `src/cache/write.ts` |
+| Uninstall detection and cleanup | `src/commands/uninstall.ts` and `src/utils/` |
+| Dashboard UI and styling | `src/dashboard/components/`, `src/dashboard/app.tsx`, `src/dashboard/styles.css` |
+| Dashboard state and actions | `src/dashboard/store/`, `src/dashboard/features/actions.ts` |
+| Live event recovery and connection lifecycle | `src/dashboard/features/event-stream.ts` |
+| Startup and snapshot restoration | `src/dashboard/features/runtime.ts` |
+| Offline HTML export | `src/dashboard/features/snapshot-export.ts` |
+| Pure dashboard logic | `src/dashboard/lib/` |
+| Timeline rendering and geometry | `src/dashboard/features/timeline.ts`, `src/dashboard/lib/timeline-math.ts` |
+| Unit tests | `specs/*.spec.ts`, `src/**/*.test.ts` |
+| Browser tests and server fixtures | `e2e/*.e2e.ts`, `e2e/fixtures.ts` |
+| Packaging and release checks | `scripts/check-package.mjs`, `scripts/release.test.mjs` |
 
-## Source layout
+`playground/package.json.fixture` is manual uninstall test data, not a
+workspace package. Copy the playground to a temporary directory before
+running the destructive command. Preserve the tracked `mocks/.cache/`
+files used by browser tests; use temporary fixtures for new mutation tests.
 
-```
-src/
-├── bin.ts                    # CLI entrypoint (commander)
-├── commands/
-│   ├── event-logger.ts       # Hono server, SSE, cache wiring
-│   └── uninstall.ts
-├── cache/                    # Cache module — discovery, watch, IO
-│   ├── discover.ts           # resolveCacheLocation, findProjectRoot
-│   ├── watch.ts              # fs.watch wrapper. emitColdStart flag for mid-session attach.
-│   ├── read.ts / write.ts
-│   ├── routes.ts             # Hono routes for /cache/*
-│   └── types.ts
-├── utils/                    # Shared CLI helpers
-└── dashboard/                # The single-file dashboard app (Preact + signals)
-    ├── main.tsx              # Boot: snapshot detection + Preact render
-    ├── app.tsx               # Top-level layout
-    ├── styles.css            # Single CSS file (Vite inlines it)
-    ├── event-log-dashboard.html  # Vite entry — just <div id="root">
-    ├── tsconfig.json         # JSX/Preact config
-    ├── components/           # Reactive Preact components reading signals
-    │   ├── Header.tsx, Sidebar.tsx, EventList.tsx, EventCard.tsx
-    │   ├── JsonView.tsx, DiffView.tsx, CacheView.tsx
-    │   ├── Timeline.tsx + TimelineDrawer.tsx
-    │   ├── Modal.tsx, Toast.tsx, DropOverlay.tsx
-    │   ├── PausedBanner.tsx, SnapshotBanner.tsx
-    ├── store/                # Reactive state + IO façades
-    │   ├── signals.ts        # Every signal — events, view, paused, filters, sessionMap, …
-    │   ├── modal.ts, cache.ts, actions.ts
-    ├── features/             # Imperative pieces — all signals-driven
-    │   ├── runtime.ts        # Boot wiring (action bridges, keyboard, prefs restore)
-    │   ├── actions.ts        # Setters for sidebar/header (writes signals + sessionStorage)
-    │   ├── event-stream.ts   # SSE + on-load /event-log recovery + dedup
-    │   ├── reconstruction.ts # Cache backfill + telemetry-from-cache
-    │   ├── snapshot-export.ts# Self-contained HTML snapshot generator
-    │   ├── keyboard.ts       # Global shortcuts
-    │   └── timeline.ts       # Canvas engine (mounted by Timeline.tsx)
-    └── lib/                  # Pure helpers, unit-tested with Vitest
-        ├── format.ts, lcs-diff.ts, colors.ts
-        ├── cache-diff.ts, event-helpers.ts, filters.ts
-        ├── timeline-math.ts  # Pure pan/zoom + segment math
-        └── session-storage.ts# Session-aware sessionStorage wrapper
-```
+## Contracts to preserve
 
-`specs/` holds pure-logic Vitest specs that don't need a DOM. `e2e/`
-holds Playwright tests with per-test event-logger fixtures that
-spawn a real CLI process and tear it down.
+Change these only when the task explicitly calls for a different contract:
 
-## Where to make a change
+- **Self-contained installation.** The npm package ships its executable,
+  command exports, declarations, and dashboard through `dist/`. Running it
+  with `npx` requires no additional setup.
+- **One dashboard file.** `dist/event-log-dashboard.html` contains all its
+  JavaScript and CSS. Keep assets inlined; the server and snapshot exporter
+  depend on this artifact.
+- **Interactive offline snapshots.** Exported HTML must work over `file://`,
+  show baked events and cache state, support interaction, and make no
+  network requests. Preserve the `fetch` and `EventSource` stubs.
+- **Session-local preferences.** Use `src/dashboard/lib/session-storage.ts`,
+  never `localStorage`. The helper clears this app's preferences when the
+  server's `startedAt` changes and disables storage access in snapshots.
+- **Independent cache and telemetry controls.** Cache visibility, stale-data
+  visibility, and telemetry reconstruction must remain separate controls.
 
-A small decision tree for routine changes — pick the closest match:
+## Dashboard conventions
 
-| Change | Where |
+Keep shared reactive state in `store/`: most signals and derived values are
+in `signals.ts`; cache and modal state have their own modules. Components
+read signals during render. Route user actions through `features/actions.ts`
+or the existing store module; `store/actions.ts` re-exports those actions.
+Prefer `computed` for derived state and pure helpers in `lib/` for logic
+that can be tested without a browser. Avoid new globals or inline HTML event
+handlers.
+
+When adding state to an offline snapshot, update both the bake in
+`features/snapshot-export.ts` and restoration in `features/runtime.ts`,
+including any endpoint stubs and preferences that state needs. The normal
+export path starts with the prebuilt HTML. Keep live-DOM cloning limited to
+its existing fallback; do not make the live DOM the primary export format.
+
+The sidebar's cache controls are all off in a fresh dashboard:
+
+| Control | Internal state | Behavior |
+| --- | --- | --- |
+| Show cache operations | `cacheAllHidden = true` initially; the toggle is its inverse | Shows/hides cache operations independently of telemetry |
+| Show stale cache data | `showStaleCache = false` | Includes entries whose mtime predates `serverStartedAt` |
+| Reconstruct telemetry | `reconstructFromCache = false` | Synthesizes telemetry from `dev-server/lastEvents` |
+
+Reconstructed events use `_source: 'cache-recon'`; cache watcher events use
+`_source: 'cache-watch'`. Enabling reconstruction must not enable cache
+visibility. Apply stale-data rules during both ingestion/reconstruction and
+filtering. When a cache appears after startup, watcher attachment uses
+`emitColdStart: true` to expose its existing contents.
+
+Keep SSE cleanup on page exit. Avoid redundant startup requests: open SSE
+connections can consume the browser's per-origin connection slots and block
+other requests across multiple tabs.
+
+## Build and release constraints
+
+`pnpm build` runs tsdown for the CLI/server, then Vite for the dashboard.
+CLI builds can clean `dist/`; build the dashboard afterward before starting
+`event-logger`. The README describes the separate server and HMR workflow.
+
+Preserve the `bin` and `exports` entries in `package.json` and both release
+hooks: `prerelease` builds before npm validates executable metadata;
+`prepack` rebuilds after Auto updates the version. The published CLI must
+report that version and include the dashboard. Keep full Git history in the
+release workflow so Auto can find earlier release tags.
+
+Use the package/release tests for validation. Run `pnpm release` only as part
+of a requested release, since it can publish to npm and GitHub.
+
+## Verification
+
+Choose checks based on the changed behavior; the full CI sequence is in
+[README.md](README.md#commands-and-checks).
+
+| Change | Local verification |
 | --- | --- |
-| Add/rename a CLI flag | `src/bin.ts` (option declaration) + `src/commands/event-logger.ts` (consume it) |
-| New HTTP endpoint | `src/commands/event-logger.ts` (Hono `app.get/post`) — for cache routes, `src/cache/routes.ts` |
-| Cache discovery / watching behavior | `src/cache/discover.ts` (resolution) or `src/cache/watch.ts` (events). Note the `emitColdStart` flag for mid-session attach. |
-| New piece of dashboard state | Add a `signal` in `src/dashboard/store/signals.ts`. If derived, prefer `computed`. |
-| User-triggered behavior (toggle, filter, click) | Action in `src/dashboard/features/actions.ts`, called from a component via `actions().<name>()`. |
-| Persisted preference | Wrap with `readPref` / `writePref` from `src/dashboard/lib/session-storage.ts`. Never use `localStorage`. |
-| New visible UI | Preact component in `src/dashboard/components/`, reading signals directly. |
-| New filter rule | `src/dashboard/lib/filters.ts` (`matchesFilters`). |
-| New diff / format helper | `src/dashboard/lib/` — must be pure, importable from a Vitest spec without a DOM. |
-| Timeline canvas math | `src/dashboard/lib/timeline-math.ts` (pure) — wire into `src/dashboard/features/timeline.ts`. |
-| Snapshot export bake | `src/dashboard/features/snapshot-export.ts`. Bake new state via `window.__SNAPSHOT_*__` and stub the matching server endpoint. |
-| Snapshot bootstrap restore | `src/dashboard/features/runtime.ts`'s snapshot branch. |
-| Styling | `src/dashboard/styles.css` (single file, Vite inlines it). |
-| Pure-logic test | `specs/dashboard.<topic>.spec.ts` — no jsdom needed. |
-| User-flow test | `e2e/<topic>.e2e.ts` — uses the `eventLogger` / `eventLoggerWithCache` fixtures from `e2e/fixtures.ts`. |
+| Documentation only | Check paths, links, commands, and claims against the source; run `git diff --check` |
+| CLI/server or pure helpers | `pnpm typecheck` and `pnpm test --run`; add a focused regression test for changed behavior |
+| Dashboard or server/browser interaction | The above checks plus `pnpm test:e2e`; use the existing server fixtures |
+| Build, package metadata, or release lifecycle | `pnpm test:release` and `pnpm test:package`; also run E2E when changing shipped dashboard assets |
 
-## Patterns to follow
+For visible UI or snapshot behavior changes, also inspect the affected live
+view and exported offline snapshot. Tests should assert behavior, not mirror
+the implementation. Run builds, package checks, and E2E sequentially because
+they share `dist/`. Report failures and unrun checks explicitly.
 
-### State
-
-Everything reactive lives in `store/signals.ts`. Components read
-`signal.value` inside their render function and Preact's signal
-integration auto-subscribes. Never expose mutators on signals — go
-through an action in `features/actions.ts`.
-
-### Snapshot vs live
-
-Always check `window.__SNAPSHOT__` (or the `isSnapshot` const in
-runtime.ts) when behavior should differ between the live dashboard
-and the exported HTML. Snapshot mode:
-
-- Stubs `fetch` and `EventSource` — assume no network.
-- `sessionStorage` writes are no-ops (so the viewer's machine can't
-  bleed prefs).
-- Reads from baked globals: `__SNAPSHOT_EVENTS__`,
-  `__SNAPSHOT_CACHE_ENTRIES__`, `__SNAPSHOT_CACHE_INFO__`,
-  `__SNAPSHOT_STARTED_AT__`, `__SNAPSHOT_PREFS__`,
-  `__SNAPSHOT_REAL_TELEMETRY_DETECTED__`, `__SNAPSHOT_META__`.
-
-When you add a new piece of state that should be preserved in
-snapshots, bake it in `snapshot-export.ts` AND restore it in
-`runtime.ts`'s snapshot branch.
-
-### Cache toggles + staleness
-
-Three orthogonal toggles in the **Cache Operations** sidebar section,
-all OFF by default:
-
-1. `cacheAllHidden` — flipped via the "Show cache operations" toggle
-   (UI shows the inverse: on=visible, off=hidden). When hidden, cache
-   events are filtered out of the dashboard list, the timeline canvas,
-   and the cache count in `cacheCount`. Default: hidden.
-2. `showStaleCache` — pre-existing cache entries (mtime <
-   `serverStartedAt`) are filtered at ingestion
-   (`ingestSyntheticCacheCreate`) and via `matchesFilters` for safety.
-   The toggle row only renders when stale entries actually exist OR
-   the toggle is currently on (so the user can flip it back).
-3. `reconstructFromCache` — synthesizes telemetry events from
-   `dev-server/lastEvents`. Per-event staleness gate inside
-   `reconstructTelemetryFromCacheWriteInner` mirrors the
-   `showStaleCache` rule — recent only unless stale toggle is also on.
-
-The three toggles are independent: enabling reconstruction does NOT
-auto-flip "Show cache operations". Reconstructed events use
-`_source: 'cache-recon'` and aren't gated by `cacheAllHidden`, so they
-stay visible even with cache hidden.
-
-Mid-session cache discovery (storybook creates the cache after
-event-logger started) emits cold-start `cache:write` events from the
-watcher with `emitColdStart: true` so the user sees the contents.
-
-### Tests
-
-When a behavior change touches:
-
-- **Pure logic** → add to `specs/`. Snapshot the input → output via
-  `expect(...).toEqual(...)`.
-- **A user flow** → add to `e2e/`. Use the fixtures.
-- **Both** → both. The pure spec catches regressions cheaply; the
-  E2E catches the integration.
-
-After you change pure helpers, also run vitest. After UI changes,
-also run E2E. Don't claim done without both green.
-
-## Verification checklist
-
-Before marking work complete:
-
-```sh
-pnpm typecheck              # both tsconfigs
-pnpm test --run             # vitest
-pnpm test:e2e               # playwright (auto-builds)
-pnpm test:package           # pack, install, and smoke-test the npm artifact
-pnpm test:release           # clean-directory publish dry run; preserves bin metadata
-```
-
-For UI changes, also smoke the dashboard manually:
-
-```sh
-node dist/bin.mjs event-logger --port 6017 --project-root /path/to/storybook-project
-```
-
-Then in the project: `STORYBOOK_TELEMETRY_URL=http://localhost:6017/event-log yarn storybook`.
-
-## Things to avoid
-
-- **`localStorage`.** Use `lib/session-storage.ts`. localStorage
-  bleeds across server restarts and into snapshots.
-- **DOM cloning in snapshot export.** The exporter fetches
-  `/event-log-dashboard.html` whole and only injects a bootstrap
-  `<script>`. Don't go back to clone-the-live-DOM.
-- **`window.onclick` markup or HTML-string injectors.** Everything
-  reactive is Preact. The only imperative DOM left is the canvas
-  engine in `features/timeline.ts`, wrapped in a `useEffect`.
-- **Implicit globals.** No more `window.state` / `state.X`. Components
-  read signals; actions write signals.
-- **Two `fetch` calls when one would do.** Boot is sensitive to the
-  browser's per-origin HTTP/1.1 connection cap (~6) — open SSE
-  streams hold slots, so blocking boot on extra fetches makes
-  multi-tab refresh hang. See the `pagehide` cleanup in
-  `features/event-stream.ts`.
+When changing commands, endpoints, defaults, or release hooks, update the
+corresponding README section. Keep this file focused on durable constraints
+and navigation; implementation detail belongs beside the code, and release
+history belongs in the changelog.

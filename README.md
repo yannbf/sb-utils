@@ -1,6 +1,7 @@
 # @hipster/sb-utils
 
-A small CLI of useful Storybook utilities.
+A CLI for removing Storybook from a project and inspecting its telemetry and cache.
+Requires Node.js 20 or newer.
 
 ```sh
 npx @hipster/sb-utils <command>
@@ -11,6 +12,9 @@ Commands:
 - [`uninstall`](#uninstall) — remove Storybook from a project
 - [`event-logger`](#event-logger) — real-time telemetry debugger with a dashboard UI
 
+For contributors: [development](#development), [releases](#releases), and
+[agent instructions](AGENTS.md).
+
 ---
 
 ## `uninstall`
@@ -19,12 +23,15 @@ Removes Storybook from the current project. By default it scans from the
 project root and will:
 
 - delete every `.storybook` config directory it finds
-- delete every `*.stories.*` and story-related `.mdx` file
-- strip Storybook packages (and any `storybook`/`@storybook/*` scripts) out
-  of each `package.json`
-- remove the Storybook plugin from Vitest config files
+- delete `*.stories.*`, `*.story.*`, and `.mdx` files containing `@storybook/`
+- remove dependencies whose names contain `storybook` from `dependencies`
+  and `devDependencies` in each `package.json`
+- remove the Storybook Vitest plugin from Vite and Vitest config files
+- remove Storybook lint configuration from supported ESLint and Oxlint files
 
-You'll see a summary and a multiselect prompt before anything is touched.
+You'll see a summary and a multiselect prompt before changes are applied,
+unless you pass `--yes`. After uninstalling, review your package scripts and
+run your package manager to refresh the lockfile and installed dependencies.
 
 ```sh
 npx @hipster/sb-utils uninstall
@@ -71,7 +78,9 @@ Then point Storybook at the collector:
 STORYBOOK_TELEMETRY_URL=http://localhost:6007/event-log storybook dev
 ```
 
-The dashboard opens at `http://localhost:6007`. Events arrive live via SSE.
+Open `http://localhost:6007`, or pass `--open` to launch the browser. If the
+port is occupied, the collector tries higher ports; use the URL it reports
+for both the dashboard and `STORYBOOK_TELEMETRY_URL`. Events arrive live via SSE.
 You can filter by event type or session, drop a `.json` export onto the
 window to re-import a past run, or save the current state as a portable
 single-file HTML snapshot (with an optional explanation note).
@@ -87,13 +96,16 @@ single-file HTML snapshot (with an optional explanation note).
 | `--max-events <count>` | Cap events kept in memory (`0` = unlimited) | `0` |
 | `--import <path>` | Preload events from a JSON file exported from the dashboard | — |
 | `--project-root <path>` | Project to inspect the Storybook cache for. Defaults to walking up from cwd | auto |
-| `--no-cache` | Hide cache events from CLI output, start dashboard with cache toggled off | cache on |
-| `--no-cache-watch` | Disable live cache watching entirely (no cache events captured) | watching on |
+| `--no-cache` | Disable automatic cache rediscovery and report cache as disabled by default | off |
+| `--no-cache-watch` | Disable filesystem watching; cache inspection remains available | watching on |
 
 ### HTTP API
 
 | Method | Path | Purpose |
 | --- | --- | --- |
+| `GET` | `/` | Dashboard HTML |
+| `GET` | `/event-log-dashboard.html` | Standalone dashboard source used by snapshot export |
+| `GET` | `/config` | Server start time and cache defaults |
 | `POST` | `/event-log` | Ingest a single telemetry event (JSON body) |
 | `GET`  | `/event-log?type=&sessionId=` | All captured events, with optional filters |
 | `GET`  | `/event-log/count` | Summary (total, counts by type and session) |
@@ -101,27 +113,34 @@ single-file HTML snapshot (with an optional explanation note).
 | `POST` | `/event-log/import?name=<name>` | Bulk-import a `{ events, explanation? }` batch |
 | `POST` | `/clear` | Drop all captured events |
 | `GET`  | `/sse` | Real-time SSE stream of incoming events |
+| `GET` | `/events/:type` | Legacy alias for filtering events by type |
 | `GET`  | `/cache/info` | Resolved Storybook cache layout (status, paths, version, namespaces) |
 | `GET`  | `/cache/entries?key=&keyPrefix=&namespace=&projectRoot=` | List cache entries with optional filters |
 | `GET`  | `/cache/entries/:key` | Read a single cache entry by logical key |
 | `PUT`  | `/cache/entries/:key?namespace=&ttl=&createIfMissing=&version=` | Write a cache entry |
 | `DELETE` | `/cache/entries/:key?namespace=` | Delete a single entry |
 | `POST` | `/cache/clear` | Wipe all entries |
-| `POST` | `/cache/project-root` | Switch the active project the dashboard inspects (body: `{ projectRoot }`) |
+| `POST` | `/cache/project-root` | Switch the active project (body: `{ projectRoot }`; `null` restores discovery) |
+| `POST` | `/cache/version` | Pin the active cache version (body: `{ version }`; `null` restores automatic selection) |
+
+`/cache/info`, `/cache/entries`, `/cache/entries/:key`, and `/cache/clear`
+accept `?projectRoot=` and `?version=` overrides for a single request.
+URL-encode logical keys in `/cache/entries/:key` when they contain `/`.
 
 ---
 
 ## Cache inspector
 
-`event-logger` watches Storybook's on-disk cache
-(`<project>/node_modules/.cache/storybook/<version>/...`) and surfaces
-read/write activity in three ways:
+`event-logger` looks for Storybook's cache in
+`<project>/node_modules/.cache/storybook/`, then `<project>/.cache/storybook/`.
+The Cache tab lets you switch between detected versions. It surfaces cache
+contents and filesystem write/delete activity in three ways:
 
 1. **Live timeline.** Every cache file write or delete becomes a
    `cache:write` / `cache:delete` pseudo-event in the timeline alongside
    real telemetry events. The payload includes the logical key, namespace,
    operation, full content, and a structural diff for updates.
-2. **Snapshot view.** A new "Cache" tab in the dashboard shows every
+2. **Cache view.** The "Cache" tab in the dashboard shows every
    entry in the resolved cache, grouped by namespace, with TTL info and
    "copy / edit / delete" affordances when writes are enabled.
 3. **Mutation API.** `PUT /cache/entries/:key` lets you plant arbitrary
@@ -135,6 +154,12 @@ root…" to switch projects on the fly — useful when running
 Storybook cache is detected, the dashboard renders a clear empty state
 and telemetry capture continues to work.
 
+Cache operations are hidden from the event list and timeline by default.
+Use the independent sidebar toggles to show cache operations, include stale
+cache data from before the collector started, or reconstruct telemetry from
+`dev-server/lastEvents`. Cache inspection itself is available without these
+toggles.
+
 The Cache tab includes an "Edit mode" toggle that gates Edit / Delete /
 Clear affordances client-side. Off by default; flipping it on shows a
 banner so it's obvious you're operating on real on-disk state.
@@ -143,141 +168,146 @@ banner so it's obvious you're operating on real on-disk state.
 
 ## Debugging with AI
 
-`event-logger` is built to be driven by an AI agent (Claude Code, Cursor,
-etc.) when you want help investigating telemetry.
+`event-logger` enables JSON mode automatically when it detects an AI agent.
+You can also request it explicitly:
 
-**How it works.** When the CLI detects an AI agent in the environment
-(`std-env`'s `isAgent`), it automatically switches to a machine-friendly
-mode:
+```sh
+npx @hipster/sb-utils event-logger --json
+```
 
-- A single JSON `ready` line is written to **stderr** with the dashboard
-  URL, API endpoints, and a `usage` block describing what each endpoint
-  does.
-- Every ingested event is printed to **stdout** as NDJSON — one event per
-  line — so the agent can stream-parse them without hitting the HTTP API.
-- The interactive TUI is suppressed so it doesn't pollute the agent's
-  context.
+- **stderr:** JSON status messages. Wait for the message with
+  `"status": "ready"` and read its `dashboard`, `telemetryUrl`, and `api`
+  fields. Port-retry messages can arrive before it. When an agent is detected,
+  the ready message also includes `agent` and `usage` information.
+- **stdout:** incoming telemetry and cache events as NDJSON, one JSON object
+  per line.
 
-You can force this mode anywhere with `--json`.
+Point Storybook at the reported `telemetryUrl`. Use the HTTP API above to
+query, clear, or export events; use `--max-events` to bound long sessions.
+For example, with the default port:
 
-### Suggested workflow for an agent
+```sh
+curl 'http://localhost:6007/event-log?type=build'
+curl -OJ 'http://localhost:6007/event-log/export?explanation=Reproduction%20notes'
+```
 
-1. **Start the collector** in the background:
-   ```sh
-   npx @hipster/sb-utils event-logger --json
-   ```
-   Read the first stderr line to get `telemetryUrl`.
+JSON exports contain `{ version, explanation, events }`. Re-import one by
+dropping it onto the dashboard or starting the collector with `--import`.
+For an interactive artifact that opens offline, use the dashboard's HTML
+snapshot export. It includes the captured events, cache state, and export
+note.
 
-2. **Run Storybook** against it:
-   ```sh
-   STORYBOOK_TELEMETRY_URL=<telemetryUrl> storybook dev
-   ```
+A useful prompt for an agent:
 
-3. **Observe.** Either tail stdout (NDJSON) as events arrive, or query the
-   API for a summary:
-   ```sh
-   curl http://localhost:6007/event-log/count
-   curl 'http://localhost:6007/event-log?type=build'
-   ```
-
-4. **Save a JSON artifact** directly from the agent:
-   ```sh
-   curl -OJ 'http://localhost:6007/event-log/export?explanation=Repro%20for%20issue%20%23123'
-   ```
-   The `-OJ` flag respects the server's `Content-Disposition`, so the file
-   lands as `telemetry-<iso>.json`. The body is the same wrapped shape the
-   dashboard exports (`{ version, explanation, events }`), filterable with
-   `?type=` and `?sessionId=`.
-
-5. **Share the session.** From the dashboard, export an HTML snapshot with
-   an explanation describing what you did. The snapshot is a single file
-   that opens offline and preserves filters, sessions, and the note — drop
-   it into a bug report or attach it to a Claude Code session so the next
-   investigator starts with full context.
-
-6. **Re-import.** Another agent (or a human) can drop the exported
-   `.json` file onto the dashboard, or preload with
-   `--import path/to/run.json`, to continue from the same state.
-
-### Sample prompt
-
-Drop this into Claude Code (or any coding agent with shell access) to kick
-off an investigation. Replace the reproduction steps with your own.
-
-> Start `@hipster/sb-utils event-logger` in the background and read the
-> ready line from stderr to get the collector URL. Then run
-> `STORYBOOK_TELEMETRY_URL=<that-url> storybook dev` in my project and
-> exercise the following scenario:
->
-> 1. Open the Button story
-> 2. Switch to the Docs tab
-> 3. Reload the page
->
-> Once the scenario is done, query `/event-log/count` for a summary and
-> `/event-log` for the full event list. Look for anything that indicates
-> which add-ons loaded, how long the boot took, and whether any error
-> events fired. Summarize what you found, then save the session with
-> `GET /event-log/export?explanation=<your-summary>` and give me the
-> resulting file path so I can attach it to a bug report.
-
-The agent gets everything it needs from the ready line and the HTTP API —
-no extra context files required.
-
-### Tips
-
-- Use `--max-events` on long-running sessions so memory doesn't grow
-  unboundedly.
-- Use `/clear` between reproduction steps to keep each batch of events
-  scoped to a single hypothesis.
-- The JSON export format is `{ version, explanation?, events }`. Let the
-  agent write the explanation — it's a good prompt for summarizing what
-  the run was about.
+> Start `@hipster/sb-utils event-logger --json` and wait for its ready message.
+> Run Storybook with `STORYBOOK_TELEMETRY_URL` set to the reported URL, then
+> reproduce [describe the steps]. Inspect `/event-log` and `/event-log/count`,
+> summarize what happened, and save a JSON export with the reproduction notes.
 
 ## Development
 
-This repository contains a single package, `@hipster/sb-utils`, at the root.
-Use Node.js 24 (see `.node-version`) and the pnpm version pinned in
-`package.json`.
+This is a single-package repository; run commands from the repository root.
+Use the Node.js version in [`.node-version`](.node-version) and the pnpm
+version in [`package.json`](package.json)'s `packageManager` field.
+`pnpm-workspace.yaml` stores dependency build permissions only.
 
 ```sh
 pnpm install --frozen-lockfile
+pnpm build
+```
+
+### Commands and checks
+
+| Command | Purpose |
+| --- | --- |
+| `pnpm build` | Build the CLI with tsdown, then the dashboard with Vite, into `dist/` |
+| `pnpm build:cli` | Build only the CLI and server |
+| `pnpm build:dashboard` | Build only the self-contained dashboard HTML |
+| `pnpm dev:cli` | Watch and rebuild the CLI; restart a running server to use changes |
+| `pnpm dev:dashboard` | Start the dashboard Vite server with HMR |
+| `pnpm typecheck` | Check CLI/server and dashboard TypeScript configurations |
+| `pnpm test --run` | Run Vitest tests in `specs/` and `src/**/*.test.ts` |
+| `pnpm test:e2e` | Build, then run Playwright against the production dashboard |
+| `pnpm test:package` | Build and pack, install in a temporary consumer, and check the executable, exports, types, and dashboard |
+| `pnpm test:release` | Check release lifecycle hooks with a minimal build and `npm publish --dry-run` in a temporary directory |
+
+Install Chromium before the first E2E run:
+
+```sh
+pnpm exec playwright install chromium
+```
+
+The full CI checks can be run locally in this order:
+
+```sh
 pnpm typecheck
 pnpm test --run
 pnpm test:release
-pnpm exec playwright install chromium
 pnpm test:e2e
 pnpm test:package
 ```
 
-`pnpm build` builds the CLI and the self-contained dashboard into `dist/`.
-For development, run `pnpm dev:cli` and `pnpm dev:dashboard` in separate
-terminals. The dashboard proxies API requests to a CLI started with
-`node dist/bin.mjs event-logger --port 9009`.
+Run build, E2E, and package checks sequentially: builds can clean `dist/`
+while an E2E server is using it. Package checks install dependencies from npm;
+release dry runs can also access the registry. Neither check publishes.
 
-`playground/` contains manual uninstall fixtures, not another package. Copy
-it to a temporary directory and rename `package.json.fixture` to
-`package.json` there before testing the uninstall command.
+### Dashboard development
+
+After `pnpm build`, start the collector in one terminal:
+
+```sh
+node dist/bin.mjs event-logger --port 9009
+```
+
+In another terminal, run `pnpm dev:dashboard` and open
+`http://localhost:5173/event-log-dashboard.html` (or the Vite-reported port).
+The proxy in `vite.config.ts` targets the collector on port `9009`. Set
+`STORYBOOK_TELEMETRY_URL=http://localhost:9009/event-log` in the Storybook
+project you are debugging. Ensure the collector actually started on `9009`;
+its automatic port fallback does not update the Vite proxy.
+
+For CLI changes, `pnpm dev:cli` rebuilds on save. CLI builds can clean
+`dist/`, so rebuild the dashboard before restarting `event-logger`, or use
+`pnpm build` to rebuild both parts.
+
+### Manual uninstall fixtures
+
+`playground/` contains test inputs, not a second package or a configured
+Storybook app. Copy it to a temporary directory, rename
+`package.json.fixture` to `package.json` there, and run the built CLI from
+that directory. Use an absolute path to the repository's `dist/bin.mjs`.
+This keeps the original fixtures available for the next test.
+
+See [AGENTS.md](AGENTS.md) for the code map and architectural constraints.
 
 ## Releases
 
-Releases still use [Auto's npm plugin](https://intuit.github.io/auto/docs/generated/npm)
-and the existing `GH_TOKEN` and `NPM_TOKEN` GitHub Actions secrets. Pull request
-labels determine the version bump. Branch pushes run CI before `pnpm release`
-(`auto shipit`); Auto publishes stable releases from `main` and canaries from
-other branches as before. Release runs for the same branch are serialized.
+[Auto's npm plugin](https://intuit.github.io/auto/docs/generated/npm) handles
+version bumps, changelogs, tags, npm publishing, and GitHub releases.
+Pull request labels determine the bump; avoid manually editing the package
+version or generated changelog during normal development.
 
-The root package keeps version `0.0.26` as the migration baseline. Auto uses
-the previous GitHub release and its existing `@hipster/sb-utils@…` tag for
-release history; new single-package releases use `v…` tags. Keep the old
-tags and fetch full Git history in the release job. `CHANGELOG.md` now holds
-the package's changelog; the old repository-wide history is archived in
-[`docs/monorepo-changelog.md`](docs/monorepo-changelog.md).
+[CI](.github/workflows/ci.yml) runs on pull requests and is reused by the
+[release workflow](.github/workflows/release.yml) on branch pushes. After
+checks pass, the upstream repository runs `pnpm release`: stable releases
+come from `main`, and other branches produce canaries. Runs for the same
+branch are serialized. The workflow uses the `GH_TOKEN` and `NPM_TOKEN`
+repository secrets.
 
-`prerelease` builds before Auto runs because npm validates the executable
-before calling `prepack`. `prepack` then rebuilds the CLI and dashboard after
-Auto changes the version, so both `npm publish` and `npm pack` include fresh
-artifacts and the correct CLI version. `pnpm test:package` checks a real tarball in a temporary consumer
-project, including its executable, exports, and dashboard. It never publishes.
-`pnpm test:release` checks the release lifecycle from a clean temporary
-directory using `npm publish --dry-run`, catching executable metadata warnings
-that `npm pack` alone does not detect.
+Keep both build hooks:
+
+1. `prerelease` builds before Auto starts, so npm's initial executable check
+   finds `dist/bin.mjs`.
+2. Auto updates `package.json`, then invokes npm publishing.
+3. `prepack` rebuilds with the new version embedded in the CLI and includes
+   the self-contained dashboard. It also runs for `npm pack`.
+
+Use `pnpm test:release` and `pnpm test:package` to validate packaging.
+`pnpm release` is the publishing command, not a local validation check.
+
+Current releases use `v…` tags. Preserve the older `@hipster/sb-utils@…`
+tags and the release workflow's full-history checkout: Auto uses the
+previous GitHub release to determine the next release's changes.
+[CHANGELOG.md](CHANGELOG.md) contains the package history;
+[docs/monorepo-changelog.md](docs/monorepo-changelog.md) is the historical
+repository-wide archive.
