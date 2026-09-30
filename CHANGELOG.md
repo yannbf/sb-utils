@@ -1,3 +1,15 @@
+# v0.0.28 (Wed Sep 30 2026)
+
+#### ⚠️ Pushed to `main`
+
+- docs updates ([@yannbf](https://github.com/yannbf))
+
+#### Authors: 1
+
+- Yann Braga ([@yannbf](https://github.com/yannbf))
+
+---
+
 # v0.0.27 (Wed Sep 30 2026)
 
 #### 🐛 Bug Fix
