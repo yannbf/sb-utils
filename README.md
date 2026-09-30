@@ -1,4 +1,4 @@
-### @hipster/sb-utils
+# @hipster/sb-utils
 
 A small CLI of useful Storybook utilities.
 
@@ -232,3 +232,47 @@ no extra context files required.
 - The JSON export format is `{ version, explanation?, events }`. Let the
   agent write the explanation — it's a good prompt for summarizing what
   the run was about.
+
+## Development
+
+This repository contains a single package, `@hipster/sb-utils`, at the root.
+Use Node.js 24 (see `.node-version`) and the pnpm version pinned in
+`package.json`.
+
+```sh
+pnpm install --frozen-lockfile
+pnpm typecheck
+pnpm test --run
+pnpm exec playwright install chromium
+pnpm test:e2e
+pnpm test:package
+```
+
+`pnpm build` builds the CLI and the self-contained dashboard into `dist/`.
+For development, run `pnpm dev:cli` and `pnpm dev:dashboard` in separate
+terminals. The dashboard proxies API requests to a CLI started with
+`node dist/bin.mjs event-logger --port 9009`.
+
+`playground/` contains manual uninstall fixtures, not another package. Copy
+it to a temporary directory and rename `package.json.fixture` to
+`package.json` there before testing the uninstall command.
+
+## Releases
+
+Releases still use [Auto's npm plugin](https://intuit.github.io/auto/docs/generated/npm)
+and the existing `GH_TOKEN` and `NPM_TOKEN` GitHub Actions secrets. Pull request
+labels determine the version bump. Branch pushes run CI before `pnpm release`
+(`auto shipit`); Auto publishes stable releases from `main` and canaries from
+other branches as before. Release runs for the same branch are serialized.
+
+The root package keeps version `0.0.26` as the migration baseline. Auto uses
+the previous GitHub release and its existing `@hipster/sb-utils@…` tag for
+release history; new single-package releases use `v…` tags. Keep the old
+tags and fetch full Git history in the release job. `CHANGELOG.md` now holds
+the package's changelog; the old repository-wide history is archived in
+[`docs/monorepo-changelog.md`](docs/monorepo-changelog.md).
+
+`prepack` rebuilds the CLI and dashboard after Auto changes the version, so
+both `npm publish` and `npm pack` include fresh artifacts and the correct
+CLI version. `pnpm test:package` checks a real tarball in a temporary consumer
+project, including its executable, exports, and dashboard. It never publishes.

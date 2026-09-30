@@ -47,7 +47,7 @@ export type EventLoggerHandle = {
 
 type Fixtures = {
   eventLogger: EventLoggerHandle
-  /** Variant: spawned with --project-root pointing at libs/sb-utils/mocks. */
+  /** Variant: spawned with --project-root pointing at mocks/. */
   eventLoggerWithCache: EventLoggerHandle
 }
 

@@ -1,20 +1,87 @@
 {
-  "name": "root",
-  "private": true,
-  "devDependencies": {
-    "auto": "^11.3.0",
-    "lerna": "^9.0.3"
+  "name": "@hipster/sb-utils",
+  "version": "0.0.26",
+  "description": "Different, sometimes useful Storybook utilities",
+  "type": "module",
+  "license": "MIT",
+  "homepage": "https://github.com/yannbf/sb-utils#readme",
+  "bugs": {
+    "url": "https://github.com/yannbf/sb-utils/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yannbf/sb-utils.git"
+  },
+  "author": "Yann Braga <yannbf@gmail.com>",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/bin.mjs",
+  "module": "./dist/bin.mjs",
+  "types": "./dist/bin.d.mts",
+  "bin": "./dist/bin.mjs",
+  "exports": {
+    "./bin": "./dist/bin.mjs",
+    "./uninstall": {
+      "types": "./dist/commands/uninstall.d.mts",
+      "default": "./dist/commands/uninstall.mjs"
+    },
+    "./event-logger": {
+      "types": "./dist/commands/event-logger.d.mts",
+      "default": "./dist/commands/event-logger.mjs"
+    },
+    "./package.json": "./package.json"
   },
   "scripts": {
-    "release": "auto shipit",
-    "build-packages": "lerna run build --parallel --verbose"
+    "build": "tsdown && vite build",
+    "build:dashboard": "vite build",
+    "build:cli": "tsdown",
+    "dev:dashboard": "vite",
+    "dev:cli": "tsdown --watch",
+    "test": "vitest",
+    "test:package": "node scripts/check-package.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "pretest:e2e": "pnpm run build",
+    "run": "jiti src/bin.ts",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p src/dashboard/tsconfig.json",
+    "prepack": "pnpm run build",
+    "release": "auto shipit"
   },
-  "repository": "yannbf/sb-utils",
-  "author": "Yann Braga <yannbf@gmail.com>",
+  "dependencies": {
+    "@antfu/ni": "^24.3.0",
+    "@clack/prompts": "^1.2.0",
+    "@hono/node-server": "^1.14.1",
+    "commander": "^14.0.2",
+    "empathic": "^2.0.0",
+    "hono": "^4.7.10",
+    "std-env": "^4.1.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@preact/preset-vite": "^2.10.5",
+    "@preact/signals": "^2.9.0",
+    "@types/node": "^24.10.1",
+    "auto": "^11.3.0",
+    "jiti": "^2.6.1",
+    "preact": "^10.29.1",
+    "tsdown": "^0.16.4",
+    "typescript": "^5.9.3",
+    "vite": "^8.0.10",
+    "vite-plugin-singlefile": "^2.3.3",
+    "vitest": "^4.0.9"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.24.0",
   "auto": {
     "plugins": [
       "npm"
     ]
-  },
-  "packageManager": "pnpm@10.24.0"
+  }
 }

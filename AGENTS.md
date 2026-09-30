@@ -10,6 +10,11 @@ A CLI of Storybook utilities. Two commands:
 Distribution: published to npm as `@hipster/sb-utils`. Users invoke
 via `npx @hipster/sb-utils <command>`.
 
+This is a single-package repository: source, scripts, and package metadata
+live at the root. `playground/package.json.fixture` is manual uninstall
+test data, not a workspace package. Releases use Auto's npm plugin;
+`prepack` builds artifacts after versioning. Keep that lifecycle intact.
+
 ## Hard constraints
 
 These are the requirements that drove the architecture. Don't break
@@ -202,6 +207,7 @@ Before marking work complete:
 pnpm typecheck              # both tsconfigs
 pnpm test --run             # vitest
 pnpm test:e2e               # playwright (auto-builds)
+pnpm test:package           # pack, install, and smoke-test the npm artifact
 ```
 
 For UI changes, also smoke the dashboard manually:

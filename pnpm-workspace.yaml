@@ -1,5 +1,3 @@
-packages:
-  - libs/*
-
+# pnpm settings only; this repository has no workspace packages.
 onlyBuiltDependencies:
-  - nx
+  - esbuild
